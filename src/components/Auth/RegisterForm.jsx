@@ -1,7 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
+import { SocialLogin } from './SocialLogin';
 
 export const RegisterForm = () => {
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -74,10 +78,16 @@ export const RegisterForm = () => {
 
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">Already have account?</span>
-        <button type="button" className="self-stretch my-auto font-bold ml-1">
+        <button 
+          type="button" 
+          onClick={() => navigate('/login')}
+          className="self-stretch my-auto font-bold ml-1"
+        >
           Sign in
         </button>
       </div>
+
+      <SocialLogin isLogin={false} />
     </form>
   );
 };
