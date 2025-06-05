@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export const PasswordInput = ({ placeholder, eyeIconUrl, name }) => {
+export const PasswordInput = ({ placeholder, eyeIconUrl, name, disabled = false }) => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -9,12 +9,15 @@ export const PasswordInput = ({ placeholder, eyeIconUrl, name }) => {
         type={showPassword ? "text" : "password"}
         name={name}
         placeholder={placeholder}
-        className="grow shrink w-[103px] my-auto bg-transparent border-none outline-none"
+        disabled={disabled}
+        required
+        className="grow shrink w-[103px] my-auto bg-transparent border-none outline-none disabled:opacity-50"
       />
       <button
         type="button"
         onClick={() => setShowPassword(!showPassword)}
-        className="focus:outline-none"
+        disabled={disabled}
+        className="focus:outline-none disabled:opacity-50"
         aria-label={showPassword ? "Hide password" : "Show password"}
       >
         <img
