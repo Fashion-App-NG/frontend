@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
+import { authService } from '../../services/authService';
 
 export const RegisterForm = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
     const formData = new FormData(e.target);
     const data = {
       email: formData.get('email'),
@@ -15,7 +23,45 @@ export const RegisterForm = () => {
       repeatPassword: formData.get('repeatPassword'),
       terms: formData.get('terms')
     };
-    console.log(data);
+
+    // Client-side validation
+    if (!data.email || !data.password || !data.repeatPassword) {
+      setError('Please fill in all required fields');
+      setIsLoading(false);
+      return;
+    }
+
+    if (data.password !== data.repeatPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!data.terms) {
+      setError('Please agree to the Terms of Service and Privacy Policy');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Call the registration API
+      const response = await authService.register({
+        email: data.email,
+        password: data.password
+      });
+
+      setSuccess('Account created successfully! Redirecting to login...');
+      
+      // Redirect to login page after successful registration
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+
+    } catch (error) {
+      setError(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -29,6 +75,20 @@ export const RegisterForm = () => {
         </p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
+          {error}
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4">
+          {success}
+        </div>
+      )}
+
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
         Email Address
       </label>
@@ -36,7 +96,9 @@ export const RegisterForm = () => {
         type="email"
         name="email"
         placeholder="Enter your email"
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid"
+        required
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
@@ -45,7 +107,8 @@ export const RegisterForm = () => {
       <PasswordInput 
         name="password"
         placeholder="Enter Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true" 
+        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true"
+        disabled={isLoading}
       />
 
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
@@ -54,14 +117,17 @@ export const RegisterForm = () => {
       <PasswordInput 
         name="repeatPassword"
         placeholder="Repeat Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/721587a1008fbb598d4b26f6f18fcdb426762d83?placeholderIfAbsent=true" 
+        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/721587a1008fbb598d4b26f6f18fcdb426762d83?placeholderIfAbsent=true"
+        disabled={isLoading}
       />
 
       <div className="flex items-center gap-[5px] text-xs text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-2.5 max-md:ml-0.5">
         <input
           type="checkbox"
           name="terms"
-          className="border w-[17px] h-[17px] rounded-sm border-[rgba(46,46,46,1)] border-solid"
+          required
+          disabled={isLoading}
+          className="border w-[17px] h-[17px] rounded-sm border-[rgba(46,46,46,1)] border-solid disabled:opacity-50"
         />
         <label className="self-stretch my-auto">
           I agree to the <span className="underline">Terms of Service</span> and{' '}
@@ -71,9 +137,10 @@ export const RegisterForm = () => {
 
       <button
         type="submit"
-        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[60px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[44px] max-md:max-w-full"
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[60px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[44px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Continue
+        {isLoading ? 'Creating Account...' : 'Continue'}
       </button>
 
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
@@ -81,7 +148,8 @@ export const RegisterForm = () => {
         <button 
           type="button" 
           onClick={() => navigate('/login')}
-          className="self-stretch my-auto font-bold ml-1"
+          disabled={isLoading}
+          className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >
           Sign in
         </button>
