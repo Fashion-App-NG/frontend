@@ -87,10 +87,10 @@ export const LoginForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col max-w-[564px]">
+    <form onSubmit={handleSubmit} className="flex flex-col">
       <div className="flex flex-col items-stretch mt-[66px] max-md:ml-1 max-md:mt-10">
         <h1 className="text-black text-[32px] font-bold">
-          Sign in
+          Sign In to Your Account
         </h1>
         <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
           Welcome back!
