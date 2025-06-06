@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
-<<<<<<< Updated upstream
-=======
 import { authService } from '../../services/authService';
->>>>>>> Stashed changes
 
 export const RegisterForm = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
@@ -19,9 +19,7 @@ export const RegisterForm = () => {
       repeatPassword: formData.get('repeatPassword'),
       terms: formData.get('terms')
     };
-<<<<<<< Updated upstream
     console.log(data);
-=======
 
     // Client-side validation
     if (!data.email || !data.password || !data.repeatPassword) {
@@ -94,7 +92,6 @@ export const RegisterForm = () => {
     } finally {
       setIsLoading(false);
     }
->>>>>>> Stashed changes
   };
 
   return (

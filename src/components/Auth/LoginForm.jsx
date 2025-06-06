@@ -1,13 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
-<<<<<<< Updated upstream
-import { SocialLogin } from './SocialLogin';
-import { Logo } from '../Common/Logo';
-
-export const LoginForm = () => {
-  const navigate = useNavigate();
-=======
 import { authService } from '../../services/authService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -28,7 +21,6 @@ export const LoginForm = () => {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
->>>>>>> Stashed changes
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,8 +97,6 @@ export const LoginForm = () => {
         </p>
       </div>
 
-<<<<<<< Updated upstream
-=======
       {/* Success Message */}
       {successMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4">
@@ -121,7 +111,6 @@ export const LoginForm = () => {
         </div>
       )}
 
->>>>>>> Stashed changes
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
         Email Address
       </label>

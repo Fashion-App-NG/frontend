@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 // Base API URL - you can move this to environment variables later
 const API_BASE_URL = 'http://localhost:3002/api';
 
@@ -174,4 +172,3 @@ export const authService = {
 };
 
 export default authService;
->>>>>>> Stashed changes
