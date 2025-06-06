@@ -1,19 +1,245 @@
 # Fashion App Frontend
 
 ## Overview
-React-based frontend for the Fashion Shopping Platform MVP, covering:
-- Shopper flows (Auth, Search, Cart/Checkout, Order Tracking)
-- Vendor flows (Vendor Onboarding, Inventory Management)
+React-based frontend for the Fashion Shopping Platform MVP. Currently implements complete user authentication flow with plans for comprehensive e-commerce functionality.
+
+### Current Features (Phase 1 - Authentication) ✅
+- **User Registration** with email/password validation
+- **OTP Email Verification** with JWT token handling  
+- **User Login** with persistent authentication
+- **Public Landing Page** with auth-aware navigation
+- **Session Management** with localStorage and React Context
+
+### Planned Features (Phase 2+) 🚧
+- Shopper flows (Product Search, Cart/Checkout, Order Tracking)
+- Vendor flows (Vendor Onboarding, Inventory Management)  
 - Admin flows (User Management, Revenue Reporting)
 
 ## Tech Stack
-- React.js (>=18)
-- Tailwind CSS
-- React Router (v6)
-- Context API (or Redux) for state
-- Jest & React Testing Library for unit tests
+- **React.js** (>=18) with functional components and hooks
+- **Tailwind CSS** for responsive styling
+- **React Router** (v6) for navigation
+- **Context API** for global state management
+- **JWT** authentication with localStorage persistence
+- **Jest & React Testing Library** for unit tests
+
+## Architecture
+```
+src/
+├── components/
+│   ├── Auth/           # Authentication components
+│   │   ├── LoginForm.jsx
+│   │   ├── RegisterForm.jsx  
+│   │   ├── OTPInput.jsx
+│   │   └── PasswordInput.jsx
+│   └── Common/         # Reusable UI components
+├── contexts/           # React Context providers
+│   ├── AuthContext.jsx
+│   └── CartContext.jsx
+├── pages/              # Route-level components  
+│   ├── HomePage.jsx
+│   ├── LoginPage.jsx
+│   ├── RegisterPage.jsx
+│   └── OTPPage.jsx
+├── services/           # API integration
+│   └── authService.js
+└── App.jsx            # Main app with routing
+```
 
 ## Getting Started
-1. Clone repo: `git clone git@github.com:Fashion-App-NG/frontend.git`
-2. Install dependencies: `npm install` or `yarn`
-3. Create `.env.local` and set:
+
+### Prerequisites
+- Node.js (>=16)
+- npm or yarn
+- Backend API running on `localhost:3002`
+
+### Installation
+```bash
+# Clone the repository
+git clone git@github.com:Fashion-App-NG/frontend.git
+cd frontend
+
+# Install dependencies
+npm install
+# or
+yarn install
+
+# Start development server
+npm start
+# or  
+yarn start
+```
+
+### Environment Variables
+Create `.env.local` in the root directory:
+```env
+REACT_APP_API_BASE_URL=http://localhost:3002/api
+REACT_APP_ENV=development
+```
+
+## Current Authentication Flow
+
+### User Journey
+```
+New User: HomePage → Register → OTP Verification → Login → Authenticated Homepage
+Returning User: HomePage → Login → Authenticated Homepage
+```
+
+### API Integration
+- **POST** `/auth/register` - User registration with JWT response
+- **POST** `/auth/verify-otp` - Email verification (userId + 6-digit code)
+- **POST** `/auth/login` - User authentication
+- **POST** `/auth/resend-otp` - Resend verification code
+
+### Key Components
+
+#### RegisterForm.jsx
+- Email/password validation with repeat password confirmation
+- JWT token extraction for OTP verification
+- Session storage management for verification flow
+- Terms of service acceptance
+- Error handling for duplicate accounts and delivery failures
+
+#### LoginForm.jsx  
+- Email/password authentication
+- JWT token storage and user context updates
+- Success message handling from OTP verification
+- Specific error handling for unverified accounts
+
+#### OTPInput.jsx
+- 6-digit code input with auto-focus navigation
+- Session validation and userId verification
+- Code expiration handling with resend functionality
+- Navigation to login after successful verification
+
+#### authService.js
+- Complete API integration with error handling
+- JWT token management (storage/retrieval/removal)
+- User data persistence with localStorage
+- Authentication state checking
+
+## Development Workflow
+
+### Branch Strategy
+- `main` - Production-ready code
+- `dev` - Development integration branch
+- `feature/*` - Feature-specific branches
+
+### Current Development Status
+- ✅ **Phase 1**: Complete authentication flow implemented
+- 🚧 **Phase 2**: Planning authenticated shopping dashboard
+- 📋 **Phase 3**: Product catalog and cart functionality
+- 📋 **Phase 4**: Vendor and admin portals
+
+## Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode  
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+### Test Coverage Goals
+- Authentication flow: 90%+ coverage
+- Form validation: 100% coverage
+- API service integration: 85%+ coverage
+
+## Code Quality
+
+### Styling Guidelines
+- **Tailwind CSS** for all styling
+- **Responsive design** (mobile-first approach)
+- **Consistent spacing** using Tailwind spacing scale
+- **Color scheme** based on design system
+
+### Component Standards
+- **Functional components** with React hooks
+- **PropTypes** for type checking
+- **Error boundaries** for graceful error handling
+- **Loading states** for all async operations
+
+## Security Considerations
+
+- JWT tokens stored securely in localStorage
+- Input validation on all form fields
+- Password fields with visibility toggle
+- Session cleanup on logout
+- CSRF protection (planned)
+
+## Performance Optimizations
+
+- Lazy loading for route components
+- Form validation debouncing
+- Optimistic UI updates
+- Efficient re-renders with proper dependencies
+
+## Deployment
+
+### Build for Production
+```bash
+npm run build
+# or
+yarn build
+```
+
+### Environment Configuration
+- Development: `localhost:3000`
+- Staging: TBD
+- Production: TBD
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+### Commit Message Format
+```
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+style: formatting changes
+refactor: code restructuring
+test: add tests
+chore: maintenance tasks
+```
+
+## Roadmap
+
+### Phase 2: Authenticated Shopping Dashboard
+- [ ] Product catalog with search and filtering
+- [ ] Shopping cart with persistent state
+- [ ] User profile management
+- [ ] Order history and tracking
+
+### Phase 3: E-commerce Core Features  
+- [ ] Checkout flow with payment integration
+- [ ] Wishlist functionality
+- [ ] Product reviews and ratings
+- [ ] Inventory management
+
+### Phase 4: Advanced Features
+- [ ] Vendor portal for sellers
+- [ ] Admin dashboard for platform management
+- [ ] Analytics and reporting
+- [ ] Mobile app (React Native)
+
+## Support
+
+For questions and support:
+- Create an issue in the GitHub repository
+- Email: dev@fashion-app.ng
+- Slack: #fashion-app-frontend
+
+---
+
+**Current Version**: v1.0.0 (Authentication MVP)  
+**Last Updated**: December 2024  
+**Maintainer**: Fashion App NG Team
