@@ -180,17 +180,55 @@ npm run test:coverage
 
 ## Deployment
 
-### Build for Production
-```bash
-npm run build
-# or
-yarn build
+### Environment Variables Setup
+
+#### Local Development
+Create `.env.local` in the root directory:
+```env
+REACT_APP_API_BASE_URL=http://localhost:3002/api
+REACT_APP_ENV=development
 ```
 
+#### Netlify Production Deployment
+Set these environment variables in your Netlify dashboard:
+```
+REACT_APP_API_BASE_URL=https://your-production-backend.herokuapp.com/api
+REACT_APP_ENV=production
+NODE_ENV=production
+```
+
+### Build Commands
+```bash
+# Local development
+npm start
+
+# Production build
+npm run build
+
+# Preview production build locally
+npm run preview
+
+# Check environment variables
+npm run env:check
+```
+
+### Netlify Deployment
+1. Connect your GitHub repository to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `build`
+4. Add environment variables in Netlify dashboard
+5. Deploy!
+
+### Environment Variable Precedence
+1. **Netlify Environment Variables** (highest priority)
+2. `.env.local` (local development) 
+3. `.env.development` / `.env.production`
+4. **Default fallback values** (lowest priority)
+
 ### Environment Configuration
-- Development: `localhost:3000`
-- Staging: TBD
-- Production: TBD
+- **Development**: `localhost:3000` → Backend at `localhost:3002`
+- **Production**: Netlify deployment → Production backend API
+- **Environment Variables**: Always take precedence over hardcoded values
 
 ## Contributing
 
@@ -241,5 +279,5 @@ For questions and support:
 ---
 
 **Current Version**: v1.0.0 (Authentication MVP)  
-**Last Updated**: December 2024  
+**Last Updated**: June 6, 2025  
 **Maintainer**: Fashion App NG Team

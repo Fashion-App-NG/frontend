@@ -1,5 +1,11 @@
-// Base API URL - you can move this to environment variables later
-const API_BASE_URL = 'http://localhost:3002/api';
+// Base API URL - uses environment variables with fallback
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
+
+// Debug logging in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 API Base URL:', API_BASE_URL);
+  console.log('🔧 Environment:', process.env.NODE_ENV);
+}
 
 // Helper function for making HTTP requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -13,15 +19,20 @@ const apiRequest = async (endpoint, options = {}) => {
     ...options,
   };
 
-  console.log(`🚀 API Request: ${options.method || 'GET'} ${url}`);
-  console.log('📤 Headers:', config.headers);
-  console.log('📤 Body:', options.body);
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🚀 API Request: ${options.method || 'GET'} ${url}`);
+    console.log('📤 Headers:', config.headers);
+    console.log('📤 Body:', options.body);
+  }
 
   try {
     const response = await fetch(url, config);
     const data = await response.json();
 
-    console.log(`📥 Response [${response.status}]:`, data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📥 Response [${response.status}]:`, data);
+    }
 
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -47,7 +58,9 @@ const extractUserIdFromToken = (token) => {
     const decodedPayload = atob(paddedPayload);
     const parsed = JSON.parse(decodedPayload);
     
-    console.log('🔍 Decoded JWT payload:', parsed);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Decoded JWT payload:', parsed);
+    }
     
     const userId = parsed.userId || parsed.id || parsed.sub;
     
@@ -68,7 +81,9 @@ const extractUserIdFromToken = (token) => {
       return null;
     }
     
-    console.log(`✅ Valid userId extracted: "${cleanUserId}"`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Valid userId extracted: "${cleanUserId}"`);
+    }
     return cleanUserId;
     
   } catch (error) {
