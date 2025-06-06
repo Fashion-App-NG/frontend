@@ -13,9 +13,15 @@ const apiRequest = async (endpoint, options = {}) => {
     ...options,
   };
 
+  console.log(`🚀 API Request: ${options.method || 'GET'} ${url}`);
+  console.log('📤 Headers:', config.headers);
+  console.log('📤 Body:', options.body);
+
   try {
     const response = await fetch(url, config);
     const data = await response.json();
+
+    console.log(`📥 Response [${response.status}]:`, data);
 
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -23,7 +29,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error('API request failed:', error);
+    console.error('💥 API request failed:', error);
     throw error;
   }
 };
@@ -41,15 +47,39 @@ export const authService = {
     });
   },
 
-  // Login user (for future use)
-  login: async (credentials) => {
-    return apiRequest('/auth/login', {
+  // Verify OTP - based on API docs, no Authorization header needed
+  verifyOTP: async (otpData) => {
+    return apiRequest('/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({
+        userId: otpData.userId,
+        code: otpData.code
+      }),
     });
   },
 
-  // Logout user (for future use)
+  // Resend OTP - API expects email or phone, not userId
+  resendOTP: async (email) => {
+    return apiRequest('/auth/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email
+      }),
+    });
+  },
+
+  // Login user
+  login: async (credentials) => {
+    return apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        identifier: credentials.email,
+        password: credentials.password
+      }),
+    });
+  },
+
+  // Logout user
   logout: async () => {
     return apiRequest('/auth/logout', {
       method: 'POST',

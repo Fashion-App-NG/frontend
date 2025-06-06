@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
-import { SocialLogin } from './SocialLogin';
-import { Logo } from '../Common/Logo';
 
 export const LoginForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    // Check if there's a success message from OTP verification
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the message after showing it
+      setTimeout(() => setSuccessMessage(''), 5000);
+    }
+  }, [location.state]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -27,6 +36,13 @@ export const LoginForm = () => {
           Welcome back!
         </p>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4">
+          {successMessage}
+        </div>
+      )}
 
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
         Email Address

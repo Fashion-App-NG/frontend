@@ -4,6 +4,58 @@ import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
 import { authService } from '../../services/authService';
 
+// JWT decoder function to extract userId from token
+const extractUserIdFromToken = (token) => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+    
+    // Get the payload (second part)
+    const payload = parts[1];
+    
+    // Fix base64 padding if needed
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+    
+    // Decode from base64
+    const decodedPayload = atob(paddedPayload);
+    
+    // Parse JSON
+    const parsed = JSON.parse(decodedPayload);
+    console.log('🔍 Decoded JWT payload:', parsed);
+    
+    // Extract userId and validate
+    const userId = parsed.userId || parsed.id || parsed.sub;
+    
+    if (!userId) {
+      console.error('❌ No userId found in token payload');
+      return null;
+    }
+    
+    // Ensure userId is exactly 24 characters (MongoDB ObjectId)
+    const cleanUserId = String(userId).trim();
+    
+    if (cleanUserId.length !== 24) {
+      console.error(`❌ Invalid userId length: ${cleanUserId.length} characters. Expected 24.`);
+      return null;
+    }
+    
+    // Validate hex characters
+    if (!/^[0-9a-fA-F]{24}$/.test(cleanUserId)) {
+      console.error(`❌ Invalid userId format: "${cleanUserId}". Must be 24 hex characters.`);
+      return null;
+    }
+    
+    console.log(`✅ Valid userId extracted: "${cleanUserId}"`);
+    return cleanUserId;
+    
+  } catch (error) {
+    console.error('❌ Failed to extract userId from token:', error);
+    return null;
+  }
+};
+
 export const RegisterForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,15 +102,51 @@ export const RegisterForm = () => {
         password: data.password
       });
 
-      setSuccess('Account created successfully! Redirecting to login...');
+      console.log('🔥 Registration response:', response);
+
+      // Extract userId from JWT token (actual backend implementation)
+      let userId = null;
+      if (response.token) {
+        userId = extractUserIdFromToken(response.token);
+      }
+
+      if (!userId) {
+        setError('Registration successful but verification setup failed. Invalid user ID format. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle delivery failure
+      if (response.error === 'DELIVERY_FAILED') {
+        setError(response.message || 'Failed to send verification code. Please check your email and try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccess('Registration successful! Please check your email for verification code.');
       
-      // Redirect to login page after successful registration
+      // Store email and userId for OTP verification
+      sessionStorage.setItem('pendingVerificationEmail', data.email);
+      sessionStorage.setItem('pendingVerificationUserId', userId);
+      
+      console.log(`✅ Stored in session - Email: ${data.email}, UserId: "${userId}"`);
+      
+      // Redirect to OTP verification page after successful registration
       setTimeout(() => {
-        navigate('/login');
+        navigate('/verify-otp');
       }, 2000);
 
     } catch (error) {
-      setError(error.message || 'Registration failed. Please try again.');
+      console.error('❌ Registration error:', error);
+      
+      // Handle specific error cases
+      if (error.message.includes('already exists')) {
+        setError('This email is already registered. Please use a different email or try logging in.');
+      } else if (error.message.includes('DELIVERY_FAILED')) {
+        setError('Failed to send verification code. Please check your email address and try again.');
+      } else {
+        setError(error.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
