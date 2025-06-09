@@ -273,11 +273,11 @@ chore: maintenance tasks
 
 For questions and support:
 - Create an issue in the GitHub repository
-- Email: dev@fashion-app.ng
-- Slack: #fashion-app-frontend
+- Email: 
+- Slack: #developers (fashion-app-world.slack.com)
 
 ---
 
 **Current Version**: v1.0.0 (Authentication MVP)  
-**Last Updated**: June 6, 2025  
+**Last Updated**: June 9, 2025  
 **Maintainer**: Fashion App NG Team

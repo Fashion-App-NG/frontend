@@ -10,7 +10,7 @@ if (process.env.NODE_ENV === 'development') {
 // Helper function for making HTTP requests
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -52,40 +52,40 @@ const extractUserIdFromToken = (token) => {
     if (parts.length !== 3) {
       throw new Error('Invalid JWT format');
     }
-    
+
     const payload = parts[1];
     const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
     const decodedPayload = atob(paddedPayload);
     const parsed = JSON.parse(decodedPayload);
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 Decoded JWT payload:', parsed);
     }
-    
+
     const userId = parsed.userId || parsed.id || parsed.sub;
-    
+
     if (!userId) {
       console.error('❌ No userId found in token payload');
       return null;
     }
-    
+
     const cleanUserId = String(userId).trim();
-    
+
     if (cleanUserId.length !== 24) {
       console.error(`❌ Invalid userId length: ${cleanUserId.length} characters. Expected 24.`);
       return null;
     }
-    
+
     if (!/^[0-9a-fA-F]{24}$/.test(cleanUserId)) {
       console.error(`❌ Invalid userId format: "${cleanUserId}". Must be 24 hex characters.`);
       return null;
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Valid userId extracted: "${cleanUserId}"`);
     }
     return cleanUserId;
-    
+
   } catch (error) {
     console.error('❌ Failed to extract userId from token:', error);
     return null;
@@ -147,9 +147,16 @@ export const authService = {
 
   // Logout user
   logout: async () => {
-    return apiRequest('/auth/logout', {
-      method: 'POST',
-    });
+    try {
+      await apiRequest('/auth/logout', {
+        method: 'POST',
+      });
+      authService.removeAuthToken();
+      authService.removeUser();
+    } catch (error) {
+      console.error('💥 Logout failed:', error);
+      throw error;
+    }
   },
 
   // Helper functions for token management
