@@ -45,4 +45,5 @@ figma-*
 Thumbs.db
 
 # Netlify
-/.netlifysrc/components/Auth
+/.netlify
+src/components/Auth
