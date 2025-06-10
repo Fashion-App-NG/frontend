@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "lucide-react": "^0.513.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
@@ -25,9 +26,8 @@
     "env:check": "echo $REACT_APP_API_BASE_URL",
     "preview": "npx serve -s build",
     "netlify:build": "npm run build",
-    
-    "switch:ai": "rm -f src/components/Auth && ln -s Auth-AI src/components/Auth && echo '🤖 Switched to AI UI components'",
-    "switch:designer": "rm -f src/components/Auth && ln -s Auth-Designer src/components/Auth && echo '🎨 Switched to Designer UI components'",
+    "switch:ai": "rm -rf src/components/Auth && ln -s Auth-AI src/components/Auth && echo '🤖 Switched to AI UI components'",
+    "switch:designer": "rm -rf src/components/Auth && ln -s Auth-Designer src/components/Auth && echo '🎨 Switched to Designer UI components'",
     "dev:ai": "npm run switch:ai && npm start",
     "dev:designer": "npm run switch:designer && npm start",
     "build:ai": "npm run switch:ai && npm run build",
