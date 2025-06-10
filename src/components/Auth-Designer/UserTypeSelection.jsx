@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Logo } from '../Common/Logo';
+import { ShoppingBagIcon } from 'lucide-react';
 
 export const UserTypeSelection = () => {
   const navigate = useNavigate();
@@ -14,150 +14,117 @@ export const UserTypeSelection = () => {
     alert('Vendor registration coming soon! Please check back later.');
   };
 
+  const handleSignInClick = () => {
+    navigate('/login');
+  };
+
+  const handleSignUpClick = () => {
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Logo />
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/login')}
-                className="text-gray-600 hover:text-gray-900 font-medium"
-              >
-                Already have an account? Sign In
-              </button>
-            </div>
+    <div className="relative flex h-screen w-full bg-[#f9f9f9] overflow-hidden">
+      <div className="flex flex-col w-full max-w-[850px] px-[124px] py-[111px]">
+        {/* Logo Section */}
+        <div className="flex items-center gap-1 h-[38px]">
+          <img
+            className="w-[38px] h-[31px]"
+            alt="Fashion Culture Logo"
+            src="https://c.animaapp.com/mbormqrhVzbcgH/img/subtract.svg"
+          />
+          <div className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px]">
+            FASHION&nbsp;&nbsp;
+            <br />
+            CULTURE
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
-            Join Fashion Culture
-          </h1>
-          <p className="mt-6 text-xl text-gray-600 max-w-2xl mx-auto">
-            Choose how you'd like to be part of our fashion community
+        {/* Welcome Section */}
+        <div className="flex flex-col mt-[125px] gap-[9px]">
+          <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-base leading-[16.0px]">
+            Welcome to Fashion Culture!
           </p>
+          <h2 className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-3xl">
+            What would you like to do?
+          </h2>
         </div>
 
         {/* User Type Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="flex gap-6 mt-[50px]">
           {/* Shopper Card */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-            <div className="h-48 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <div className="p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Shop Fashion</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Discover the latest trends, shop from curated collections, and enjoy a personalized fashion experience.
+          <div
+            className="w-[297px] h-[138px] bg-[#d9d9d9] rounded-[7px] border-none hover:bg-[#c9c9c9] cursor-pointer transition-colors"
+            onClick={handleShopperClick}
+          >
+            <div className="flex flex-col h-full p-3.5 justify-between">
+              <div className="pt-[15px]">
+                <ShoppingBagIcon className="w-[26px] h-[26px] text-[#2d2d2d]" />
+              </div>
+              <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl pb-[15px]">
+                Shopper
               </p>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center text-gray-700">
-                  <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Browse curated fashion collections
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Secure checkout and fast delivery
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Track your orders in real-time
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Personalized recommendations
-                </li>
-              </ul>
-              <button
-                onClick={handleShopperClick}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
-              >
-                Start Shopping
-              </button>
             </div>
           </div>
 
           {/* Vendor Card */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 relative">
-            <div className="h-48 bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-              <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-2M5 21H3m2 0h2m0 0v-3a2 2 0 012-2h2a2 2 0 012 2v3m-6 0h6" />
-              </svg>
-            </div>
-            
-            {/* Coming Soon Badge */}
-            <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-              Coming Soon
-            </div>
-            
-            <div className="p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Sell Fashion</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                Join our marketplace as a vendor and reach thousands of fashion enthusiasts with your products.
-              </p>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center text-gray-500">
-                  <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Easy product listing and management
-                </li>
-                <li className="flex items-center text-gray-500">
-                  <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Integrated payment processing
-                </li>
-                <li className="flex items-center text-gray-500">
-                  <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Real-time sales analytics
-                </li>
-                <li className="flex items-center text-gray-500">
-                  <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Marketing and promotion tools
-                </li>
-              </ul>
-              <button
-                onClick={handleVendorClick}
-                disabled
-                className="w-full bg-gray-300 text-gray-500 py-3 px-6 rounded-lg font-semibold cursor-not-allowed"
-              >
-                Coming Soon
-              </button>
+          <div
+            className="w-[297px] h-[138px] bg-[#d9d9d9] rounded-[7px] border-none hover:bg-[#c9c9c9] cursor-pointer transition-colors opacity-60"
+            onClick={handleVendorClick}
+          >
+            <div className="flex flex-col h-full p-3.5 justify-between">
+              <div className="pt-[15px] relative w-[31px] h-[31px]">
+                <div className="relative w-[18px] h-[17px] top-1.5 left-1.5">
+                  <img
+                    className="absolute w-[19px] h-[18px] -top-px -left-px"
+                    alt="Vendor Icon"
+                    src="https://c.animaapp.com/mbormqrhVzbcgH/img/vector-55.svg"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pb-[15px]">
+                <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl">
+                  Vendor
+                </p>
+                <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold">
+                  Coming Soon
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="mt-16 text-center">
-          <p className="text-gray-600 text-lg">
-            Questions about joining Fashion Culture?{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-800 font-semibold">
-              Contact our support team
-            </a>
+        {/* Sign In Button */}
+        <div className="flex justify-center mt-[100px]">
+          <button
+            className="bg-[#2d2d2d] text-white rounded-full px-8 py-2 h-auto font-['Urbanist',Helvetica] hover:bg-[#1d1d1d] transition-colors"
+            onClick={handleSignInClick}
+          >
+            Sign In
+          </button>
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="flex justify-center mt-6">
+          <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xs leading-[12.0px]">
+            Don't have an account?{' '}
+            <span
+              className="font-bold cursor-pointer hover:text-[#1d1d1d] transition-colors"
+              onClick={handleSignUpClick}
+            >
+              Sign Up
+            </span>
           </p>
         </div>
-      </main>
+      </div>
+
+      {/* Right Side Image */}
+      <div className="flex-1 h-full">
+        <img
+          className="h-full w-full object-cover"
+          alt="Fashion model"
+          src="https://c.animaapp.com/mbormqrhVzbcgH/img/mask-group.png"
+        />
+      </div>
     </div>
   );
 };
