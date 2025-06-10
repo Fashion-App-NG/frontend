@@ -269,6 +269,103 @@ chore: maintenance tasks
 - [ ] Analytics and reporting
 - [ ] Mobile app (React Native)
 
+## UI Development Workflow
+
+This project supports two UI approaches: AI-generated components and Designer components. Use the scripts below to manage and switch between them.
+
+### 🎨 UI Management Scripts
+
+#### Switch Between UI Versions
+```bash
+npm run switch:ai        # Switch to AI-generated UI components
+npm run switch:designer  # Switch to Designer UI components
+npm run check:ui         # Check which UI is currently active
+```
+
+#### Development with Specific UI
+```bash
+npm run dev:ai          # Start development server with AI UI
+npm run dev:designer    # Start development server with Designer UI
+```
+
+#### Build Specific UI Versions
+```bash
+npm run build:ai        # Build production version with AI UI
+npm run build:designer  # Build production version with Designer UI
+```
+
+#### Git Management (Selective Commits)
+```bash
+npm run git:add-shared    # Add shared logic (services, contexts, utils)
+npm run git:add-ai        # Add AI-specific components and pages
+npm run git:add-designer  # Add Designer-specific components and pages
+```
+
+### 🏗️ Updated Project Structure
+
+```
+src/
+├── components/
+│   ├── Auth-AI/           # AI-generated UI components
+│   ├── Auth-Designer/     # Designer UI components
+│   ├── Auth -> Auth-AI/   # Symlink to active UI (git ignored)
+│   └── Common/            # Shared components
+├── contexts/              # React Context providers
+├── pages/                 # Route-level components
+├── services/              # API integration
+└── App.jsx               # Main app with routing
+```
+
+### 🔄 Daily UI Development Workflow
+
+#### Working on AI UI:
+```bash
+git checkout ui/ai-components
+npm run dev:ai                    # Start with AI UI
+# Make changes to src/components/Auth-AI/
+npm run git:add-ai               # Commit only AI changes
+git commit -m "ui: improve AI login form"
+```
+
+#### Working on Designer UI:
+```bash
+git checkout ui/designer-components
+npm run dev:designer             # Start with Designer UI
+# Make changes to src/components/Auth-Designer/
+npm run git:add-designer         # Commit only Designer changes
+git commit -m "ui: implement designer components"
+```
+
+#### Working on Shared Logic:
+```bash
+git checkout feature/new-feature
+# Make changes to src/services/, src/contexts/, etc.
+npm run git:add-shared           # Commit only shared changes
+git commit -m "feat: add new authentication feature"
+
+# Then merge to both UI branches:
+git checkout ui/ai-components
+git merge feature/new-feature
+
+git checkout ui/designer-components  
+git merge feature/new-feature
+```
+
+### 🎯 Branch Strategy for UI Management
+
+- **`ui/ai-components`** - AI-generated UI approach
+- **`ui/designer-components`** - Designer UI approach  
+- **`feature/*`** - New features that affect both UIs
+- **`main`** - Production-ready code (chosen UI approach)
+
+### ⚠️ Important Notes
+
+- **Never use `git add .`** when working with UI branches
+- **Always use specific git scripts** to avoid committing wrong UI
+- **The `Auth` symlink is git-ignored** - only commit `Auth-AI/` or `Auth-Designer/`
+- **Test both UIs** before merging features to main
+
+
 ## Support
 
 For questions and support:
@@ -279,5 +376,5 @@ For questions and support:
 ---
 
 **Current Version**: v1.0.0 (Authentication MVP)  
-**Last Updated**: June 9, 2025  
+**Last Updated**: June 10, 2025  
 **Maintainer**: Fashion App NG Team
