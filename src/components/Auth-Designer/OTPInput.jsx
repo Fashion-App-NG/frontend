@@ -60,7 +60,7 @@ export const OTPInput = () => {
     setError('');
 
     try {
-      // Call the OTP verification API - no Authorization header needed per API docs
+      // Call the OTP verification API
       const response = await authService.verifyOTP({
         userId: userId,
         code: otpCode
@@ -103,7 +103,7 @@ export const OTPInput = () => {
     setError('');
     
     try {
-      // Call resend OTP API with email (per API docs)
+      // Call resend OTP API with email
       await authService.resendOTP(email);
       
       // Clear current OTP
@@ -129,109 +129,124 @@ export const OTPInput = () => {
   };
 
   return (
-    <div className="relative h-screen bg-[#f9f9f9] overflow-hidden">
-      <img
-        className="absolute h-full right-0"
-        alt="Fashion garment"
-        src="https://c.animaapp.com/mbj1xmz6047TVI/img/mask-group.png"
-      />
+    <div className="bg-[rgba(249,249,249,1)] overflow-hidden min-h-screen">
+      <div className="gap-5 flex max-md:flex-col max-md:items-stretch">
+        {/* Content Section - LEFT SIDE */}
+        <div className="w-6/12 max-md:w-full max-md:ml-0">
+          <div className="flex w-full flex-col items-stretch mt-16 max-md:max-w-full max-md:mt-10 px-20 max-md:px-5">
+            {/* Header */}
+            <Logo />
 
-      <header className="absolute flex items-center gap-2 top-[84px] left-[140px]">
-        <Logo />
-      </header>
+            {/* Main Content */}
+            <div className="flex flex-col mt-16 max-md:mt-10">
+              <div className="flex items-center mb-8 md:mb-12">
+                <h1 className="font-['Urbanist',Helvetica] font-bold text-black text-2xl md:text-3xl lg:text-[32px] leading-tight">
+                  Verify Email
+                </h1>
+                <svg 
+                  className="ml-4 w-6 h-6 md:w-8 md:h-8 lg:w-[30px] lg:h-[30px] text-green-500" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+              </div>
 
-      <main className="absolute w-[532px] top-[234px] left-[140px]">
-        <div className="flex items-center mb-[55px]">
-          <h1 className="font-['Urbanist',Helvetica] font-bold text-black text-[32px] leading-[38px]">
-            Verify Email
-          </h1>
-          <svg 
-            className="ml-4 w-[30px] h-[30px] text-green-500" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-            />
-          </svg>
-        </div>
+              <form onSubmit={handleSubmit} className="space-y-8 md:space-y-12">
+                <div>
+                  <p className="font-['Urbanist',Helvetica] font-normal text-black text-base leading-normal mb-4">
+                    To verify your email, simply enter the 6 digit code. <br />
+                    We've sent a verification code to:
+                  </p>
+                  <p className="font-['Urbanist',Helvetica] font-semibold text-black text-base break-all">
+                    {email}
+                  </p>
+                  <p className="font-['Urbanist',Helvetica] font-normal text-gray-500 text-sm mt-2">
+                    Code expires in 10 minutes.
+                  </p>
+                </div>
 
-        <form onSubmit={handleSubmit} className="space-y-[74px]">
-          <div>
-            <p className="font-['Urbanist',Helvetica] font-normal text-black text-base leading-normal max-w-[382px] mb-4">
-              To verify your email, simply enter the 6 digit code. <br />
-              We've sent a verification code to:
-            </p>
-            <p className="font-['Urbanist',Helvetica] font-semibold text-black text-base">
-              {email}
-            </p>
-            <p className="font-['Urbanist',Helvetica] font-normal text-gray-500 text-sm mt-2">
-              Code expires in 10 minutes.
-            </p>
-          </div>
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <p className="text-sm md:text-base">{error}</p>
+                    {error.includes('expired') && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={handleRequestAgain}
+                          disabled={isLoading}
+                          className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Request New Code
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              <p>{error}</p>
-              {error.includes('expired') && (
-                <div className="mt-3">
+                {/* OTP Input Fields */}
+                <div className="flex gap-2 md:gap-2.5 justify-start flex-wrap">
+                  {Array(6)
+                    .fill(0)
+                    .map((_, index) => (
+                      <input
+                        key={index}
+                        id={`otp-${index}`}
+                        type="text"
+                        value={otp[index]}
+                        onChange={(e) => handleChange(e.target.value, index)}
+                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        disabled={isLoading}
+                        className="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 bg-white shadow-[0px_4px_4px_#00000040] border border-gray-200 rounded-md text-center text-lg md:text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                        maxLength={1}
+                      />
+                    ))}
+                </div>
+
+                <p className="font-['Urbanist',Helvetica] font-normal text-black text-base leading-normal">
+                  <span className="text-[#27272b]">Didn't get the code?</span>
                   <button
                     type="button"
                     onClick={handleRequestAgain}
                     disabled={isLoading}
-                    className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50"
+                    className="font-bold text-[#2d2d2d] cursor-pointer hover:underline ml-1 disabled:opacity-50"
                   >
-                    Request New Code
+                    Request again
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                </p>
+              </form>
 
-          <div className="flex gap-2.5">
-            {Array(6)
-              .fill(0)
-              .map((_, index) => (
-                <input
-                  key={index}
-                  id={`otp-${index}`}
-                  type="text"
-                  value={otp[index]}
-                  onChange={(e) => handleChange(e.target.value, index)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
+              {/* Continue Button - Always visible */}
+              <div className="mt-8 md:mt-12 mb-8">
+                <button
+                  type="submit"
+                  onClick={handleSubmit}
                   disabled={isLoading}
-                  className="w-20 h-20 bg-white shadow-[0px_4px_4px_#00000040] border border-gray-200 rounded-md text-center text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                  maxLength={1}
-                />
-              ))}
+                  className="w-full max-w-lg bg-[#2d2d2d] h-12 md:h-14 lg:h-[60px] rounded-3xl md:rounded-[44px] font-['Urbanist',Helvetica] font-bold text-[#edff8c] text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Verifying...' : 'Continue'}
+                </button>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <p className="font-['Urbanist',Helvetica] font-normal text-black text-base leading-normal">
-            <span className="text-[#27272b]">Didn't get the code?</span>
-            <button
-              type="button"
-              onClick={handleRequestAgain}
-              disabled={isLoading}
-              className="font-bold text-[#2d2d2d] cursor-pointer hover:underline ml-1 disabled:opacity-50"
-            >
-              Request again
-            </button>
-          </p>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-[563px] h-[60px] bg-[#2d2d2d] rounded-[44px] font-['Urbanist',Helvetica] font-bold text-[#edff8c] text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Verifying...' : 'Continue'}
-          </button>
-        </form>
-      </main>
+        {/* Image Section - RIGHT SIDE */}
+        <div className="w-6/12 ml-5 max-md:w-full max-md:ml-0 max-md:hidden">
+          <img
+            className="aspect-[0.58] object-contain w-full grow rounded-[0px_0px_0px_0px] max-md:max-w-full max-md:mt-10"
+            alt="Fashion garment"
+            src="https://c.animaapp.com/mbj1xmz6047TVI/img/mask-group.png"
+          />
+        </div>
+      </div>
     </div>
   );
 };
