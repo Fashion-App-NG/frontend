@@ -6,20 +6,14 @@ export const UserTypeSelection = () => {
   const navigate = useNavigate();
 
   const handleShopperClick = () => {
-    navigate('/register/shopper');
+    // Navigate directly to shopper login
+    navigate('/login', { state: { userType: 'shopper' } });
   };
 
   const handleVendorClick = () => {
     // For now, show an alert that it's coming soon
-    alert('Vendor registration coming soon! Please check back later.');
-  };
-
-  const handleSignInClick = () => {
-    navigate('/login');
-  };
-
-  const handleSignUpClick = () => {
-    navigate('/');
+    alert('Vendor sign-in coming soon! Please check back later.');
+    // Later this will be: navigate('/login', { state: { userType: 'vendor' } });
   };
 
   return (
@@ -45,7 +39,7 @@ export const UserTypeSelection = () => {
             Welcome to Fashion Culture!
           </p>
           <h2 className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-3xl">
-            What would you like to do?
+            How would you like to sign in?
           </h2>
         </div>
 
@@ -60,9 +54,14 @@ export const UserTypeSelection = () => {
               <div className="pt-[15px]">
                 <ShoppingBagIcon className="w-[26px] h-[26px] text-[#2d2d2d]" />
               </div>
-              <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl pb-[15px]">
-                Shopper
-              </p>
+              <div className="pb-[15px]">
+                <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl mb-1">
+                  Shopper
+                </p>
+                <p className="font-['Urbanist',Helvetica] font-normal text-[#666] text-sm">
+                  Browse and buy fashion items
+                </p>
+              </div>
             </div>
           </div>
 
@@ -81,48 +80,34 @@ export const UserTypeSelection = () => {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-2 pb-[15px]">
-                <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl">
-                  Vendor
+              <div className="pb-[15px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl">
+                    Vendor
+                  </p>
+                  <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold">
+                    Coming Soon
+                  </span>
+                </div>
+                <p className="font-['Urbanist',Helvetica] font-normal text-[#666] text-sm">
+                  Sell your fashion products
                 </p>
-                <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold">
-                  Coming Soon
-                </span>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Sign In Button */}
-        <div className="flex justify-center mt-[100px]">
-          <button
-            className="bg-[#2d2d2d] text-white rounded-full px-8 py-2 h-auto font-['Urbanist',Helvetica] hover:bg-[#1d1d1d] transition-colors"
-            onClick={handleSignInClick}
-          >
-            Sign In
-          </button>
-        </div>
-
-        {/* Sign Up Link */}
-        <div className="flex justify-center mt-6">
-          <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xs leading-[12.0px]">
-            Don't have an account?{' '}
-            <span
-              className="font-bold cursor-pointer hover:text-[#1d1d1d] transition-colors"
-              onClick={handleSignUpClick}
-            >
-              Sign Up
-            </span>
-          </p>
-        </div>
       </div>
 
-      {/* Right Side Image */}
-      <div className="flex-1 h-full">
+      {/* Right Side Image - Better UX */}
+      <div className="flex-1 h-full relative overflow-hidden">
         <img
           className="h-full w-full object-cover"
           alt="Fashion model"
           src="https://c.animaapp.com/mbormqrhVzbcgH/img/mask-group.png"
+          style={{
+            filter: 'brightness(0.95) contrast(1.1) saturate(1.1)',
+            objectPosition: 'center 40%'
+          }}
         />
       </div>
     </div>

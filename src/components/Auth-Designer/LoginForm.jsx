@@ -154,7 +154,7 @@ export const LoginForm = () => {
         <span className="self-stretch my-auto">New here?</span>
         <button 
           type="button" 
-          onClick={() => navigate('/')} // Navigate to user type selection
+          onClick={() => navigate('/register/shopper')} // Changed from '/' to '/register/shopper'
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >
