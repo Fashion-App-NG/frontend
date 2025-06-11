@@ -314,86 +314,171 @@ npm run build:designer  # Build production version with Designer UI
 
 #### Git Management (Selective Commits)
 ```bash
-npm run git:add-shared    # Add shared logic (services, contexts, utils)
-npm run git:add-ai        # Add AI-specific components and pages
-npm run git:add-designer  # Add Designer-specific components and pages
+npm run git:add-core        # Add core files (package.json, App.jsx, config files)
+npm run git:add-shared      # Add shared logic (services, contexts, utils, Common components)
+npm run git:add-docs        # Add documentation (README.md, docs/)
+npm run git:add-all-shared  # Add all shared files (core + shared + docs)
+npm run git:add-ai          # Add AI-specific components and pages
+npm run git:add-designer    # Add Designer-specific components and pages
 ```
 
-### 🏗️ Updated Project Structure
+### 🎯 **Enhanced Git Workflow**
 
-```
-src/
-├── components/
-│   ├── Auth-AI/           # AI-generated UI components
-│   ├── Auth-Designer/     # Designer UI components
-│   ├── Auth -> Auth-AI/   # Symlink to active UI (git ignored)
-│   └── Common/            # Shared components
-├── contexts/              # React Context providers
-├── pages/                 # Route-level components
-├── services/              # API integration
-└── App.jsx               # Main app with routing
-```
+The git scripts are now organized into logical categories for better development workflow:
 
-### 🔄 Daily UI Development Workflow
-
-#### Working on AI UI:
+#### **Core Application Files**
 ```bash
-git checkout ui/ai-components
-npm run dev:ai                    # Start with AI UI
-# Make changes to src/components/Auth-AI/
-npm run git:add-ai               # Commit only AI changes
-git commit -m "ui: improve AI login form"
+npm run git:add-core
+# Adds: package.json, src/App.jsx, public/, *.config.js, netlify.toml, .gitignore
+```
+Use this when you've made changes to:
+- Dependencies or npm scripts
+- Main app routing or providers
+- Build configuration files
+- Deployment settings
+
+#### **Shared Business Logic**
+```bash
+npm run git:add-shared  
+# Adds: src/services/, src/contexts/, src/utils/, src/hooks/, src/components/Common/
+```
+Use this when you've added:
+- New API services or authentication logic
+- React contexts or custom hooks
+- Utility functions or shared components
+- Cross-UI business logic
+
+#### **Documentation**
+```bash
+npm run git:add-docs
+# Adds: README.md, docs/
+```
+Use this when you've updated:
+- Setup instructions or API documentation
+- Workflow guides or troubleshooting docs
+- Architecture or deployment guides
+
+#### **Complete Shared Changes**
+```bash
+npm run git:add-all-shared
+# Combines: git:add-core + git:add-shared + git:add-docs
+```
+Use this for comprehensive updates that affect:
+- Core application structure AND business logic
+- New features with documentation updates
+- Major architectural changes
+
+### 🔄 **Updated Daily Workflow Examples**
+
+#### **Adding New Authentication Feature**
+```bash
+git checkout feature/oauth-integration
+
+# 1. Update dependencies and add OAuth service
+npm install @auth0/auth0-react
+# Modify src/services/authService.js
+# Update src/contexts/AuthContext.jsx
+# Document in README.md
+
+# 2. Commit all related changes together
+npm run git:add-all-shared
+git commit -m "feat: add OAuth authentication with Auth0
+
+- Add Auth0 React SDK dependency
+- Implement OAuth service integration  
+- Update AuthContext with OAuth methods
+- Document OAuth setup instructions"
 ```
 
-#### Working on Designer UI:
+#### **Core Configuration Updates**
 ```bash
+git checkout feature/deployment-optimization
+
+# 1. Update build configuration
+# Modify package.json scripts
+# Update netlify.toml
+# Adjust tailwind.config.js
+
+# 2. Commit configuration changes
+npm run git:add-core
+git commit -m "chore: optimize build configuration for production
+
+- Add build caching and optimization scripts
+- Update Netlify deployment settings
+- Configure Tailwind for better performance"
+```
+
+#### **Documentation-Only Updates**
+```bash
+git checkout docs/api-integration-guide
+
+# 1. Add comprehensive API documentation
+# Create docs/API_INTEGRATION.md
+# Update README.md with new API endpoints
+
+# 2. Commit documentation changes
+npm run git:add-docs
+git commit -m "docs: add comprehensive API integration guide
+
+- Document all authentication endpoints
+- Add request/response examples
+- Include error handling patterns"
+```
+
+#### **UI-Specific Development**
+```bash
+# Working on Designer UI components
 git checkout ui/designer-components
-npm run dev:designer             # Start with Designer UI
+npm run dev:designer
+
 # Make changes to src/components/Auth-Designer/
-npm run git:add-designer         # Commit only Designer changes
-git commit -m "ui: implement designer components"
-```
+npm run git:add-designer
+git commit -m "ui: improve designer login form validation"
 
-#### Working on Shared Logic:
-```bash
-git checkout feature/new-feature
-# Make changes to src/services/, src/contexts/, etc.
-npm run git:add-shared           # Commit only shared changes
-git commit -m "feat: add new authentication feature"
-
-# Then merge to both UI branches:
+# Working on AI UI components  
 git checkout ui/ai-components
-git merge feature/new-feature
+npm run dev:ai
 
-git checkout ui/designer-components  
-git merge feature/new-feature
+# Make changes to src/components/Auth-AI/
+npm run git:add-ai
+git commit -m "ui: enhance AI-generated form layouts"
 ```
 
-### 🎯 Branch Strategy for UI Management
+### 🎯 **Why This Categorization Matters**
 
-- **`ui/ai-components`** - AI-generated UI approach
-- **`ui/designer-components`** - Designer UI approach  
-- **`feature/*`** - New features that affect both UIs
-- **`main`** - Production-ready code (chosen UI approach)
+#### **Improved Development Workflow**
+- **Logical grouping**: Related files are committed together
+- **Clear intent**: Each script has a specific purpose
+- **Reduced errors**: Less chance of committing wrong files
+- **Better history**: Cleaner git log with focused commits
 
-### ⚠️ Important Notes
+#### **Cross-Platform Reliability**
+- **Windows compatibility**: All scripts work on Windows, macOS, and Linux
+- **Automatic fallbacks**: UI switching handles permissions gracefully  
+- **Comprehensive coverage**: No important files left uncommitted
 
-- **Never use `git add .`** when working with UI branches
-- **Always use specific git scripts** to avoid committing wrong UI
-- **The `Auth` symlink is git-ignored** - only commit `Auth-AI/` or `Auth-Designer/`
-- **Test both UIs** before merging features to main
-- **Cross-platform**: Scripts work on Windows, macOS, and Linux with automatic fallbacks
-- **Windows users**: Check [Windows Setup Guide](docs/WINDOWS_SETUP.md) for platform-specific instructions
+#### **Team Collaboration**
+- **Consistent commits**: Everyone uses the same categorization
+- **Merge conflicts reduced**: Logical file grouping minimizes conflicts
+- **Review efficiency**: PRs are easier to review with focused changes
 
-## Support
+### ⚠️ **Important Git Workflow Notes**
 
-For questions and support:
-- Create an issue in the GitHub repository
-- Email: 
-- Slack: #developers (fashion-app-world.slack.com)
+- **Use specific scripts**: Always use categorized scripts instead of `git add .`
+- **Core files matter**: `package.json`, `App.jsx`, and config files affect both UIs
+- **Documentation is shared**: README updates should be committed with `git:add-docs`
+- **Test before commit**: Verify changes work across both UI approaches
+- **Symlinks are ignored**: Only commit actual `Auth-AI/` or `Auth-Designer/` folders
 
----
+### 🔧 **Script Categories Explained**
 
-**Current Version**: v1.0.0 (Authentication MVP)  
-**Last Updated**: June 10, 2025  
-**Maintainer**: Fashion App NG Team
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `git:add-core` | App structure & config | Dependencies, routing, build setup |
+| `git:add-shared` | Business logic | Services, contexts, utilities |
+| `git:add-docs` | Documentation | README, guides, API docs |
+| `git:add-all-shared` | Complete features | Major changes affecting multiple areas |
+| `git:add-ai` | AI UI components | AI-specific component development |
+| `git:add-designer` | Designer UI | Designer component development |
+
+This enhanced git workflow ensures that critical shared files like `package.json`, `src/App.jsx`, and `README.md` are properly included in commits, while maintaining clear separation between UI approaches and business logic! 🚀
