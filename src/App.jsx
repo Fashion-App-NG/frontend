@@ -9,6 +9,9 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OTPPage from './pages/OTPPage';
+import ExplorePage from './pages/ExplorePage';
+import OrdersPage from './pages/OrdersPage';
+import FavouritesPage from './pages/FavouritesPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
@@ -18,22 +21,25 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              {/* User type selection as new homepage */}
+              {/* User type selection as homepage */}
               <Route path="/" element={<UserTypeSelectionPage />} />
               
-              {/* Shopper registration flow */}
+              {/* Authentication routes */}
+              <Route path="/login" element={<LoginPage />} />
               <Route path="/register/shopper" element={<RegisterPage />} />
               <Route path="/verify-otp" element={<OTPPage />} />
               
-              {/* Authentication */}
-              <Route path="/login" element={<LoginPage />} />
-              
-              {/* Authenticated homepage (after login) */}
+              {/* Dashboard and main app routes */}
               <Route path="/dashboard" element={<HomePage />} />
-              
-              {/* Legacy routes for backward compatibility */}
-              <Route path="/register" element={<RegisterPage />} />
               <Route path="/home" element={<HomePage />} />
+              
+              {/* Sidebar navigation routes */}
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/favourites" element={<FavouritesPage />} />
+              
+              {/* Legacy/fallback routes */}
+              <Route path="/register" element={<RegisterPage />} />
               
               {/* 404 page */}
               <Route path="*" element={<NotFoundPage />} />
