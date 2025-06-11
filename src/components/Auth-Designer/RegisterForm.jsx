@@ -73,8 +73,7 @@ export const RegisterForm = () => {
       // Store email and userId for OTP verification
       sessionStorage.setItem('pendingVerificationEmail', data.email);
       sessionStorage.setItem('pendingVerificationUserId', userId);
-      
-      console.log(`✅ Stored in session - Email: ${data.email}, UserId: "${userId}"`);
+      sessionStorage.setItem('pendingUserType', 'shopper'); // ✅ Add this line
       
       // Redirect to OTP verification page after successful registration
       setTimeout(() => {
@@ -148,7 +147,6 @@ export const RegisterForm = () => {
       <PasswordInput 
         name="password"
         placeholder="Enter Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 
@@ -158,7 +156,6 @@ export const RegisterForm = () => {
       <PasswordInput 
         name="repeatPassword"
         placeholder="Repeat Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/721587a1008fbb598d4b26f6f18fcdb426762d83?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 

@@ -136,7 +136,6 @@ export const LoginForm = () => {
       <PasswordInput 
         name="password"
         placeholder="Enter Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 
