@@ -52,6 +52,7 @@ src/
 - Node.js (>=16)
 - npm or yarn
 - Backend API running on `localhost:3002`
+- **Windows users**: See [Windows Setup Guide](docs/WINDOWS_SETUP.md) for cross-platform development
 
 ### Installation
 ```bash
@@ -69,6 +70,10 @@ npm start
 # or  
 yarn start
 ```
+
+### Platform-Specific Setup
+- **Windows**: Follow the [Windows Development Setup](docs/WINDOWS_SETUP.md) guide
+- **macOS/Linux**: Standard Node.js installation works out of the box
 
 ### Environment Variables
 Create `.env.local` in the root directory:
@@ -230,6 +235,17 @@ npm run env:check
 - **Production**: Netlify deployment → Production backend API
 - **Environment Variables**: Always take precedence over hardcoded values
 
+## Documentation
+
+### Setup Guides
+- [Windows Development Setup](docs/WINDOWS_SETUP.md) - Cross-platform UI switching and troubleshooting
+- [API Integration Guide](docs/API_INTEGRATION.md) - Backend service integration (coming soon)
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions (coming soon)
+
+### Development
+- [Component Architecture](docs/COMPONENTS.md) - UI component structure and patterns (coming soon)
+- [State Management](docs/STATE_MANAGEMENT.md) - Context and state patterns (coming soon)
+
 ## Contributing
 
 1. Fork the repository
@@ -281,6 +297,8 @@ npm run switch:ai        # Switch to AI-generated UI components
 npm run switch:designer  # Switch to Designer UI components
 npm run check:ui         # Check which UI is currently active
 ```
+
+**Cross-Platform Support**: These scripts work on Windows, macOS, and Linux. Windows users should see the [Windows Setup Guide](docs/WINDOWS_SETUP.md) if you encounter permission issues.
 
 #### Development with Specific UI
 ```bash
@@ -364,7 +382,8 @@ git merge feature/new-feature
 - **Always use specific git scripts** to avoid committing wrong UI
 - **The `Auth` symlink is git-ignored** - only commit `Auth-AI/` or `Auth-Designer/`
 - **Test both UIs** before merging features to main
-
+- **Cross-platform**: Scripts work on Windows, macOS, and Linux with automatic fallbacks
+- **Windows users**: Check [Windows Setup Guide](docs/WINDOWS_SETUP.md) for platform-specific instructions
 
 ## Support
 

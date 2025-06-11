@@ -2,14 +2,18 @@ import React from 'react';
 import { ShopperDashboard } from '../Auth-Designer/Dashboard/ShopperDashboard';
 // import { VendorDashboard } from '../Auth-Designer/Dashboard/VendorDashboard'; // Future component
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const DashboardRouter = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // If user is not authenticated, redirect to user type selection
-  if (!isAuthenticated) {
+  // Check if user is coming as guest from UserTypeSelection
+  const isGuest = location.state?.userType === 'guest';
+
+  // If not authenticated and not a guest, redirect to user type selection
+  if (!isAuthenticated && !isGuest) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -30,10 +34,10 @@ export const DashboardRouter = () => {
     );
   }
 
-  // Route based on user type
-  const userType = user?.userType || 'shopper';
+  // Determine user type - prioritize state for guest users
+  const userType = isGuest ? 'guest' : (user?.userType || 'shopper');
   
-  console.log('🎯 Routing to dashboard for user type:', userType);
+  console.log('🎯 Routing to dashboard for user type:', userType, isGuest ? '(guest mode)' : '(authenticated)');
 
   switch (userType) {
     case 'vendor':
@@ -41,7 +45,7 @@ export const DashboardRouter = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Welcome, {user?.firstName || 'Vendor'}!
+              Welcome, {user?.firstName || user?.storeName || 'Vendor'}!
             </h1>
             <p className="text-gray-600 mb-6">
               Your vendor dashboard is under development.
@@ -60,9 +64,13 @@ export const DashboardRouter = () => {
         </div>
       );
     
+    case 'guest':
+      // Pass guest mode to ShopperDashboard
+      return <ShopperDashboard isGuest={true} />;
+    
     case 'shopper':
     default:
-      return <ShopperDashboard />;
+      return <ShopperDashboard isGuest={false} />;
   }
 };
 

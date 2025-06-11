@@ -5,7 +5,7 @@ import { CartProvider } from './contexts/CartContext';
 
 // Import pages
 import UserTypeSelectionPage from './pages/UserTypeSelectionPage';
-import HomePage from './pages/HomePage';
+import DashboardRouter from './components/Common/DashboardRouter';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VendorRegisterPage from './pages/VendorRegisterPage';
@@ -31,9 +31,9 @@ function App() {
               <Route path="/register/vendor" element={<VendorRegisterPage />} />
               <Route path="/verify-otp" element={<OTPPage />} />
               
-              {/* Dashboard and main app routes */}
-              <Route path="/dashboard" element={<HomePage />} />
-              <Route path="/home" element={<HomePage />} />
+              {/* Smart dashboard routing */}
+              <Route path="/dashboard" element={<DashboardRouter />} />
+              <Route path="/home" element={<DashboardRouter />} />
               
               {/* Sidebar navigation routes */}
               <Route path="/explore" element={<ExplorePage />} />
