@@ -226,7 +226,7 @@ export const OTPInput = () => {
               {/* Continue Button - Always visible */}
               <div className="mt-8 md:mt-12 mb-8">
                 <button
-                  type="submit"
+                  type="button"  // Changed from "submit" to "button"
                   onClick={handleSubmit}
                   disabled={isLoading}
                   className="w-full max-w-lg bg-[#2d2d2d] h-12 md:h-14 lg:h-[60px] rounded-3xl md:rounded-[44px] font-['Urbanist',Helvetica] font-bold text-[#edff8c] text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

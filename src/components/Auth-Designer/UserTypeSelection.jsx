@@ -10,7 +10,6 @@ export const UserTypeSelection = () => {
   };
 
   const handleVendorClick = () => {
-    // NOW WORKING! Navigate to vendor registration
     navigate('/register/vendor');
   };
 
@@ -63,7 +62,7 @@ export const UserTypeSelection = () => {
             </div>
           </div>
 
-          {/* Vendor Card - NOW ENABLED */}
+          {/* Vendor Card */}
           <div
             className="w-[297px] h-[138px] bg-[#d9d9d9] rounded-[7px] border-none hover:bg-[#c9c9c9] cursor-pointer transition-colors"
             onClick={handleVendorClick}

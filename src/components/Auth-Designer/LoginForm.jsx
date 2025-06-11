@@ -142,19 +142,21 @@ export const LoginForm = () => {
         </button>
       </div>
 
+      {/* Submit Button - Should be inside form */}
       <button
-        type="submit"
+        type="submit"  // ✅ Should be correct if inside form
         disabled={isLoading}
         className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? 'Signing in...' : 'Sign in'}
       </button>
 
+      {/* Sign Up Link */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">New here?</span>
         <button 
-          type="button" 
-          onClick={() => navigate('/register/shopper')} // Changed from '/' to '/register/shopper'
+          type="button"  // ✅ Navigation button should be type="button"
+          onClick={() => navigate('/register/shopper')}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >

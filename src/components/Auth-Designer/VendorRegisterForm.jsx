@@ -176,9 +176,9 @@ export const VendorRegisterForm = () => {
         </label>
       </div>
 
-      {/* Submit Button */}
+      {/* Submit Button - Should be inside form */}
       <button
-        type="submit"
+        type="submit"  // ✅ Correct - button is inside form
         disabled={isLoading}
         className="self-stretch bg-[rgba(46,46,46,1)] min-h-[60px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[44px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -189,7 +189,7 @@ export const VendorRegisterForm = () => {
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">Already have account?</span>
         <button 
-          type="button" 
+          type="button"  // ✅ Correct - navigation button should be type="button"
           onClick={() => navigate('/login')}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
