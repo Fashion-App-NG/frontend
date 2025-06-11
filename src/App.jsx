@@ -8,6 +8,7 @@ import UserTypeSelectionPage from './pages/UserTypeSelectionPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import VendorRegisterPage from './pages/VendorRegisterPage';
 import OTPPage from './pages/OTPPage';
 import ExplorePage from './pages/ExplorePage';
 import OrdersPage from './pages/OrdersPage';
@@ -27,6 +28,7 @@ function App() {
               {/* Authentication routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register/shopper" element={<RegisterPage />} />
+              <Route path="/register/vendor" element={<VendorRegisterPage />} />
               <Route path="/verify-otp" element={<OTPPage />} />
               
               {/* Dashboard and main app routes */}
