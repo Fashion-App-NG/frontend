@@ -26,13 +26,13 @@
     "preview": "npx serve -s build",
     "netlify:build": "npm run build",
     
-    "switch:ai": "rm -f src/components/Auth && ln -s Auth-AI src/components/Auth && echo '🤖 Switched to AI UI components'",
-    "switch:designer": "rm -f src/components/Auth && ln -s Auth-Designer src/components/Auth && echo '🎨 Switched to Designer UI components'",
+    "switch:ai": "node scripts/switch-ui.js ai",
+    "switch:designer": "node scripts/switch-ui.js designer",
     "dev:ai": "npm run switch:ai && npm start",
     "dev:designer": "npm run switch:designer && npm start",
     "build:ai": "npm run switch:ai && npm run build",
     "build:designer": "npm run switch:designer && npm run build",
-    "check:ui": "ls -la src/components/Auth",
+    "check:ui": "node scripts/check-ui.js",
     "git:add-shared": "git add src/services/ src/contexts/ src/utils/ src/hooks/",
     "git:add-ai": "git add src/components/Auth-AI/ src/pages/",
     "git:add-designer": "git add src/components/Auth-Designer/ src/pages/"
