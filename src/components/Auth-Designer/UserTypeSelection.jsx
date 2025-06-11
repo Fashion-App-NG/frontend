@@ -6,14 +6,12 @@ export const UserTypeSelection = () => {
   const navigate = useNavigate();
 
   const handleShopperClick = () => {
-    // Navigate directly to shopper login
     navigate('/login', { state: { userType: 'shopper' } });
   };
 
   const handleVendorClick = () => {
-    // For now, show an alert that it's coming soon
-    alert('Vendor sign-in coming soon! Please check back later.');
-    // Later this will be: navigate('/login', { state: { userType: 'vendor' } });
+    // NOW WORKING! Navigate to vendor registration
+    navigate('/register/vendor');
   };
 
   return (
@@ -65,9 +63,9 @@ export const UserTypeSelection = () => {
             </div>
           </div>
 
-          {/* Vendor Card */}
+          {/* Vendor Card - NOW ENABLED */}
           <div
-            className="w-[297px] h-[138px] bg-[#d9d9d9] rounded-[7px] border-none hover:bg-[#c9c9c9] cursor-pointer transition-colors opacity-60"
+            className="w-[297px] h-[138px] bg-[#d9d9d9] rounded-[7px] border-none hover:bg-[#c9c9c9] cursor-pointer transition-colors"
             onClick={handleVendorClick}
           >
             <div className="flex flex-col h-full p-3.5 justify-between">
@@ -85,8 +83,8 @@ export const UserTypeSelection = () => {
                   <p className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-xl">
                     Vendor
                   </p>
-                  <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold">
-                    Coming Soon
+                  <span className="bg-green-400 text-green-900 px-2 py-1 rounded-full text-xs font-semibold">
+                    New!
                   </span>
                 </div>
                 <p className="font-['Urbanist',Helvetica] font-normal text-[#666] text-sm">
@@ -98,7 +96,7 @@ export const UserTypeSelection = () => {
         </div>
       </div>
 
-      {/* Right Side Image - Better UX */}
+      {/* Right Side Image */}
       <div className="flex-1 h-full relative overflow-hidden">
         <img
           className="h-full w-full object-cover"
