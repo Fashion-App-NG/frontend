@@ -168,20 +168,20 @@ export const RegisterForm = () => {
         </label>
       </div>
 
-      {/* Submit Button - Should be inside form */}
+      {/* Submit Button */}
       <button
-        type="submit"  // ✅ Should be correct if inside form
+        type="submit"
         disabled={isLoading}
-        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[60px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[44px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Creating Account...' : 'Continue'}
+        {isLoading ? 'Creating account...' : 'Continue'}
       </button>
 
-      {/* Sign In Link */}
+      {/* Navigation Link */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
-        <span className="self-stretch my-auto">Already have account?</span>
+        <span className="self-stretch my-auto">Already have an account?</span>
         <button 
-          type="button"  // ✅ Navigation button should be type="button"
+          type="button"
           onClick={() => navigate('/login')}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"

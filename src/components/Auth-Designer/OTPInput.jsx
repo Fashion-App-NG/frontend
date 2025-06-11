@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Logo } from '../Common/Logo';
 import { authService } from '../../services/authService';
 
-export const OTPInput = () => {
+export const OTPInput = ({ onSubmit, isLoading }) => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [userId, setUserId] = useState('');
@@ -56,7 +55,6 @@ export const OTPInput = () => {
       return;
     }
 
-    setIsLoading(true);
     setError('');
 
     try {
@@ -88,8 +86,6 @@ export const OTPInput = () => {
       } else {
         setError(error.message || 'Invalid verification code. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -99,7 +95,6 @@ export const OTPInput = () => {
       return;
     }
 
-    setIsLoading(true);
     setError('');
     
     try {
@@ -123,8 +118,6 @@ export const OTPInput = () => {
       } else {
         setError(error.message || 'Failed to resend code. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -221,19 +214,18 @@ export const OTPInput = () => {
                     Request again
                   </button>
                 </p>
-              </form>
 
-              {/* Continue Button - Always visible */}
-              <div className="mt-8 md:mt-12 mb-8">
-                <button
-                  type="button"  // Changed from "submit" to "button"
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  className="w-full max-w-lg bg-[#2d2d2d] h-12 md:h-14 lg:h-[60px] rounded-3xl md:rounded-[44px] font-['Urbanist',Helvetica] font-bold text-[#edff8c] text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Verifying...' : 'Continue'}
-                </button>
-              </div>
+                {/* ✅ FIXED: Continue Button INSIDE the form */}
+                <div className="mt-8 md:mt-12 mb-8">
+                  <button
+                    type="submit"  // ✅ Now this works - button is inside form
+                    disabled={isLoading}
+                    className="w-full max-w-lg bg-[#2d2d2d] h-12 md:h-14 lg:h-[60px] rounded-3xl md:rounded-[44px] font-['Urbanist',Helvetica] font-bold text-[#edff8c] text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Verifying...' : 'Continue'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
