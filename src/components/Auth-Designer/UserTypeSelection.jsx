@@ -10,7 +10,7 @@ export const UserTypeSelection = () => {
   };
 
   const handleVendorClick = () => {
-    navigate('/register/vendor');
+    navigate('/login/vendor'); // Changed from /register/vendor to /login/vendor
   };
 
   const handleGuestClick = () => {
@@ -120,7 +120,7 @@ export const UserTypeSelection = () => {
                     />
                   </div>
                   <span className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
-                    New!
+                    Sign In {/* Changed from "New!" to "Sign In" */}
                   </span>
                 </div>
                 <div>
@@ -128,7 +128,7 @@ export const UserTypeSelection = () => {
                     Vendor Portal
                   </p>
                   <p className="font-['Urbanist',Helvetica] font-normal text-[#15803d] text-sm">
-                    Sell your fashion products and manage inventory
+                    Access your store dashboard and manage inventory
                   </p>
                 </div>
               </div>

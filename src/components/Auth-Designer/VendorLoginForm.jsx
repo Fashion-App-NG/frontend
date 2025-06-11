@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
+import { SocialLogin } from './SocialLogin';
 import { authService } from '../../services/authService';
 import { useAuth } from '../../contexts/AuthContext';
 
-export const LoginForm = () => {
+export const VendorLoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser, setIsAuthenticated } = useAuth();
@@ -31,23 +32,25 @@ export const LoginForm = () => {
     const formData = new FormData(e.target);
     const data = {
       email: formData.get('email'),
+      storeName: formData.get('storeName'),
       password: formData.get('password')
     };
 
     // Client-side validation
-    if (!data.email || !data.password) {
+    if (!data.email || !data.storeName || !data.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await authService.login({
+      const response = await authService.loginVendor({
         email: data.email,
+        storeName: data.storeName,
         password: data.password
       });
 
-      console.log('✅ Login successful:', response);
+      console.log('✅ Vendor login successful:', response);
 
       // Store authentication data
       if (response.token) {
@@ -61,22 +64,21 @@ export const LoginForm = () => {
 
       setIsAuthenticated(true);
 
-      // Navigate to dashboard after successful login
+      // Navigate to vendor dashboard after successful login
       navigate('/dashboard', { 
         state: { 
-          message: `Welcome back, ${response.user?.email || 'User'}!` 
+          message: `Welcome back, ${response.user?.storeName || data.storeName}!` 
         }
       });
 
     } catch (error) {
-      console.error('❌ Login failed:', error);
+      console.error('❌ Vendor login failed:', error);
 
-      // Handle specific error cases based on API docs
+      // Handle specific error cases
       if (error.message.includes('verify OTP')) {
         setError('Please verify your email address before logging in. Check your email for the verification code.');
-        // You could also redirect to OTP verification here if needed
       } else if (error.message.includes('Invalid credentials')) {
-        setError('Invalid email or password. Please try again.');
+        setError('Invalid credentials. Please check your email, store name, and password.');
       } else {
         setError(error.message || 'Login failed. Please try again.');
       }
@@ -87,20 +89,20 @@ export const LoginForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      {/* Shopper Onboarding Indicator */}
+      {/* Vendor Onboarding Indicator */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="bg-[#3b82f6] text-white px-3 py-1 rounded-full text-xs font-semibold">
-          Shopping Experience
+        <div className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
+          Vendor Portal
         </div>
-        <span className="text-[rgba(46,46,46,0.6)] text-sm">Personal Sign In</span>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">Business Sign In</span>
       </div>
 
       <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
         <h1 className="text-black text-[32px] font-bold">
-          Sign In to Your Account
+          Sign In to Vendor Portal
         </h1>
         <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
-          Welcome back!
+          Welcome back to your business dashboard!
         </p>
       </div>
 
@@ -118,7 +120,21 @@ export const LoginForm = () => {
         </div>
       )}
 
+      {/* Store Name Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
+        Store Name
+      </label>
+      <input
+        type="text"
+        name="storeName"
+        placeholder="Enter Store name"
+        required
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+      />
+
+      {/* Email Address Field */}
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Email Address
       </label>
       <input
@@ -130,6 +146,7 @@ export const LoginForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
+      {/* Password Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Password
       </label>
@@ -164,15 +181,17 @@ export const LoginForm = () => {
         <span className="self-stretch my-auto">New here?</span>
         <button 
           type="button"
-          onClick={() => navigate('/register/shopper')}
+          onClick={() => navigate('/register/vendor')}  // ✅ Routes to vendor registration
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >
           Sign up
         </button>
       </div>
+
+      <SocialLogin isLogin={true} />
     </form>
   );
 };
 
-export default LoginForm;
+export default VendorLoginForm;

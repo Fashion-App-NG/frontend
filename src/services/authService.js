@@ -124,6 +124,18 @@ export const authService = {
     });
   },
 
+  // Vendor login
+  loginVendor: async (credentials) => {
+    return apiRequest('/auth/vendor/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: credentials.email,
+        storeName: credentials.storeName,
+        password: credentials.password
+      }),
+    });
+  },
+
   // Verify OTP - no Authorization header needed per your tests
   verifyOTP: async (otpData) => {
     return apiRequest('/auth/verify-otp', {

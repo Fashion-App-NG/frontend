@@ -99,12 +99,20 @@ export const RegisterForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col items-stretch mt-[66px] max-md:ml-1 max-md:mt-10">
+      {/* Shopper Onboarding Indicator */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="bg-[#3b82f6] text-white px-3 py-1 rounded-full text-xs font-semibold">
+          Shopping Experience
+        </div>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">Personal Account</span>
+      </div>
+
+      <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
         <h1 className="text-black text-[32px] font-bold">
           Create Your Account
         </h1>
         <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
-          Get started for free
+          Join our fashion community today!
         </p>
       </div>
 

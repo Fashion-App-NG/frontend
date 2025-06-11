@@ -90,12 +90,20 @@ export const VendorRegisterForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col items-stretch mt-[66px] max-md:ml-1 max-md:mt-10">
+      {/* Vendor Onboarding Indicator */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
+          Vendor Portal
+        </div>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">Business Registration</span>
+      </div>
+
+      <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
         <h1 className="text-black text-[32px] font-bold">
-          Create Your Account
+          Create Vendor Account
         </h1>
         <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
-          Get started for free
+          Start selling on our platform today!
         </p>
       </div>
 
@@ -190,7 +198,7 @@ export const VendorRegisterForm = () => {
         <span className="self-stretch my-auto">Already have an account?</span>
         <button 
           type="button"
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/login/vendor')}  // ✅ Fixed: Routes to vendor login
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >
