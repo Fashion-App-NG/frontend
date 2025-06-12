@@ -160,14 +160,21 @@ export const authService = {
   // Logout user
   logout: async () => {
     try {
+      // Call backend logout API (optional - for server-side session cleanup)
       await apiRequest('/auth/logout', {
         method: 'POST',
       });
+      
+      console.log('✅ Server logout successful');
+    } catch (error) {
+      // Don't throw error here - we still want to clear local data
+      console.warn('⚠️ Server logout failed (continuing with local cleanup):', error);
+    } finally {
+      // Always clear local authentication data
       authService.removeAuthToken();
       authService.removeUser();
-    } catch (error) {
-      console.error('💥 Logout failed:', error);
-      throw error;
+      
+      console.log('✅ Local authentication data cleared');
     }
   },
 
