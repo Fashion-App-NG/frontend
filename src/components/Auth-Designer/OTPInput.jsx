@@ -3,14 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { Logo } from '../Common/Logo';
 import { authService } from '../../services/authService';
 
-export const OTPInput = ({ onSubmit, isLoading }) => {
+export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [userType, setUserType] = useState('shopper');
-  const inputRefs = useRef([]); // ✅ Add refs for inputs
+  const [isLoading, setIsLoading] = useState(false); // ✅ Internal loading state
+  const [lastResendTime, setLastResendTime] = useState(0); // ✅ Rate limiting
+  const inputRefs = useRef([]);
+
+  // ✅ Combine prop loading with internal loading
+  const isActuallyLoading = propIsLoading || isLoading;
+
+  // ✅ Rate limiting for resend requests
+  const canResend = () => {
+    const now = Date.now();
+    const timeSinceLastResend = now - lastResendTime;
+    const cooldownPeriod = 30 * 1000; // 30 seconds
+    return timeSinceLastResend > cooldownPeriod;
+  };
 
   useEffect(() => {
     // Get user data from sessionStorage
@@ -240,19 +253,28 @@ export const OTPInput = ({ onSubmit, isLoading }) => {
     }
   };
 
+  // ✅ Enhanced request again with rate limiting
   const handleRequestAgain = async () => {
     if (!email) {
       setError('Unable to resend code. Please try registering again.');
       return;
     }
 
+    // ✅ Rate limiting check
+    if (!canResend()) {
+      const remainingTime = Math.ceil((30 * 1000 - (Date.now() - lastResendTime)) / 1000);
+      setError(`Please wait ${remainingTime} seconds before requesting another code.`);
+      return;
+    }
+
     setError('');
+    setIsLoading(true);
+    setLastResendTime(Date.now()); // ✅ Update last resend time
     
     try {
-      // Call resend OTP API with email
-      await authService.resendOTP(email);
+      const response = await authService.resendOTP(email);
       
-      // Clear current OTP
+      // Clear current OTP inputs
       setOtp(['', '', '', '', '', '']);
       
       // Focus first input
@@ -260,17 +282,34 @@ export const OTPInput = ({ onSubmit, isLoading }) => {
         inputRefs.current[0].focus();
       }
       
-      // Show success message
-      console.log(`${userType} OTP resent successfully`);
+      console.log(`✅ ${userType} OTP resent successfully:`, response);
 
-    } catch (error) {
-      console.error('Failed to resend OTP:', error);
+      // ✅ Show success message in a more React-friendly way
+      // We'll add a success state to show positive feedback
       
-      if (error.message.includes('not found')) {
-        setError('User not found. Please try registering again.');
+    } catch (error) {
+      console.error('❌ Failed to resend OTP:', error);
+      
+      // ✅ Enhanced error handling
+      const errorMessage = error.message.toLowerCase();
+      
+      if (errorMessage.includes('missing email') || errorMessage.includes('400')) {
+        setError('Email address is required to resend the verification code.');
+      } else if (errorMessage.includes('user not found') || errorMessage.includes('404')) {
+        setError('Account not found. Please try registering again or contact support.');
+      } else if (errorMessage.includes('failed to resend') || errorMessage.includes('500')) {
+        setError('Unable to send verification code. Please try again in a few minutes.');
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many')) {
+        setError('Too many requests. Please wait before requesting another code.');
       } else {
-        setError(error.message || 'Failed to resend code. Please try again.');
+        setError(error.message || 'Failed to resend verification code. Please try again.');
       }
+      
+      // ✅ Reset rate limiting on error (allow immediate retry for real errors)
+      setLastResendTime(0);
+      
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -378,23 +417,31 @@ export const OTPInput = ({ onSubmit, isLoading }) => {
                     type="button"
                     onClick={handleRequestAgain}
                     disabled={isLoading}
-                    className={`font-bold ${config.requestAgainColor} cursor-pointer hover:underline ml-1 disabled:opacity-50`}
+                    className={`font-bold ${config.requestAgainColor} cursor-pointer hover:underline ml-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200`}
                   >
-                    Request again
+                    {isLoading ? 'Sending...' : 'Request again'} {/* ✅ Show loading state */}
                   </button>
                 </p>
 
-                {/* Dynamic Continue Button */}
+                {/* ✅ Enhanced Continue Button with loading state */}
                 <div className="mt-8 md:mt-12 mb-8">
                   <button
                     type="submit"
                     disabled={isLoading || otp.join('').length !== 6}
                     className={`w-full max-w-lg ${config.buttonBg} ${config.buttonText} h-12 md:h-14 lg:h-[60px] rounded-3xl md:rounded-[44px] font-['Urbanist',Helvetica] font-bold text-base transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {isLoading ? 'Verifying...' : 'Continue'}
+                    {isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        Sending...
+                      </span>
+                    ) : 'Continue'}
                   </button>
                   <p className="text-center text-sm text-gray-500 mt-2">
-                    Code will auto-submit when complete
+                    {isLoading ? 'Please wait...' : 'Code will auto-submit when complete'}
                   </p>
                 </div>
               </form>
