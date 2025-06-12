@@ -178,6 +178,28 @@ export const authService = {
     }
   },
 
+  // Forgot Password - Request OTP for password reset
+  forgotPassword: async (email) => {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email
+      }),
+    });
+  },
+
+  // Reset Password - Submit OTP and new password
+  resetPassword: async (resetData) => {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: resetData.email,
+        code: resetData.code,
+        password: resetData.password
+      }),
+    });
+  },
+
   // Helper functions for token management
   setAuthToken: (token) => {
     localStorage.setItem('authToken', token);

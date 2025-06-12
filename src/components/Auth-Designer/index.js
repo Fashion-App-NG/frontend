@@ -9,3 +9,7 @@ export { default as SocialLogin } from './SocialLogin';
 export { default as CreateAccountForm } from './CreateAccountForm';
 export { default as CreateAccountVendor } from './CreateAccountVendor';
 export { default as UserTypeSelection } from './UserTypeSelection';
+export { default as ForgotPasswordForm } from './ForgotPasswordForm';
+export { default as ForgotPasswordPage } from './ForgotPasswordPage';
+export { default as PasswordResetForm } from './PasswordResetForm';
+export { default as PasswordResetPage } from './PasswordResetPage';

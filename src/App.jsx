@@ -16,6 +16,10 @@ import OrdersPage from './pages/OrdersPage';
 import FavouritesPage from './pages/FavouritesPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+// ✅ Import forgot password pages (following your existing pattern)
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import PasswordResetPage from './pages/PasswordResetPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -33,6 +37,10 @@ function App() {
               <Route path="/register/shopper" element={<RegisterPage />} />
               <Route path="/register/vendor" element={<VendorRegisterPage />} />
               <Route path="/verify-otp" element={<OTPPage />} />
+              
+              {/* ✅ Password reset routes */}
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<PasswordResetPage />} />
               
               {/* Smart dashboard routing */}
               <Route path="/dashboard" element={<DashboardRouter />} />
