@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PasswordInput } from './PasswordInput';
+import { useAuth } from '../../contexts/AuthContext';
+import authService from '../../services/authService';
 
 export const AdminLoginForm = () => {
   const navigate = useNavigate();
+  const { setUser, setIsAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,7 +16,7 @@ export const AdminLoginForm = () => {
 
     const formData = new FormData(e.target);
     const data = {
-      username: formData.get('username'),
+      username: formData.get('username'), // Will be treated as email
       password: formData.get('password')
     };
 
@@ -27,41 +28,53 @@ export const AdminLoginForm = () => {
     }
 
     try {
-      // TODO: Replace with actual admin login API call
-      console.log('🔐 Admin login attempt:', { username: data.username, password: '***' });
+      console.log('🔐 Admin login attempt:', { email: data.username, password: '***' });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock success response for now
-      const mockResponse = {
-        success: true,
-        user: {
-          id: 'admin_1',
-          username: data.username,
-          role: 'admin',
-          permissions: ['user_management', 'system_settings', 'analytics']
-        },
-        token: 'mock_admin_token_' + Date.now()
-      };
+      // ✅ Use real API endpoint
+      const response = await authService.adminLogin({
+        email: data.username, // API expects email field
+        password: data.password
+      });
 
-      console.log('✅ Admin login successful (mock):', mockResponse);
+      console.log('✅ Admin login successful:', response);
 
-      // TODO: Store admin authentication data when API is ready
-      // authService.setAuthToken(mockResponse.token);
-      // authService.setUser(mockResponse.user);
-      
-      // Navigate to admin dashboard (to be created)
+      // Store admin authentication data
+      if (response.token) {
+        authService.setAuthToken(response.token);
+        authService.setAdminToken(response.token);
+      }
+
+      if (response.admin) {
+        authService.setUser(response.admin);
+        authService.setAdminUser(response.admin);
+        setUser(response.admin);
+      }
+
+      setIsAuthenticated(true);
+
+      // Navigate to admin dashboard
       navigate('/admin/dashboard', {
         state: {
-          message: `Welcome back, Admin ${data.username}!`,
-          user: mockResponse.user
+          message: response.message || `Welcome back, Admin ${response.admin?.email || data.username}!`,
+          user: response.admin
         }
       });
 
     } catch (error) {
       console.error('❌ Admin login failed:', error);
-      setError('Invalid admin credentials. Please try again.');
+      
+      // Enhanced error handling based on API responses
+      if (error.message.includes('Invalid email or password') || error.message.includes('401')) {
+        setError('Invalid admin credentials. Please check your email and password.');
+      } else if (error.message.includes('403')) {
+        setError('Access denied. Admin privileges required.');
+      } else if (error.message.includes('500')) {
+        setError('Server error. Please try again later.');
+      } else if (error.message.includes('Rate limit') || error.message.includes('Too many')) {
+        setError('Too many login attempts. Please wait before trying again.');
+      } else {
+        setError(error.message || 'Admin login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -101,15 +114,15 @@ export const AdminLoginForm = () => {
             </div>
           )}
 
-          {/* Username Field */}
+          {/* Email Field */}
           <div className="space-y-2">
             <label className="block text-[#2e2e2e] text-base font-['Urbanist',Helvetica]">
-              Username
+              Email Address
             </label>
             <input
-              type="text"
+              type="email"
               name="username"
-              placeholder="Email Address"
+              placeholder="admin@example.com"
               required
               disabled={isLoading}
               className="w-full h-[57px] px-4 py-3 bg-[#efefef] border border-[rgba(212,212,212,0.22)] rounded-[5px] backdrop-blur-[4px] text-[#c7c7c7] placeholder-[#c7c7c7] focus:outline-none focus:ring-2 focus:ring-[#303030] focus:border-transparent disabled:opacity-50 font-['Urbanist',Helvetica]"
@@ -123,30 +136,13 @@ export const AdminLoginForm = () => {
             </label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type="password"
                 name="password"
-                placeholder="******************"
+                placeholder="SecurePass123!"
                 required
                 disabled={isLoading}
                 className="w-full h-[57px] px-4 py-3 pr-12 bg-[#efefef] border border-[rgba(212,212,212,0.22)] rounded-[5px] backdrop-blur-[4px] text-[#c7c7c7] placeholder-[#c7c7c7] focus:outline-none focus:ring-2 focus:ring-[#303030] focus:border-transparent disabled:opacity-50 font-['Urbanist',Helvetica] text-[20px] font-medium"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-30 hover:opacity-70 transition-opacity focus:outline-none"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                <img
-                  src={showPassword ? "/icons/eye-open.svg" : "/icons/eye-closed.svg"}
-                  alt={showPassword ? "Hide password" : "Show password"}
-                  className="w-6 h-6"
-                  onError={(e) => {
-                    // Fallback to Unicode symbols if SVG fails to load
-                    e.target.style.display = 'none';
-                    e.target.parentNode.textContent = showPassword ? '👁️' : '👁️‍🗨️';
-                  }}
-                />
-              </button>
             </div>
           </div>
 
@@ -182,10 +178,12 @@ export const AdminLoginForm = () => {
           </div>
         </form>
 
-        {/* Development Notice */}
-        <div className="mt-8 p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
-          <p className="text-yellow-800 text-sm text-center">
-            <strong>Development Mode:</strong> Admin authentication is not yet connected to backend API
+        {/* Test Credentials Notice */}
+        <div className="mt-8 p-4 bg-blue-100 border border-blue-400 rounded-lg">
+          <p className="text-blue-800 text-sm text-center">
+            <strong>Test Credentials:</strong><br />
+            Email: admin@example.com<br />
+            Password: SecurePass123!
           </p>
         </div>
       </div>

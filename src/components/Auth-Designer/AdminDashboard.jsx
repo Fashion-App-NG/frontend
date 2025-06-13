@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import authService from '../../services/authService';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -27,11 +28,23 @@ export const AdminDashboard = () => {
 
             {/* User Info & Logout */}
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user?.username || 'Admin'}
-              </span>
+              <div className="text-sm text-gray-600">
+                <span>Welcome, {user?.firstName || user?.email || 'Admin'}</span>
+                {user?.role && (
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                    user.role === 'superadmin' 
+                      ? 'bg-red-100 text-red-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {user.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                  </span>
+                )}
+              </div>
               <button
-                onClick={() => navigate('/admin/login')}
+                onClick={() => {
+                  authService.clearAdminAuth();
+                  navigate('/admin/login');
+                }}
                 className="bg-[#303030] text-[#edff8c] px-4 py-2 rounded hover:bg-[#404040] transition-colors text-sm"
               >
                 Logout

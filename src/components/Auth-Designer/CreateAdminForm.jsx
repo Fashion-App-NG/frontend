@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
+import authService from '../../services/authService'; // ✅ Use default import (no curly braces)
 
 export const CreateAdminForm = () => {
   const navigate = useNavigate();
@@ -22,12 +23,13 @@ export const CreateAdminForm = () => {
       username: formData.get('username'),
       password: formData.get('password'),
       confirmPassword: formData.get('confirmPassword'),
+      phone: formData.get('phone') || '',
       role: formData.get('role'),
       permissions: Array.from(formData.getAll('permissions'))
     };
 
-    // Client-side validation
-    if (!data.firstName || !data.lastName || !data.email || !data.username || !data.password || !data.confirmPassword) {
+    // Client-side validation (keep existing validation)
+    if (!data.firstName || !data.lastName || !data.email || !data.password || !data.confirmPassword) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
@@ -62,49 +64,60 @@ export const CreateAdminForm = () => {
     }
 
     try {
-      // TODO: Replace with actual create admin API call
+      // ✅ Debug logging - this should now work
+      const currentToken = authService.getAuthToken();
+      const currentUser = authService.getUser();
+      
+      console.log('🔐 Debug info before create admin:');
+      console.log('- Token present:', !!currentToken);
+      console.log('- Token preview:', currentToken ? currentToken.substring(0, 20) + '...' : 'null');
+      console.log('- User:', currentUser);
+      console.log('- User role:', currentUser?.role);
+      
+      if (!currentToken) {
+        setError('No authentication token found. Please login again.');
+        setTimeout(() => navigate('/admin/login'), 2000);
+        return;
+      }
+      
+      if (!currentUser || currentUser.role !== 'superadmin') {
+        setError('Only superadmins can create admin accounts.');
+        return;
+      }
+      
       console.log('🔐 Creating new admin:', { ...data, password: '***', confirmPassword: '***' });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock success response
-      const mockResponse = {
-        success: true,
-        admin: {
-          id: `admin_${Date.now()}`,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          username: data.username,
-          role: data.role,
-          permissions: data.permissions,
-          createdAt: new Date().toISOString(),
-          status: 'active'
-        }
-      };
+      // ✅ This should now work with proper JWT token
+      const response = await authService.createAdmin({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        role: data.role
+      });
 
-      console.log('✅ Admin created successfully (mock):', mockResponse);
+      console.log('✅ Admin created successfully:', response);
+      setSuccess(response.message || `Admin account created successfully! ${data.firstName} ${data.lastName} can now log in with email: ${data.email}`);
       
-      setSuccess(`Admin account created successfully! ${data.firstName} ${data.lastName} can now log in with username: ${data.username}`);
-      
-      // Reset form after success
+      // Reset form
       setTimeout(() => {
         e.target.reset();
         setSuccess('');
-        // Optionally redirect back to admin dashboard
-        // navigate('/admin/dashboard');
       }, 3000);
-
+      
     } catch (error) {
       console.error('❌ Create admin failed:', error);
       
-      if (error.message.includes('already exists') || error.message.includes('409')) {
-        setError('Username or email already exists. Please choose different credentials.');
-      } else if (error.message.includes('403')) {
+      if (error.message.includes('Authentication required')) {
+        setError('Session expired. Please log in again.');
+        setTimeout(() => navigate('/admin/login'), 2000);
+      } else if (error.message.includes('already exists')) {
+        setError('Admin with this email already exists. Please use a different email address.');
+      } else if (error.message.includes('Unauthorized') || error.message.includes('403')) {
         setError('You do not have permission to create admin accounts.');
       } else if (error.message.includes('500')) {
-        setError('Unable to create admin account at this time. Please try again later.');
+        setError('Server error occurred while creating admin account. Please try again later.');
       } else {
         setError(error.message || 'Failed to create admin account. Please try again.');
       }
@@ -202,6 +215,19 @@ export const CreateAdminForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
+      {/* Phone Field - NOW REQUIRED */}
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
+        Phone Number <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="tel"
+        name="phone"
+        placeholder="Enter phone number (e.g., +1234567890)"
+        required // ✅ Add required attribute
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+      />
+
       {/* Username Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Username
@@ -227,9 +253,7 @@ export const CreateAdminForm = () => {
       >
         <option value="">Select admin role</option>
         <option value="admin">Admin - Standard administrative access</option>
-        <option value="moderator">Moderator - Content and user moderation</option>
-        <option value="support">Support - Customer support access</option>
-        <option value="analytics">Analytics - Reports and analytics access</option>
+        <option value="superadmin">Super Admin - Full system access and admin creation</option>
       </select>
 
       {/* Permissions Section */}

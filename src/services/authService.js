@@ -231,6 +231,89 @@ export const authService = {
     const token = authService.getAuthToken();
     const user = authService.getUser();
     return !!(token && user);
+  },
+
+  // Admin authentication methods
+  adminLogin: async (credentials) => {
+    const response = await apiRequest('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password
+      })
+    });
+    
+    // ✅ Store token consistently
+    if (response.token) {
+      authService.setAuthToken(response.token); // Use main setAuthToken method
+    }
+    
+    if (response.admin) {
+      authService.setUser(response.admin); // Use main setUser method
+    }
+    
+    return response;
+  },
+
+  // Create admin (superadmin only)
+  createAdmin: async (adminData) => {
+    const token = authService.getAuthToken();
+    
+    if (!token) {
+      throw new Error('Authentication required - please login as superadmin');
+    }
+
+    console.log('🔐 Sending create admin request:', {
+      url: `${API_BASE_URL}/admin`,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: adminData
+    });
+
+    return await apiRequest('/admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // ✅ Ensure this is set
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(adminData) // ✅ Ensure body is stringified
+    });
+  },
+
+  // Admin-specific token and user management
+  setAdminToken: (token) => {
+    localStorage.setItem('adminToken', token);
+    localStorage.setItem('authToken', token); // Also set general auth token
+  },
+
+  getAdminToken: () => {
+    return localStorage.getItem('adminToken') || localStorage.getItem('authToken');
+  },
+
+  setAdminUser: (admin) => {
+    localStorage.setItem('adminUser', JSON.stringify(admin));
+    localStorage.setItem('user', JSON.stringify(admin)); // Also set general user
+  },
+
+  getAdminUser: () => {
+    const adminUser = localStorage.getItem('adminUser');
+    if (adminUser) {
+      return JSON.parse(adminUser);
+    }
+    return null;
+  },
+
+  clearAdminAuth: () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    // Also clear general auth if it's admin
+    const user = authService.getUser();
+    if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+      authService.removeAuthToken();
+      authService.removeUser();
+    }
   }
 };
 
