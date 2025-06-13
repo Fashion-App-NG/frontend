@@ -20,11 +20,10 @@ import NotFoundPage from './pages/NotFoundPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 
-// ✅ Import admin login page
+// ✅ Import admin pages
 import AdminLoginPage from './pages/AdminLoginPage';
-
-// ✅ Import admin dashboard
-import AdminDashboard from './components/Auth-Designer/AdminDashboard';
+import AdminDashboardPage from './pages/AdminDashboardPage';      // ✅ New wrapper
+import CreateAdminPageWrapper from './pages/CreateAdminPage';      // ✅ New wrapper
 
 function App() {
   return (
@@ -50,7 +49,8 @@ function App() {
               
               {/* ✅ Admin routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
               
               {/* Smart dashboard routing */}
               <Route path="/dashboard" element={<DashboardRouter />} />

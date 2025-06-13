@@ -62,10 +62,18 @@ export const AdminDashboard = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-gray-600 text-sm mb-4">Manage shoppers and vendors</p>
-            <button className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors">
-              View Users
-            </button>
+            <p className="text-gray-600 text-sm mb-4">Manage shoppers, vendors, and admins</p>
+            <div className="space-y-2">
+              <button className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors">
+                View Users
+              </button>
+              <button 
+                onClick={() => navigate('/admin/create-admin')}
+                className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Create New Admin
+              </button>
+            </div>
           </div>
 
           {/* Analytics Card */}

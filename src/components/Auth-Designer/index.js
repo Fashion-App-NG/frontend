@@ -15,3 +15,6 @@ export { default as PasswordResetForm } from './PasswordResetForm';
 export { default as PasswordResetPage } from './PasswordResetPage';
 export { default as AdminLoginForm } from './AdminLoginForm';
 export { default as AdminLoginPage } from './AdminLoginPage';
+export { default as CreateAdminForm } from './CreateAdminForm';
+export { default as CreateAdminPage } from './CreateAdminPage';
+export { default as AdminDashboard } from './AdminDashboard';
