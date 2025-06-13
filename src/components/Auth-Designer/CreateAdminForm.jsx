@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PasswordInput } from './PasswordInput';
 import authService from '../../services/authService'; // ✅ Use default import (no curly braces)
@@ -8,6 +8,22 @@ export const CreateAdminForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // ✅ Check if user is superadmin on component mount
+  useEffect(() => {
+    const currentUser = authService.getUser();
+    
+    if (!currentUser) {
+      navigate('/admin/login');
+      return;
+    }
+    
+    if (currentUser.role !== 'superadmin') {
+      setError('Access denied. Only superadmins can create admin accounts.');
+      setTimeout(() => navigate('/admin/dashboard'), 3000);
+      return;
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
