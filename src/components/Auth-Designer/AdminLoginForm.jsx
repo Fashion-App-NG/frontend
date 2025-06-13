@@ -67,13 +67,13 @@ export const AdminLoginForm = () => {
       if (error.message.includes('Invalid email or password') || error.message.includes('401')) {
         setError('Invalid admin credentials. Please check your email and password.');
       } else if (error.message.includes('403')) {
-        setError('Access denied. Admin privileges required.');
+        setError('Access denied. This account does not have admin privileges.');
+      } else if (error.message.includes('429')) {
+        setError('Too many login attempts. Please wait 5 minutes before trying again.');
       } else if (error.message.includes('500')) {
-        setError('Server error. Please try again later.');
-      } else if (error.message.includes('Rate limit') || error.message.includes('Too many')) {
-        setError('Too many login attempts. Please wait before trying again.');
+        setError('Server temporarily unavailable. Please try again in a few minutes.');
       } else {
-        setError(error.message || 'Admin login failed. Please try again.');
+        setError('Login failed. Please check your credentials and try again.');
       }
     } finally {
       setIsLoading(false);
@@ -144,6 +144,18 @@ export const AdminLoginForm = () => {
                 className="w-full h-[57px] px-4 py-3 pr-12 bg-[#efefef] border border-[rgba(212,212,212,0.22)] rounded-[5px] backdrop-blur-[4px] text-[#c7c7c7] placeholder-[#c7c7c7] focus:outline-none focus:ring-2 focus:ring-[#303030] focus:border-transparent disabled:opacity-50 font-['Urbanist',Helvetica] text-[20px] font-medium"
               />
             </div>
+          </div>
+
+          {/* Forgot Password Link */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/forgot-password')}
+              disabled={isLoading}
+              className="text-sm text-[#2e2e2e] hover:underline disabled:opacity-50"
+            >
+              Forgot Password?
+            </button>
           </div>
 
           {/* Login Button */}

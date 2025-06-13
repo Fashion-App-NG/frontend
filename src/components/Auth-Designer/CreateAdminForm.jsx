@@ -20,16 +20,15 @@ export const CreateAdminForm = () => {
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
       email: formData.get('email'),
-      username: formData.get('username'),
       password: formData.get('password'),
       confirmPassword: formData.get('confirmPassword'),
       phone: formData.get('phone') || '',
-      role: formData.get('role'),
-      permissions: Array.from(formData.getAll('permissions'))
+      role: 'admin' // ✅ Always set to 'admin'
+      // permissions: Array.from(formData.getAll('permissions')) // ✅ Remove this
     };
 
     // Client-side validation (keep existing validation)
-    if (!data.firstName || !data.lastName || !data.email || !data.password || !data.confirmPassword) {
+    if (!data.firstName || !data.lastName || !data.email || !data.password || !data.confirmPassword || !data.phone) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
@@ -56,9 +55,17 @@ export const CreateAdminForm = () => {
       return;
     }
 
-    // Role validation
-    if (!data.role) {
-      setError('Please select an admin role');
+    // Phone validation
+    if (!data.phone || data.phone.trim().length === 0) {
+      setError('Phone number is required');
+      setIsLoading(false);
+      return;
+    }
+
+    // Optional: Add phone format validation
+    const phonePattern = /^\+?[\d\s\-\(\)]{10,}$/;
+    if (!phonePattern.test(data.phone.trim())) {
+      setError('Please enter a valid phone number (minimum 10 digits)');
       setIsLoading(false);
       return;
     }
@@ -98,7 +105,7 @@ export const CreateAdminForm = () => {
       });
 
       console.log('✅ Admin created successfully:', response);
-      setSuccess(response.message || `Admin account created successfully! ${data.firstName} ${data.lastName} can now log in with email: ${data.email}`);
+      setSuccess(`Admin account created successfully! ${data.firstName} ${data.lastName} can now log in with their email address.`);
       
       // Reset form
       setTimeout(() => {
@@ -228,99 +235,14 @@ export const CreateAdminForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
-      {/* Username Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Username
-      </label>
-      <input
-        type="text"
-        name="username"
-        placeholder="Enter username"
-        required
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      />
-
-      {/* Admin Role Selection */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Admin Role
-      </label>
-      <select
-        name="role"
-        required
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      >
-        <option value="">Select admin role</option>
-        <option value="admin">Admin - Standard administrative access</option>
-        <option value="superadmin">Super Admin - Full system access and admin creation</option>
-      </select>
-
       {/* Permissions Section */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Permissions
-      </label>
-      <div className="grid grid-cols-2 gap-2 mt-4 p-4 bg-[rgba(242,242,242,1)] rounded-[5px] border border-[rgba(203,203,203,1)]">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="user_management"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          User Management
+      <div className="mt-4 p-4 bg-[rgba(248,249,250,1)] rounded-[5px] border border-[rgba(229,231,235,1)]">
+        <label className="text-[rgba(46,46,46,1)] text-sm font-semibold leading-[1.2]">
+          Admin Permissions
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="vendor_management"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          Vendor Management
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="content_moderation"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          Content Moderation
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="analytics_access"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          Analytics Access
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="system_settings"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          System Settings
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="permissions"
-            value="financial_reports"
-            disabled={isLoading}
-            className="w-4 h-4"
-          />
-          Financial Reports
-        </label>
+        <p className="text-[rgba(107,114,128,1)] text-sm mt-2">
+          New admin accounts will be created with standard administrative access including user management, content moderation, and basic analytics.
+        </p>
       </div>
 
       {/* Password Field */}
@@ -372,13 +294,6 @@ export const CreateAdminForm = () => {
         >
           ← Back to Admin Dashboard
         </button>
-      </div>
-
-      {/* Development Notice */}
-      <div className="mt-8 p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
-        <p className="text-yellow-800 text-sm text-center">
-          <strong>Development Mode:</strong> Create admin functionality is not yet connected to backend API
-        </p>
       </div>
     </form>
   );
