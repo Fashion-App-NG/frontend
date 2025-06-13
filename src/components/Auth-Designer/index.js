@@ -13,3 +13,5 @@ export { default as ForgotPasswordForm } from './ForgotPasswordForm';
 export { default as ForgotPasswordPage } from './ForgotPasswordPage';
 export { default as PasswordResetForm } from './PasswordResetForm';
 export { default as PasswordResetPage } from './PasswordResetPage';
+export { default as AdminLoginForm } from './AdminLoginForm';
+export { default as AdminLoginPage } from './AdminLoginPage';
