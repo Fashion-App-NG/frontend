@@ -393,10 +393,10 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
                     .fill(0)
                     .map((_, index) => (
                       <input
-                        key={index}
-                        ref={(el) => (inputRefs.current[index] = el)} // ✅ Add ref
+                        key={`verification-otp-${index}`}  // ✅ Descriptive and unique to this component
+                        ref={(el) => (inputRefs.current[index] = el)}
                         type="text"
-                        inputMode="numeric" // ✅ Mobile numeric keyboard
+                        inputMode="numeric"
                         pattern="[0-9]*" // ✅ iOS numeric keyboard
                         value={otp[index]}
                         onChange={(e) => handleChange(e.target.value, index)}

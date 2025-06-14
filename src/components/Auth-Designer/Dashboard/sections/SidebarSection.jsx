@@ -93,7 +93,7 @@ export const SidebarSection = ({ isGuest = false }) => {
             if (!shouldShow) return null;
 
             return (
-              <li key={index}>
+              <li key={item.label}>
                 <button 
                   onClick={() => handleNavigation(item.path)}
                   className={`flex w-full items-center gap-5 px-[29px] py-3.5 transition-colors ${

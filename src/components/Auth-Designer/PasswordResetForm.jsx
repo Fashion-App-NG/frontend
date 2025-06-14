@@ -241,7 +241,7 @@ export const PasswordResetForm = () => {
               .fill(0)
               .map((_, index) => (
                 <input
-                  key={index}
+                  key={`password-reset-otp-${index}`}  // ✅ Descriptive and unique
                   ref={(el) => (inputRefs.current[index] = el)}
                   type="text"
                   inputMode="numeric"
