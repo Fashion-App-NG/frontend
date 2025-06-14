@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
-import { authService } from '../../services/authService';
 
 export const RegisterForm = () => {
   const navigate = useNavigate();
@@ -47,47 +47,37 @@ export const RegisterForm = () => {
       // Call the registration API
       const response = await authService.register({
         email: data.email,
-        password: data.password
+        password: data.password,
+        role: "shopper", // ✅ Add required role field
+        // Don't include storeName for shoppers
       });
 
       console.log('🔥 Registration response:', response);
 
-      // Use the extracted userId from authService
-      const userId = response.extractedUserId;
-      
-      if (!userId) {
-        setError('Registration successful but verification setup failed. Invalid user ID format. Please try again.');
-        setIsLoading(false);
-        return;
+      // Handle success response - now includes user data
+      if (response.user?.id) {
+        const userId = response.user.id; // ✅ Get userId from response.user
+        
+        sessionStorage.setItem('pendingVerificationEmail', data.email);
+        sessionStorage.setItem('pendingVerificationUserId', userId);
+        sessionStorage.setItem('pendingUserType', 'shopper');
+        
+        setSuccess('Registration successful! Please check your email for verification code.');
+        
+        setTimeout(() => {
+          navigate('/verify-otp');
+        }, 2000);
+      } else {
+        setError('Registration successful but verification setup failed. Please try again.');
       }
-
-      // Handle delivery failure
-      if (response.error === 'DELIVERY_FAILED') {
-        setError(response.message || 'Failed to send verification code. Please check your email and try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      setSuccess('Registration successful! Please check your email for verification code.');
-      
-      // Store email and userId for OTP verification
-      sessionStorage.setItem('pendingVerificationEmail', data.email);
-      sessionStorage.setItem('pendingVerificationUserId', userId);
-      sessionStorage.setItem('pendingUserType', 'shopper'); // ✅ Add this line
-      
-      // Redirect to OTP verification page after successful registration
-      setTimeout(() => {
-        navigate('/verify-otp');
-      }, 2000);
-
     } catch (error) {
-      console.error('❌ Registration error:', error);
-      
-      // Handle specific error cases
-      if (error.message.includes('already exists')) {
+      // Handle new error codes
+      if (error.status === 400) {
+        setError('Please fill in all required fields correctly.');
+      } else if (error.status === 409) {
         setError('This email is already registered. Please use a different email or try logging in.');
-      } else if (error.message.includes('DELIVERY_FAILED')) {
-        setError('Failed to send verification code. Please check your email address and try again.');
+      } else if (error.status === 500) {
+        setError('Server error. Please try again later.');
       } else {
         setError(error.message || 'Registration failed. Please try again.');
       }

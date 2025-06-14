@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
-import { authService } from '../../services/authService';
 
 export const VendorRegisterForm = () => {
   const navigate = useNavigate();
@@ -45,12 +45,11 @@ export const VendorRegisterForm = () => {
     }
 
     try {
-      // Call the vendor registration API (to be implemented)
       const response = await authService.registerVendor({
         email: data.email,
-        storeName: data.storeName,
         password: data.password,
-        userType: 'vendor'
+        role: "vendor", // ✅ Add required role field
+        storeName: data.storeName, // ✅ Required for vendors
       });
 
       console.log('🔥 Vendor registration response:', response);
@@ -78,7 +77,14 @@ export const VendorRegisterForm = () => {
     } catch (error) {
       console.error('❌ Vendor registration error:', error);
       
-      if (error.message.includes('already exists')) {
+      // Handle new error codes
+      if (error.status === 400) {
+        if (error.message.includes('storeName')) {
+          setError('Store name is required for vendor registration.');
+        } else {
+          setError('Please fill in all required fields correctly.');
+        }
+      } else if (error.status === 409) {
         setError('This email is already registered. Please use a different email or try logging in.');
       } else {
         setError(error.message || 'Registration failed. Please try again.');

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Logo } from '../Common/Logo';
 import { authService } from '../../services/authService';
+import { Logo } from '../Common/Logo';
 
 export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
   const navigate = useNavigate();
@@ -214,42 +214,50 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      setError('Please enter all 6 digits');
-      return;
-    }
-
+    setIsLoading(true);
     setError('');
 
     try {
-      // Call the OTP verification API
+      const otpCode = otp.join('');
+      
+      if (otpCode.length !== 6) {
+        setError('Please enter all 6 digits');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await authService.verifyOTP({
-        userId: userId,
-        code: otpCode
+        userId: userId, // ✅ Use userId instead of email
+        code: otpCode,
       });
 
-      console.log(`${userType} OTP verification successful:`, response);
+      console.log('✅ OTP verification successful:', response);
       
-      // Clear session data
+      // Clear stored verification data
       sessionStorage.removeItem('pendingVerificationEmail');
       sessionStorage.removeItem('pendingVerificationUserId');
       sessionStorage.removeItem('pendingUserType');
-      
-      // Redirect to appropriate login
-      navigate(config.redirectPath, { 
-        state: { message: config.message }
-      });
+
+      // Redirect to login page
+      setTimeout(() => {
+        navigate(userType === 'vendor' ? '/login/vendor' : '/login', {
+          state: { message: 'Account verified successfully! Please sign in.' }
+        });
+      }, 2000);
 
     } catch (error) {
-      console.error(`${userType} OTP verification failed:`, error);
+      console.error('❌ OTP verification failed:', error);
       
-      if (error.message.includes('expired') || error.message.includes('Invalid or expired')) {
-        setError('Your verification code has expired or is invalid. Please request a new one.');
+      // Handle new error codes
+      if (error.status === 400) {
+        setError('Invalid or expired verification code. Please try again.');
+      } else if (error.status === 500) {
+        setError('Server error. Please try again later.');
       } else {
-        setError(error.message || 'Invalid verification code. Please try again.');
+        setError(error.message || 'Verification failed. Please try again.');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 

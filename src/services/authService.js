@@ -93,228 +93,136 @@ const extractUserIdFromToken = (token) => {
 };
 
 // Authentication service functions
-export const authService = {
-  // Register new user
-  register: async (userData) => {
-    const response = await apiRequest('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: userData.email,
-        password: userData.password
-      }),
-    });
-
-    // Extract userId from token for OTP verification
-    if (response.token) {
-      const userId = extractUserIdFromToken(response.token);
-      response.extractedUserId = userId;
-    }
-
-    return response;
-  },
-
-  // Login user
-  login: async (credentials) => {
-    return apiRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        identifier: credentials.email,
-        password: credentials.password
-      }),
-    });
-  },
-
-  // Vendor login
-  loginVendor: async (credentials) => {
-    return apiRequest('/auth/vendor/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: credentials.email,
-        storeName: credentials.storeName,
-        password: credentials.password
-      }),
-    });
-  },
-
-  // Verify OTP - no Authorization header needed per your tests
-  verifyOTP: async (otpData) => {
-    return apiRequest('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: otpData.userId,
-        code: otpData.code
-      }),
-    });
-  },
-
-  // Resend OTP - API expects email or phone, not userId
-  resendOTP: async (email) => {
-    return apiRequest('/auth/resend-otp', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: email
-      }),
-    });
-  },
-
-  // Logout user
-  logout: async () => {
+class AuthService {
+  async register(userData) {
     try {
-      // Call backend logout API (optional - for server-side session cleanup)
-      await apiRequest('/auth/logout', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          role: userData.role || 'shopper', // ✅ Ensure role is always included
+          // Don't include storeName for shoppers
+        }),
       });
+
+      const data = await response.json();
       
-      console.log('✅ Server logout successful');
+      if (!response.ok) {
+        const error = new Error(data.message || 'Registration failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      // ✅ API now returns user data in response
+      return {
+        message: data.message,
+        token: data.token,
+        user: data.user,
+        extractedUserId: data.user?.id // For backward compatibility
+      };
     } catch (error) {
-      // Don't throw error here - we still want to clear local data
-      console.warn('⚠️ Server logout failed (continuing with local cleanup):', error);
-    } finally {
-      // Always clear local authentication data
-      authService.removeAuthToken();
-      authService.removeUser();
-      
-      console.log('✅ Local authentication data cleared');
-    }
-  },
-
-  // Forgot Password - Request OTP for password reset
-  forgotPassword: async (email) => {
-    return apiRequest('/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: email
-      }),
-    });
-  },
-
-  // Reset Password - Submit OTP and new password
-  resetPassword: async (resetData) => {
-    return apiRequest('/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: resetData.email,
-        code: resetData.code,
-        password: resetData.password
-      }),
-    });
-  },
-
-  // Helper functions for token management
-  setAuthToken: (token) => {
-    localStorage.setItem('authToken', token);
-  },
-
-  getAuthToken: () => {
-    return localStorage.getItem('authToken');
-  },
-
-  removeAuthToken: () => {
-    localStorage.removeItem('authToken');
-  },
-
-  setUser: (user) => {
-    localStorage.setItem('user', JSON.stringify(user));
-  },
-
-  getUser: () => {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
-  },
-
-  removeUser: () => {
-    localStorage.removeItem('user');
-  },
-
-  // Check if user is authenticated
-  isAuthenticated: () => {
-    const token = authService.getAuthToken();
-    const user = authService.getUser();
-    return !!(token && user);
-  },
-
-  // Admin authentication methods
-  adminLogin: async (credentials) => {
-    const response = await apiRequest('/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: credentials.email,
-        password: credentials.password
-      })
-    });
-    
-    // ✅ Store token consistently
-    if (response.token) {
-      authService.setAuthToken(response.token); // Use main setAuthToken method
-    }
-    
-    if (response.admin) {
-      authService.setUser(response.admin); // Use main setUser method
-    }
-    
-    return response;
-  },
-
-  // Create admin (superadmin only)
-  createAdmin: async (adminData) => {
-    const token = authService.getAuthToken();
-    
-    if (!token) {
-      throw new Error('Authentication required - please login as superadmin');
-    }
-
-    console.log('🔐 Sending create admin request:', {
-      url: `${API_BASE_URL}/admin`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: adminData
-    });
-
-    return await apiRequest('/admin', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json', // ✅ Ensure this is set
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(adminData) // ✅ Ensure body is stringified
-    });
-  },
-
-  // Admin-specific token and user management
-  setAdminToken: (token) => {
-    localStorage.setItem('adminToken', token);
-    localStorage.setItem('authToken', token); // Also set general auth token
-  },
-
-  getAdminToken: () => {
-    return localStorage.getItem('adminToken') || localStorage.getItem('authToken');
-  },
-
-  setAdminUser: (admin) => {
-    localStorage.setItem('adminUser', JSON.stringify(admin));
-    localStorage.setItem('user', JSON.stringify(admin)); // Also set general user
-  },
-
-  getAdminUser: () => {
-    const adminUser = localStorage.getItem('adminUser');
-    if (adminUser) {
-      return JSON.parse(adminUser);
-    }
-    return null;
-  },
-
-  clearAdminAuth: () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    // Also clear general auth if it's admin
-    const user = authService.getUser();
-    if (user && (user.role === 'admin' || user.role === 'superadmin')) {
-      authService.removeAuthToken();
-      authService.removeUser();
+      console.error('Registration error:', error);
+      throw error;
     }
   }
-};
 
-export default authService;
+  async login(credentials) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identifier: credentials.identifier || credentials.email, // ✅ Use identifier
+          password: credentials.password,
+          role: credentials.role || 'shopper', // ✅ Include role
+          // Don't include storeName for shoppers
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Login failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      // Store token and user data
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  }
+
+  async verifyOTP(otpData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: otpData.userId, // ✅ Use userId instead of email
+          code: otpData.code,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'OTP verification failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      throw error;
+    }
+  }
+
+  async resendOTP(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email, // ✅ API accepts email or phone
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Failed to resend OTP');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Resend OTP error:', error);
+      throw error;
+    }
+  }
+}
+
+export default AuthService;

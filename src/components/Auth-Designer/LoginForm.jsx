@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { PasswordInput } from './PasswordInput';
-import { authService } from '../../services/authService';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/authService';
+import { PasswordInput } from './PasswordInput';
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -43,8 +43,10 @@ export const LoginForm = () => {
 
     try {
       const response = await authService.login({
-        email: data.email,
-        password: data.password
+        identifier: data.email, // ✅ Changed from 'email' to 'identifier'
+        password: data.password,
+        role: "shopper", // ✅ Add required role field
+        // Don't include storeName for shoppers
       });
 
       console.log('✅ Login successful:', response);
@@ -71,12 +73,15 @@ export const LoginForm = () => {
     } catch (error) {
       console.error('❌ Login failed:', error);
 
-      // Handle specific error cases based on API docs
-      if (error.message.includes('verify OTP')) {
-        setError('Please verify your email address before logging in. Check your email for the verification code.');
-        // You could also redirect to OTP verification here if needed
-      } else if (error.message.includes('Invalid credentials')) {
+      // Handle new error codes
+      if (error.status === 400) {
+        setError('Please fill in all required fields.');
+      } else if (error.status === 401) {
         setError('Invalid email or password. Please try again.');
+      } else if (error.status === 403) {
+        setError('Please verify your email address before logging in. Check your email for the verification code.');
+      } else if (error.status === 500) {
+        setError('Server error. Please try again later.');
       } else {
         setError(error.message || 'Login failed. Please try again.');
       }

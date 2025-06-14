@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
-import { authService } from '../../services/authService';
-import { useAuth } from '../../contexts/AuthContext';
 
 export const VendorLoginForm = () => {
   const navigate = useNavigate();
@@ -45,9 +45,10 @@ export const VendorLoginForm = () => {
 
     try {
       const response = await authService.loginVendor({
-        email: data.email,
-        storeName: data.storeName,
-        password: data.password
+        identifier: data.email, // ✅ Changed from 'email' to 'identifier'
+        password: data.password,
+        role: "vendor", // ✅ Add required role field
+        storeName: data.storeName // ✅ Required for vendors
       });
 
       console.log('✅ Vendor login successful:', response);
@@ -74,11 +75,15 @@ export const VendorLoginForm = () => {
     } catch (error) {
       console.error('❌ Vendor login failed:', error);
 
-      // Handle specific error cases
-      if (error.message.includes('verify OTP')) {
-        setError('Please verify your email address before logging in. Check your email for the verification code.');
-      } else if (error.message.includes('Invalid credentials')) {
-        setError('Invalid credentials. Please check your email, store name, and password.');
+      // Handle new error codes
+      if (error.status === 401) {
+        if (error.message.includes('storeName')) {
+          setError('Incorrect store name. Please check your store name and try again.');
+        } else {
+          setError('Invalid credentials. Please check your email and password.');
+        }
+      } else if (error.status === 403) {
+        setError('Please verify your email address before logging in.');
       } else {
         setError(error.message || 'Login failed. Please try again.');
       }
