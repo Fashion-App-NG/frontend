@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
+import authService from '../../services/authService'; // ✅ Default import (no curly braces)
 import { Logo } from '../Common/Logo';
 
 export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
@@ -226,7 +226,7 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
         return;
       }
 
-      const response = await authService.verifyOTP({
+      const response = await authService.verifyOTP({ // ✅ Now uses default import
         userId: userId, // ✅ Use userId instead of email
         code: otpCode,
       });
@@ -280,7 +280,7 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
     setLastResendTime(Date.now()); // ✅ Update last resend time
     
     try {
-      const response = await authService.resendOTP(email);
+      const response = await authService.resendOTP(email); // ✅ Now uses default import
       
       // Clear current OTP inputs
       setOtp(['', '', '', '', '', '']);

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
-import { authService } from '../../services/authService';
 
 export const PasswordResetForm = () => {
   const navigate = useNavigate();

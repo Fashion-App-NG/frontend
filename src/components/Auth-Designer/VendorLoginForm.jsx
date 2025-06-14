@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { authService } from '../../services/authService';
+import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
 

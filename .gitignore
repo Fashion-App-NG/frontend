@@ -47,3 +47,4 @@ Thumbs.db
 # Netlify
 /.netlify
 src/components/Auth
+.copilot/README.md

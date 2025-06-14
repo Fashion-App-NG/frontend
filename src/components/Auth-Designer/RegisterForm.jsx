@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
+import authService from '../../services/authService'; // ✅ Default import
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
 
@@ -48,16 +48,15 @@ export const RegisterForm = () => {
       const response = await authService.register({
         email: data.email,
         password: data.password,
-        role: "shopper", // ✅ Add required role field
-        // Don't include storeName for shoppers
+        role: "shopper",
       });
 
       console.log('🔥 Registration response:', response);
 
-      // Handle success response - now includes user data
-      if (response.user?.id) {
-        const userId = response.user.id; // ✅ Get userId from response.user
-        
+      // ✅ Simple, direct userId extraction - NO GUESSING
+      const userId = response.userId;
+
+      if (userId) {
         sessionStorage.setItem('pendingVerificationEmail', data.email);
         sessionStorage.setItem('pendingVerificationUserId', userId);
         sessionStorage.setItem('pendingUserType', 'shopper');
@@ -68,7 +67,9 @@ export const RegisterForm = () => {
           navigate('/verify-otp');
         }, 2000);
       } else {
-        setError('Registration successful but verification setup failed. Please try again.');
+        // ✅ This means the JWT token didn't contain userId - backend issue
+        setError('Registration completed but unable to proceed with verification. Please contact support.');
+        console.error('❌ No userId found in registration token. Backend may have JWT configuration issue.');
       }
     } catch (error) {
       // Handle new error codes

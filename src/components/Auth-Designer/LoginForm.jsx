@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { authService } from '../../services/authService';
+import authService from '../../services/authService'; // ✅ Default import
 import { PasswordInput } from './PasswordInput';
 
 export const LoginForm = () => {
@@ -42,7 +42,7 @@ export const LoginForm = () => {
     }
 
     try {
-      const response = await authService.login({
+      const response = await authService.login({ // ✅ Now uses default import
         identifier: data.email, // ✅ Changed from 'email' to 'identifier'
         password: data.password,
         role: "shopper", // ✅ Add required role field
@@ -53,11 +53,11 @@ export const LoginForm = () => {
 
       // Store authentication data
       if (response.token) {
-        authService.setAuthToken(response.token);
+        authService.setAuthToken(response.token); // ✅ Now uses default import
       }
 
       if (response.user) {
-        authService.setUser(response.user);
+        authService.setUser(response.user); // ✅ Now uses default import
         setUser(response.user);
       }
 

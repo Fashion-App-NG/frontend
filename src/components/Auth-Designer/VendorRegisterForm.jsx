@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/authService';
+import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
 
@@ -48,32 +48,30 @@ export const VendorRegisterForm = () => {
       const response = await authService.registerVendor({
         email: data.email,
         password: data.password,
-        role: "vendor", // ✅ Add required role field
-        storeName: data.storeName, // ✅ Required for vendors
+        role: "vendor",
+        storeName: data.storeName,
       });
 
       console.log('🔥 Vendor registration response:', response);
 
-      const userId = response.extractedUserId;
+      // ✅ Direct userId extraction - NO GUESSING
+      const userId = response.userId;
       
-      if (!userId) {
-        setError('Registration successful but verification setup failed. Please try again.');
-        setIsLoading(false);
-        return;
+      if (userId) {
+        setSuccess('Vendor registration successful! Please check your email for verification code.');
+        
+        // Store email and userId for OTP verification
+        sessionStorage.setItem('pendingVerificationEmail', data.email);
+        sessionStorage.setItem('pendingVerificationUserId', userId);
+        sessionStorage.setItem('pendingUserType', 'vendor');
+        
+        // Redirect to OTP verification page
+        setTimeout(() => {
+          navigate('/verify-otp');
+        }, 2000);
+      } else {
+        setError('Registration completed but unable to proceed with verification. Please contact support.');
       }
-
-      setSuccess('Vendor registration successful! Please check your email for verification code.');
-      
-      // Store email and userId for OTP verification
-      sessionStorage.setItem('pendingVerificationEmail', data.email);
-      sessionStorage.setItem('pendingVerificationUserId', userId);
-      sessionStorage.setItem('pendingUserType', 'vendor');
-      
-      // Redirect to OTP verification page
-      setTimeout(() => {
-        navigate('/verify-otp');
-      }, 2000);
-
     } catch (error) {
       console.error('❌ Vendor registration error:', error);
       

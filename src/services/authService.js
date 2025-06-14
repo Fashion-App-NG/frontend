@@ -45,58 +45,32 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
-// JWT decoder function to extract userId from token
-const extractUserIdFromToken = (token) => {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT format');
-    }
-
-    const payload = parts[1];
-    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
-    const decodedPayload = atob(paddedPayload);
-    const parsed = JSON.parse(decodedPayload);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Decoded JWT payload:', parsed);
-    }
-
-    const userId = parsed.userId || parsed.id || parsed.sub;
-
-    if (!userId) {
-      console.error('❌ No userId found in token payload');
-      return null;
-    }
-
-    const cleanUserId = String(userId).trim();
-
-    if (cleanUserId.length !== 24) {
-      console.error(`❌ Invalid userId length: ${cleanUserId.length} characters. Expected 24.`);
-      return null;
-    }
-
-    if (!/^[0-9a-fA-F]{24}$/.test(cleanUserId)) {
-      console.error(`❌ Invalid userId format: "${cleanUserId}". Must be 24 hex characters.`);
-      return null;
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Valid userId extracted: "${cleanUserId}"`);
-    }
-    return cleanUserId;
-
-  } catch (error) {
-    console.error('❌ Failed to extract userId from token:', error);
-    return null;
-  }
-};
-
 // Authentication service functions
 class AuthService {
+  // ✅ Simplified userId extraction from JWT
+  extractUserIdFromToken(token) {
+    try {
+      if (!token) return null;
+      
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+
+      const payload = parts[1];
+      const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+      const decodedPayload = atob(paddedPayload);
+      const parsed = JSON.parse(decodedPayload);
+
+      // Extract userId based on common JWT patterns
+      return parsed.userId || parsed.id || parsed.sub || null;
+    } catch (error) {
+      console.error('Failed to extract userId from token:', error);
+      return null;
+    }
+  }
+
   async register(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,8 +78,9 @@ class AuthService {
         body: JSON.stringify({
           email: userData.email,
           password: userData.password,
-          role: userData.role || 'shopper', // ✅ Ensure role is always included
-          // Don't include storeName for shoppers
+          role: userData.role || 'shopper',
+          // ✅ Include storeName if present (for vendors)
+          ...(userData.storeName && { storeName: userData.storeName })
         }),
       });
 
@@ -117,12 +92,14 @@ class AuthService {
         throw error;
       }
 
-      // ✅ API now returns user data in response
+      // Extract userId from the JWT token
+      const userId = data.token ? this.extractUserIdFromToken(data.token) : null;
+
       return {
         message: data.message,
         token: data.token,
-        user: data.user,
-        extractedUserId: data.user?.id // For backward compatibility
+        userId: userId,
+        originalResponse: data
       };
     } catch (error) {
       console.error('Registration error:', error);
@@ -132,17 +109,28 @@ class AuthService {
 
   async login(credentials) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      // 🎓 Advanced React Pattern: Conditional Spread Operator
+      // This is a more concise way to conditionally include properties
+      const requestBody = {
+        identifier: credentials.identifier || credentials.email,
+        password: credentials.password,
+        role: credentials.role || 'shopper',
+        // 🚨 TEMPORARY: Conditional spread for storeName
+        // Only includes storeName property if credentials.storeName exists
+        ...(credentials.storeName && { storeName: credentials.storeName })
+      };
+
+      console.log('🔐 Login request payload:', {
+        ...requestBody,
+        password: '***'
+      });
+
+      const response = await fetch(`${API_BASE_URL}/auth/login`, { // ✅ Remove /api prefix
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          identifier: credentials.identifier || credentials.email, // ✅ Use identifier
-          password: credentials.password,
-          role: credentials.role || 'shopper', // ✅ Include role
-          // Don't include storeName for shoppers
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -171,13 +159,13 @@ class AuthService {
 
   async verifyOTP(otpData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, { // ✅ Remove /api prefix
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: otpData.userId, // ✅ Use userId instead of email
+          userId: otpData.userId,
           code: otpData.code,
         }),
       });
@@ -199,13 +187,13 @@ class AuthService {
 
   async resendOTP(email) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, { // ✅ Remove /api prefix
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: email, // ✅ API accepts email or phone
+          email: email,
         }),
       });
 
@@ -223,6 +211,147 @@ class AuthService {
       throw error;
     }
   }
+
+  // ✅ Add missing methods for token/user management
+  setAuthToken(token) {
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+  }
+
+  removeAuthToken() {
+    localStorage.removeItem('token');
+  }
+
+  getAuthToken() {
+    return localStorage.getItem('token');
+  }
+
+  setUser(user) {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  }
+
+  removeUser() {
+    localStorage.removeItem('user');
+  }
+
+  getUser() {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  }
+
+  async logout() {
+    this.removeAuthToken();
+    this.removeUser();
+  }
+
+  // ✅ Add vendor methods
+  async registerVendor(userData) {
+    // Validate that storeName is provided for vendors
+    if (!userData.storeName) {
+      throw new Error('Store name is required for vendor registration');
+    }
+
+    return this.register({
+      email: userData.email,
+      password: userData.password,
+      role: 'vendor',
+      storeName: userData.storeName // ✅ Explicitly include storeName
+    });
+  }
+
+  async loginVendor(credentials) {
+    // ✅ Validate that storeName is provided for vendor login
+    if (!credentials.storeName) {
+      throw new Error('Store name is required for vendor login');
+    }
+
+    return this.login({
+      identifier: credentials.identifier || credentials.email,
+      password: credentials.password,
+      role: 'vendor',
+      storeName: credentials.storeName // ✅ Explicitly include storeName
+    });
+  }
+
+  // ✅ Add admin methods
+  async adminLogin(credentials) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/login`, { // ✅ Remove /api prefix
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Admin login failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Admin login error:', error);
+      throw error;
+    }
+  }
+
+  async forgotPassword(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, { // ✅ Remove /api prefix
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Forgot password failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw error;
+    }
+  }
+
+  async resetPassword(resetData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, { // ✅ Remove /api prefix
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resetData),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Password reset failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  }
 }
 
-export default AuthService;
+// ✅ Export instance for immediate use
+export default new AuthService();
