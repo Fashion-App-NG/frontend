@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingBagIcon, UserIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const UserTypeSelection = () => {
   const navigate = useNavigate();
@@ -36,8 +36,19 @@ export const UserTypeSelection = () => {
   };
 
   const handleGuestClick = () => {
-    navigate('/dashboard', { state: { userType: 'guest' } });
+    // ✅ LEARNING: Multiple navigation strategies for reliability
+    navigate('/browse?guest=true', { 
+      state: { userType: 'guest' },
+      replace: false
+    });
   };
+
+  const handleAdminClick = () => {
+    navigate('/admin/login');
+  };
+
+  // ✅ LEARNING: Environment-aware feature flagging
+  const showAdminCard = process.env.NODE_ENV === 'development';
 
   return (
     <div className="relative flex h-screen w-full bg-[#f9f9f9] overflow-hidden">
@@ -80,7 +91,7 @@ export const UserTypeSelection = () => {
         </div>
 
         {/* User Type Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className={`grid grid-cols-1 gap-6 mb-12 ${showAdminCard ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {/* Shopper Card */}
           <div
             className="group relative overflow-hidden bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] hover:from-[#dbeafe] hover:to-[#bfdbfe] border-2 border-[#0ea5e9] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
@@ -159,6 +170,35 @@ export const UserTypeSelection = () => {
               </div>
             </div>
           </div>
+
+          {/* Admin Card - Development Only */}
+          {showAdminCard && (
+            <div
+              className="group relative overflow-hidden bg-gradient-to-br from-[#fef2f2] to-[#fee2e2] hover:from-[#fee2e2] hover:to-[#fecaca] border-2 border-[#dc2626] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+              onClick={handleAdminClick}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-[#dc2626] p-3 rounded-full">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <span className="bg-[#dc2626] text-white px-2 py-1 rounded-full text-xs font-semibold">
+                    DEV ONLY
+                  </span>
+                </div>
+                <div>
+                  <p className="font-['Urbanist',Helvetica] font-bold text-[#dc2626] text-xl mb-2">
+                    Admin Portal
+                  </p>
+                  <p className="font-['Urbanist',Helvetica] font-normal text-[#991b1b] text-sm">
+                    Administrative dashboard and user management
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Information Section */}

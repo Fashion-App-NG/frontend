@@ -1,4 +1,4 @@
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 
@@ -52,8 +52,16 @@ function App() {
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
               
+              {/* ✅ FIXED: Guest browsing route */}
+              <Route 
+                path="/browse" 
+                element={
+                  <ShopperDashboardPage />
+                } 
+              />
+              
               {/* Smart dashboard routing */}
-              <Route path="/dashboard" element={<Navigate to="/shopper/dashboard" replace />} />
+              <Route path="/dashboard" element={<ShopperDashboardPage />} />
               <Route path="/shopper/dashboard" element={<ShopperDashboardPage />} />
               <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
               

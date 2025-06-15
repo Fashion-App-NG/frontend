@@ -402,6 +402,28 @@ class AuthService {
       throw error;
     }
   }
+
+  // ✅ Add missing admin-specific methods if they don't exist
+  setAdminToken(token) {
+    if (token) {
+      localStorage.setItem('adminToken', token);
+    }
+  }
+
+  getAdminToken() {
+    return localStorage.getItem('adminToken');
+  }
+
+  setAdminUser(user) {
+    if (user) {
+      localStorage.setItem('adminUser', JSON.stringify(user));
+    }
+  }
+
+  getAdminUser() {
+    const user = localStorage.getItem('adminUser');
+    return user ? JSON.parse(user) : null;
+  }
 }
 
 // ✅ Export instance for immediate use

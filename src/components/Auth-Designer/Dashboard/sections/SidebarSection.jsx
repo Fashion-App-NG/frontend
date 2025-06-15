@@ -1,5 +1,3 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
   BellIcon,
   CompassIcon,
@@ -8,86 +6,89 @@ import {
   LogOutIcon,
   MoonIcon,
   SettingsIcon,
-  ShoppingBagIcon,
-  UserPlusIcon,
-  LogInIcon,
+  ShoppingBagIcon
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
-
-const navigationItems = [
-  { icon: <LayoutDashboardIcon className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
-  { icon: <CompassIcon className="w-5 h-5" />, label: "Explore", path: "/explore" },
-  { icon: <ShoppingBagIcon className="w-5 h-5" />, label: "Orders", path: "/orders", requiresAuth: true },
-  { icon: <HeartIcon className="w-5 h-5" />, label: "Favourites", path: "/favourites", requiresAuth: true },
-  { icon: <BellIcon className="w-5 h-5" />, label: "Notifications", path: "/notifications", requiresAuth: true },
-  { icon: <SettingsIcon className="w-5 h-5" />, label: "Settings", path: "/settings", requiresAuth: true },
-];
 
 export const SidebarSection = ({ isGuest = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
 
-  const handleNavigation = (path) => {
-    navigate(path);
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
-  const handleGuestAction = (action) => {
-    if (action === 'signup') {
-      navigate('/register/shopper');
-    } else if (action === 'signin') {
-      navigate('/login');
+  // ✅ LEARNING: Smart dashboard navigation based on auth state
+  const handleDashboardClick = () => {
+    if (isAuthenticated) {
+      navigate('/dashboard'); // Authenticated user dashboard
+    } else {
+      navigate('/browse', { state: { userType: 'guest' } }); // Guest dashboard
     }
   };
 
-  const isActive = (path) => {
-    return location.pathname === path;
+  const handleNavigation = (path) => {
+    // Special handling for dashboard
+    if (path === '/dashboard') {
+      handleDashboardClick();
+      return;
+    }
+    navigate(path);
   };
 
-  return (
-    <aside className="w-[254px] h-full bg-[#f4f4f4] rounded-lg flex flex-col">
-      {/* Logo Section */}
-      <div className="flex items-start p-2.5 mt-[45px] ml-[21px]">
-        <div className="flex items-start gap-2.5">
-          <div className="relative w-8 h-[31px]">
-            <div className="absolute w-[30px] h-[29px] top-0.5 left-px bg-black" />
-            <img
-              className="absolute w-8 h-[31px] top-0 left-0"
-              alt="Star"
-              src="https://c.animaapp.com/mbr2jpx2DSKBSz/img/star-1.svg"
-            />
-          </div>
-          <div className="font-['Urbanist',Helvetica] font-bold text-black text-base tracking-[0] leading-[19.2px]">
-            FASHION&nbsp;&nbsp;
-            <br />
-            CULTURE
-          </div>
-        </div>
+  // ✅ FIXED: Add missing handleLogout function
+  const handleLogout = async () => {
+    try {
+      await logout(); // Call logout from auth context
+      navigate('/', { 
+        state: { 
+          message: 'Successfully logged out',
+          type: 'success'
+        } 
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still navigate even if logout API fails
+      navigate('/');
+    }
+  };
 
-        <div className="inline-flex items-center gap-0.5 ml-auto mr-8 rotate-180">
+  const navigationItems = [
+    { 
+      icon: <LayoutDashboardIcon className="w-5 h-5" />, 
+      label: "Dashboard", 
+      path: "/dashboard",
+      // No requiresAuth since we handle it dynamically
+    },
+    { icon: <CompassIcon className="w-5 h-5" />, label: "Explore", path: "/explore" },
+    { icon: <ShoppingBagIcon className="w-5 h-5" />, label: "Orders", path: "/orders", requiresAuth: true },
+    { icon: <HeartIcon className="w-5 h-5" />, label: "Favourites", path: "/favourites", requiresAuth: true },
+    { icon: <BellIcon className="w-5 h-5" />, label: "Notifications", path: "/notifications", requiresAuth: true },
+    { icon: <SettingsIcon className="w-5 h-5" />, label: "Settings", path: "/settings", requiresAuth: true },
+  ];
+
+  return (
+    <aside className="flex flex-col w-full h-screen bg-[#f9f9f9] rounded-lg">
+      {/* Logo - Clickable to home */}
+      <div className="px-[21px] pt-[45px] pb-[10px]">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+        >
           <img
-            className="relative w-[8.17px] h-[14.33px] mt-[-1.00px] mb-[-1.00px] ml-[-1.00px] -rotate-180"
-            alt="Vector"
-            src="https://c.animaapp.com/mbr2jpx2DSKBSz/img/vector-32.svg"
+            src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
+            alt="Fashion App Logo"
+            className="w-[38px] h-[31px] object-contain"
           />
-          <img
-            className="relative w-[8.17px] h-[14.33px] mt-[-1.00px] mb-[-1.00px] mr-[-1.00px] -rotate-180"
-            alt="Vector"
-            src="https://c.animaapp.com/mbr2jpx2DSKBSz/img/vector-32.svg"
-          />
-        </div>
+          <div className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px]">
+            <div className="whitespace-pre-wrap">FASHION  </div>
+            <div>CULTURE</div>
+          </div>
+        </button>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="mt-[75px] flex-1">
-        <ul className="flex flex-col">
-          {navigationItems.map((item, index) => {
-            // Show item if it doesn't require auth, or if user is not a guest
+      {/* Navigation items with updated handler */}
+      <nav className="flex-1 px-4 py-6">
+        <ul className="space-y-2">
+          {navigationItems.map((item) => {
             const shouldShow = !item.requiresAuth || !isGuest;
             
             if (!shouldShow) return null;
@@ -97,7 +98,7 @@ export const SidebarSection = ({ isGuest = false }) => {
                 <button 
                   onClick={() => handleNavigation(item.path)}
                   className={`flex w-full items-center gap-5 px-[29px] py-3.5 transition-colors ${
-                    isActive(item.path) 
+                    location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/browse')
                       ? 'bg-gray-300 text-[#2d2d2d]' 
                       : 'hover:bg-gray-200 text-[#2d2d2d]'
                   }`}
@@ -110,38 +111,6 @@ export const SidebarSection = ({ isGuest = false }) => {
               </li>
             );
           })}
-
-          {/* Guest-specific options */}
-          {isGuest && (
-            <>
-              <li className="mt-4 px-4">
-                <div className="h-px bg-gray-300 mb-4" />
-                <p className="text-xs text-gray-500 mb-3 px-2">Guest Actions</p>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleGuestAction('signup')}
-                  className="flex w-full items-center gap-5 px-[29px] py-3.5 transition-colors hover:bg-blue-100 text-blue-600"
-                >
-                  <UserPlusIcon className="w-5 h-5" />
-                  <span className="font-['Urbanist',Helvetica] font-medium text-base">
-                    Sign Up
-                  </span>
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleGuestAction('signin')}
-                  className="flex w-full items-center gap-5 px-[29px] py-3.5 transition-colors hover:bg-green-100 text-green-600"
-                >
-                  <LogInIcon className="w-5 h-5" />
-                  <span className="font-['Urbanist',Helvetica] font-medium text-base">
-                    Sign In
-                  </span>
-                </button>
-              </li>
-            </>
-          )}
         </ul>
       </nav>
 

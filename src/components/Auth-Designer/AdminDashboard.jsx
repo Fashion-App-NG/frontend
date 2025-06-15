@@ -1,5 +1,4 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 
 export const AdminDashboard = () => {
@@ -8,14 +7,46 @@ export const AdminDashboard = () => {
   const message = location.state?.message;
   const user = location.state?.user;
 
+  // ✅ LEARNING: Proper admin logout with cleanup
+  const handleAdminLogout = async () => {
+    try {
+      // Clear all admin-related data
+      authService.removeAuthToken();
+      authService.removeUser();
+      
+      // Clear admin-specific data if methods exist
+      if (authService.setAdminToken) {
+        localStorage.removeItem('adminToken');
+      }
+      if (authService.setAdminUser) {
+        localStorage.removeItem('adminUser');
+      }
+
+      // Navigate to home with logout message
+      navigate('/', { 
+        state: { 
+          message: 'Successfully logged out from admin dashboard',
+          type: 'success'
+        } 
+      });
+    } catch (error) {
+      console.error('Admin logout error:', error);
+      // Still navigate even if cleanup fails
+      navigate('/');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            {/* Logo */}
-            <div className="flex items-center gap-1">
+            {/* Logo - Clickable to home */}
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+            >
               <img
                 src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
                 alt="Fashion App Logo"
@@ -24,7 +55,7 @@ export const AdminDashboard = () => {
               <div className="font-['Urbanist',Helvetica] font-bold text-black text-base">
                 Fashion App Admin
               </div>
-            </div>
+            </button>
 
             {/* User Info & Logout */}
             <div className="flex items-center gap-4">
@@ -41,10 +72,7 @@ export const AdminDashboard = () => {
                 )}
               </div>
               <button
-                onClick={() => {
-                  authService.clearAdminAuth();
-                  navigate('/admin/login');
-                }}
+                onClick={handleAdminLogout}
                 className="bg-[#303030] text-[#edff8c] px-4 py-2 rounded hover:bg-[#404040] transition-colors text-sm"
               >
                 Logout
