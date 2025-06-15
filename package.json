@@ -20,18 +20,21 @@
     "start": "react-scripts start",
     "build": "react-scripts build", 
     "build:production": "REACT_APP_ENV=production react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "env:check": "echo $REACT_APP_API_BASE_URL",
-    "preview": "npx serve -s build",
-    "netlify:build": "npm run build",
+    
+    "prebuild": "npm run ensure-ui",
+    "prebuild:designer": "npm run switch:designer",
+    "prebuild:ai": "npm run switch:ai",
+    "build:designer": "npm run switch:designer && npm run build",
+    "build:ai": "npm run switch:ai && npm run build",
+    
+    "ensure-ui": "node scripts/ensure-ui.js",
+    
+    "netlify:build": "npm run ensure-ui && npm run build",
     
     "switch:ai": "node scripts/switch-ui.js ai",
     "switch:designer": "node scripts/switch-ui.js designer", 
     "dev:ai": "npm run switch:ai && npm start",
     "dev:designer": "npm run switch:designer && npm start",
-    "build:ai": "npm run switch:ai && npm run build",
-    "build:designer": "npm run switch:designer && npm run build",
     "check:ui": "node scripts/check-ui.js",
     
     "git:add-core": "git add package.json src/App.jsx public/ *.config.js netlify.toml .gitignore",

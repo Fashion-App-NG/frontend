@@ -1,11 +1,20 @@
 [build]
   base = "."
-  command = "npm ci --include=dev && npm run build"
+  command = "npm ci --include=dev && npm run switch:designer && npm run build"
   publish = "build/"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  # ✅ NEW: Environment variable to control UI selection
+  UI_TYPE = "designer"
+
+# ✅ NEW: Context-specific builds for different UIs
+[context.production]
+  command = "npm ci --include=dev && npm run switch:designer && npm run build"
+
+[context.ai-branch]
+  command = "npm ci --include=dev && npm run switch:ai && npm run build"
 
 # Redirect all routes to index.html for client-side routing
 [[redirects]]
