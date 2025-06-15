@@ -7,44 +7,6 @@ if (process.env.NODE_ENV === 'development') {
   console.log('🔧 Environment:', process.env.NODE_ENV);
 }
 
-// Helper function for making HTTP requests
-const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  };
-
-  // Only log in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🚀 API Request: ${options.method || 'GET'} ${url}`);
-    console.log('📤 Headers:', config.headers);
-    console.log('📤 Body:', options.body);
-  }
-
-  try {
-    const response = await fetch(url, config);
-    const data = await response.json();
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📥 Response [${response.status}]:`, data);
-    }
-
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return data;
-  } catch (error) {
-    console.error('💥 API request failed:', error);
-    throw error;
-  }
-};
-
 // Authentication service functions
 class AuthService {
   // ✅ Simplified userId extraction from JWT
@@ -426,5 +388,6 @@ class AuthService {
   }
 }
 
-// ✅ Export instance for immediate use
-export default new AuthService();
+// ✅ FIXED: Assign to variable before exporting
+const authServiceInstance = new AuthService();
+export default authServiceInstance;

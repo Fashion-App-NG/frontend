@@ -10,12 +10,9 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
   const [email, setEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [userType, setUserType] = useState('shopper');
-  const [isLoading, setIsLoading] = useState(false); // ✅ Internal loading state
-  const [lastResendTime, setLastResendTime] = useState(0); // ✅ Rate limiting
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastResendTime, setLastResendTime] = useState(0);
   const inputRefs = useRef([]);
-
-  // ✅ Combine prop loading with internal loading
-  const isActuallyLoading = propIsLoading || isLoading;
 
   // ✅ Rate limiting for resend requests
   const canResend = () => {

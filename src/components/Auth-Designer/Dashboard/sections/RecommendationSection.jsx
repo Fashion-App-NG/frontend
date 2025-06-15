@@ -1,14 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 export const RecommendationSection = () => {
-  const navigate = useNavigate();
-
-  const handleDiscoverCulture = () => {
-    // Navigate to explore page or show more products
-    console.log('Navigate to explore/discover page');
-  };
-
   return (
     <div className="w-full max-w-[451px] bg-white rounded-lg shadow-sm">
       <div className="p-7">
@@ -29,7 +20,7 @@ export const RecommendationSection = () => {
 
           <div className="pt-2">
             <button 
-              onClick={handleDiscoverCulture}
+              // onClick={handleDiscoverCulture}
               className="bg-[#303030] text-[#edff8c] rounded-[26px] h-auto px-[18px] py-[17px] hover:bg-[#404040] transition-colors flex items-center"
             >
               <span className="font-['Urbanist',Helvetica] font-semibold text-sm leading-[14.4px] tracking-[0]">

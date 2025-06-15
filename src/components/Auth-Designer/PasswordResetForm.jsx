@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
@@ -33,6 +33,19 @@ export const PasswordResetForm = () => {
     const cooldownPeriod = 30 * 1000; // 30 seconds
     return timeSinceLastResend > cooldownPeriod;
   };
+
+  // ✅ FIXED: Use useCallback to memoize handleOtpSubmit
+  const handleOtpSubmit = useCallback(async () => {
+    const otpCode = otp.join('');
+    
+    if (otpCode.length !== 6) {
+      setError('Please enter all 6 digits');
+      return;
+    }
+
+    setError('');
+    setStep('password');
+  }, [otp]); // ✅ Include otp as dependency since it's used inside
 
   const handleOtpChange = (value, index) => {
     if (value.length <= 1 && /^[0-9]*$/.test(value)) {
@@ -73,22 +86,22 @@ export const PasswordResetForm = () => {
       e.preventDefault();
       const otpCode = otp.join('');
       if (otpCode.length === 6) {
-        handleOtpSubmit();
+        handleOtpSubmit(); // ✅ This will work with useCallback
       }
     }
   };
 
-  const handleOtpSubmit = async () => {
+  // ✅ FIXED: Now we can safely include handleOtpSubmit in dependencies
+  useEffect(() => {
     const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      setError('Please enter all 6 digits');
-      return;
+    if (otpCode.length === 6 && otpCode.match(/^\d{6}$/)) {
+      const timer = setTimeout(() => {
+        handleOtpSubmit(); // ✅ Safe to call with useCallback
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-
-    setError('');
-    setStep('password');
-  };
+  }, [otp, handleOtpSubmit]); // ✅ Include handleOtpSubmit in dependencies
 
   const handlePasswordReset = async (e) => {
     e.preventDefault();
@@ -189,18 +202,6 @@ export const PasswordResetForm = () => {
     }
   };
 
-  // Auto-submit OTP when complete
-  useEffect(() => {
-    const otpCode = otp.join('');
-    if (otpCode.length === 6 && otpCode.match(/^\d{6}$/) && step === 'otp') {
-      const timer = setTimeout(() => {
-        handleOtpSubmit();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [otp, step]);
-
   return (
     <div className="flex flex-col">
       {/* Password Reset Indicator */}
@@ -273,7 +274,7 @@ export const PasswordResetForm = () => {
 
           <button
             type="button"
-            onClick={handleOtpSubmit}
+            onClick={handleOtpSubmit} // ✅ This will now work
             disabled={isLoading || otp.join('').length !== 6}
             className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >

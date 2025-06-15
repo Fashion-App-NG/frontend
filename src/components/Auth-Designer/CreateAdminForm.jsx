@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PasswordInput } from './PasswordInput';
 import authService from '../../services/authService'; // ✅ Use default import (no curly braces)
+import { PasswordInput } from './PasswordInput';
 
 export const CreateAdminForm = () => {
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ export const CreateAdminForm = () => {
     }
 
     // Optional: Add phone format validation
-    const phonePattern = /^\+?[\d\s\-\(\)]{10,}$/;
+    const phonePattern = /^\+?[\d\s\-()]{10,}$/;
     if (!phonePattern.test(data.phone.trim())) {
       setError('Please enter a valid phone number (minimum 10 digits)');
       setIsLoading(false);
