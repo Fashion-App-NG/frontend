@@ -45,10 +45,10 @@ export const VendorLoginForm = () => {
 
     try {
       const response = await authService.loginVendor({
-        identifier: data.email, // ✅ Changed from 'email' to 'identifier'
+        identifier: data.email,
         password: data.password,
-        role: "vendor", // ✅ Add required role field
-        storeName: data.storeName // ✅ Required for vendors
+        role: "vendor",
+        storeName: data.storeName
       });
 
       console.log('✅ Vendor login successful:', response);
@@ -65,8 +65,8 @@ export const VendorLoginForm = () => {
 
       setIsAuthenticated(true);
 
-      // Navigate to vendor dashboard after successful login
-      navigate('/dashboard', { 
+      // ✅ React Router: Navigate to VENDOR dashboard specifically
+      navigate('/vendor/dashboard', { 
         state: { 
           message: `Welcome back, ${response.user?.storeName || data.storeName}!` 
         }

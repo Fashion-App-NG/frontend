@@ -302,6 +302,57 @@ class AuthService {
     }
   }
 
+  // ✅ ADD MISSING createAdmin METHOD
+  async createAdmin(adminData) {
+    try {
+      console.log('🔐 Creating admin with data:', {
+        ...adminData,
+        password: '***'
+      });
+
+      // Get current auth token for authorization
+      const token = this.getAuthToken();
+      if (!token) {
+        throw new Error('Authentication required. Please login again.');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ Include JWT token for auth
+        },
+        body: JSON.stringify({
+          email: adminData.email,
+          password: adminData.password,
+          firstName: adminData.firstName,
+          lastName: adminData.lastName,
+          phone: adminData.phone,
+          role: adminData.role || 'admin' // ✅ Default to 'admin' role
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const error = new Error(data.message || 'Admin creation failed');
+        error.status = response.status;
+        throw error;
+      }
+
+      console.log('✅ Admin created successfully:', {
+        ...data,
+        // Don't log sensitive data
+        admin: data.admin ? { ...data.admin, password: undefined } : undefined
+      });
+
+      return data;
+    } catch (error) {
+      console.error('❌ Create admin error:', error);
+      throw error;
+    }
+  }
+
   async forgotPassword(email) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, { // ✅ Remove /api prefix

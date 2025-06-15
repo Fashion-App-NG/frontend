@@ -1,29 +1,29 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 
 // Import pages
-import UserTypeSelectionPage from './pages/UserTypeSelectionPage';
-import DashboardRouter from './components/Common/DashboardRouter';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import VendorRegisterPage from './pages/VendorRegisterPage';
-import VendorLoginPage from './pages/VendorLoginPage';
-import OTPPage from './pages/OTPPage';
 import ExplorePage from './pages/ExplorePage';
-import OrdersPage from './pages/OrdersPage';
 import FavouritesPage from './pages/FavouritesPage';
+import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import OrdersPage from './pages/OrdersPage';
+import OTPPage from './pages/OTPPage';
+import RegisterPage from './pages/RegisterPage';
+import UserTypeSelectionPage from './pages/UserTypeSelectionPage';
+import VendorLoginPage from './pages/VendorLoginPage';
+import VendorRegisterPage from './pages/VendorRegisterPage';
 
 // Import forgot password pages
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 
 // ✅ Import admin pages
+import AdminDashboardPage from './pages/AdminDashboardPage'; // ✅ New wrapper
 import AdminLoginPage from './pages/AdminLoginPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';      // ✅ New wrapper
-import CreateAdminPageWrapper from './pages/CreateAdminPage';      // ✅ New wrapper
+import CreateAdminPageWrapper from './pages/CreateAdminPage'; // ✅ New wrapper
+import ShopperDashboardPage from './pages/ShopperDashboardPage';
+import VendorDashboardPage from './pages/VendorDashboardPage';
 
 function App() {
   return (
@@ -47,22 +47,20 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<PasswordResetPage />} />
               
-              {/* ✅ Admin routes */}
+              {/* Admin routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
               
               {/* Smart dashboard routing */}
-              <Route path="/dashboard" element={<DashboardRouter />} />
-              <Route path="/home" element={<DashboardRouter />} />
+              <Route path="/dashboard" element={<Navigate to="/shopper/dashboard" replace />} />
+              <Route path="/shopper/dashboard" element={<ShopperDashboardPage />} />
+              <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
               
               {/* Sidebar navigation routes */}
               <Route path="/explore" element={<ExplorePage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/favourites" element={<FavouritesPage />} />
-              
-              {/* Legacy/fallback routes */}
-              <Route path="/register" element={<RegisterPage />} />
               
               {/* 404 page */}
               <Route path="*" element={<NotFoundPage />} />

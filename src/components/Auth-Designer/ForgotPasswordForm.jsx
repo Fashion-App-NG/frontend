@@ -49,16 +49,16 @@ export const ForgotPasswordForm = () => {
 
     } catch (error) {
       console.error('❌ Forgot password failed:', error);
-      
-      // Handle specific error cases based on API spec
-      if (error.message.includes('Missing email') || error.message.includes('400')) {
+
+      // ✅ IMPROVED: Use error.status instead of parsing message
+      if (error.status === 400) {
         setError('Email address is required');
-      } else if (error.message.includes('User not found') || error.message.includes('404')) {
+      } else if (error.status === 404) {
         setError('No account found with this email address. Please check your email or create a new account.');
-      } else if (error.message.includes('500')) {
-        setError('Unable to send reset code at this time. Please try again later.');
+      } else if (error.status === 500) {
+        setError('Server error. Please try again later.');
       } else {
-        setError(error.message || 'Failed to send reset code. Please try again.');
+        setError(error.message || 'Failed to send reset email. Please try again.');
       }
     } finally {
       setIsLoading(false);
