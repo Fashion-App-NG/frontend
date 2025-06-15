@@ -1,4 +1,3 @@
-import React from 'react';
 import { VendorLoginPageForm } from '../components/Auth-Designer/VendorLoginPageForm';
 
 const VendorLoginPage = () => {

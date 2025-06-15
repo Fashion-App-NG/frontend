@@ -2,10 +2,10 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 
-// Import pages
+// ✅ LEARNING: Verify all page imports exist
 import ExplorePage from './pages/ExplorePage';
 import FavouritesPage from './pages/FavouritesPage';
-import LoginPage from './pages/LoginPage';
+import LoginPage from './pages/LoginPage'; // ✅ This will now work
 import NotFoundPage from './pages/NotFoundPage';
 import OrdersPage from './pages/OrdersPage';
 import OTPPage from './pages/OTPPage';
@@ -18,10 +18,10 @@ import VendorRegisterPage from './pages/VendorRegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 
-// ✅ Import admin pages
-import AdminDashboardPage from './pages/AdminDashboardPage'; // ✅ New wrapper
+// Import admin pages
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
-import CreateAdminPageWrapper from './pages/CreateAdminPage'; // ✅ New wrapper
+import CreateAdminPageWrapper from './pages/CreateAdminPage';
 import ShopperDashboardPage from './pages/ShopperDashboardPage';
 import VendorDashboardPage from './pages/VendorDashboardPage';
 
@@ -52,13 +52,8 @@ function App() {
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
               
-              {/* ✅ FIXED: Guest browsing route */}
-              <Route 
-                path="/browse" 
-                element={
-                  <ShopperDashboardPage />
-                } 
-              />
+              {/* Guest browsing route */}
+              <Route path="/browse" element={<ShopperDashboardPage />} />
               
               {/* Smart dashboard routing */}
               <Route path="/dashboard" element={<ShopperDashboardPage />} />

@@ -1,5 +1,4 @@
-import React from 'react';
-import { LoginPageForm } from '../components/Auth/LoginPageForm';
+import { LoginPageForm } from '../components/Auth-Designer/LoginPageForm';
 
 const LoginPage = () => {
   return (
