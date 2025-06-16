@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { PasswordInput } from './PasswordInput';
-import { authService } from '../../services/authService';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import authService from '../../services/authService'; // ✅ Default import
+import { PasswordInput } from './PasswordInput';
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -42,28 +42,29 @@ export const LoginForm = () => {
     }
 
     try {
-      // Call the login API
-      const response = await authService.login({
-        email: data.email,
-        password: data.password
+      const response = await authService.login({ // ✅ Now uses default import
+        identifier: data.email, // ✅ Changed from 'email' to 'identifier'
+        password: data.password,
+        role: "shopper", // ✅ Add required role field
+        // Don't include storeName for shoppers
       });
 
       console.log('✅ Login successful:', response);
 
       // Store authentication data
       if (response.token) {
-        authService.setAuthToken(response.token);
+        authService.setAuthToken(response.token); // ✅ Now uses default import
       }
 
       if (response.user) {
-        authService.setUser(response.user);
+        authService.setUser(response.user); // ✅ Now uses default import
         setUser(response.user);
       }
 
       setIsAuthenticated(true);
 
-      // Navigate to home page or dashboard after successful login
-      navigate('/', { 
+      // Navigate to dashboard after successful login
+      navigate('/dashboard', { 
         state: { 
           message: `Welcome back, ${response.user?.email || 'User'}!` 
         }
@@ -72,12 +73,15 @@ export const LoginForm = () => {
     } catch (error) {
       console.error('❌ Login failed:', error);
 
-      // Handle specific error cases based on API docs
-      if (error.message.includes('verify OTP')) {
-        setError('Please verify your email address before logging in. Check your email for the verification code.');
-        // You could also redirect to OTP verification here if needed
-      } else if (error.message.includes('Invalid credentials')) {
+      // Handle new error codes
+      if (error.status === 400) {
+        setError('Please fill in all required fields.');
+      } else if (error.status === 401) {
         setError('Invalid email or password. Please try again.');
+      } else if (error.status === 403) {
+        setError('Please verify your email address before logging in. Check your email for the verification code.');
+      } else if (error.status === 500) {
+        setError('Server error. Please try again later.');
       } else {
         setError(error.message || 'Login failed. Please try again.');
       }
@@ -88,7 +92,15 @@ export const LoginForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col items-stretch mt-[66px] max-md:ml-1 max-md:mt-10">
+      {/* Shopper Onboarding Indicator */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="bg-[#3b82f6] text-white px-3 py-1 rounded-full text-xs font-semibold">
+          Shopping Experience
+        </div>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">Personal Sign In</span>
+      </div>
+
+      <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
         <h1 className="text-black text-[32px] font-bold">
           Sign In to Your Account
         </h1>
@@ -129,13 +141,13 @@ export const LoginForm = () => {
       <PasswordInput 
         name="password"
         placeholder="Enter Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 
       <div className="flex justify-end mt-2">
         <button 
           type="button" 
+          onClick={() => navigate('/forgot-password')} // ✅ Add navigation to forgot password
           disabled={isLoading}
           className="text-[rgba(46,46,46,1)] text-sm font-normal underline hover:no-underline disabled:opacity-50"
         >
@@ -143,6 +155,7 @@ export const LoginForm = () => {
         </button>
       </div>
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={isLoading}
@@ -151,11 +164,12 @@ export const LoginForm = () => {
         {isLoading ? 'Signing in...' : 'Sign in'}
       </button>
 
+      {/* Navigation Link */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">New here?</span>
         <button 
-          type="button" 
-          onClick={() => navigate('/register')}
+          type="button"
+          onClick={() => navigate('/register/shopper')}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >

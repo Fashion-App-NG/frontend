@@ -46,3 +46,12 @@ Thumbs.db
 
 # Netlify
 /.netlify
+
+# ✅ UPDATED: Keep Auth directory out of git but ensure build copies work
+src/components/Auth
+
+# ✅ IMPORTANT: Ensure Auth-Designer and Auth-AI are tracked
+!src/components/Auth-Designer/
+!src/components/Auth-AI/
+
+.copilot/README.md

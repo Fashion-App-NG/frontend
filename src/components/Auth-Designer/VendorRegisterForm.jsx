@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import { SocialLogin } from './SocialLogin';
-import { authService } from '../../services/authService';
 
-export const RegisterForm = () => {
+export const VendorRegisterForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,13 +19,14 @@ export const RegisterForm = () => {
     const formData = new FormData(e.target);
     const data = {
       email: formData.get('email'),
+      storeName: formData.get('storeName'),
       password: formData.get('password'),
       repeatPassword: formData.get('repeatPassword'),
       terms: formData.get('terms')
     };
 
     // Client-side validation
-    if (!data.email || !data.password || !data.repeatPassword) {
+    if (!data.email || !data.storeName || !data.password || !data.repeatPassword) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
@@ -44,51 +45,45 @@ export const RegisterForm = () => {
     }
 
     try {
-      // Call the registration API
-      const response = await authService.register({
+      const response = await authService.registerVendor({
         email: data.email,
-        password: data.password
+        password: data.password,
+        role: "vendor",
+        storeName: data.storeName,
       });
 
-      console.log('🔥 Registration response:', response);
+      console.log('🔥 Vendor registration response:', response);
 
-      // Use the extracted userId from authService
-      const userId = response.extractedUserId;
+      // ✅ Direct userId extraction - NO GUESSING
+      const userId = response.userId;
       
-      if (!userId) {
-        setError('Registration successful but verification setup failed. Invalid user ID format. Please try again.');
-        setIsLoading(false);
-        return;
+      if (userId) {
+        setSuccess('Vendor registration successful! Please check your email for verification code.');
+        
+        // Store email and userId for OTP verification
+        sessionStorage.setItem('pendingVerificationEmail', data.email);
+        sessionStorage.setItem('pendingVerificationUserId', userId);
+        sessionStorage.setItem('pendingUserType', 'vendor');
+        
+        // Redirect to OTP verification page
+        setTimeout(() => {
+          navigate('/verify-otp');
+        }, 2000);
+      } else {
+        setError('Registration completed but unable to proceed with verification. Please contact support.');
       }
-
-      // Handle delivery failure
-      if (response.error === 'DELIVERY_FAILED') {
-        setError(response.message || 'Failed to send verification code. Please check your email and try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      setSuccess('Registration successful! Please check your email for verification code.');
-      
-      // Store email and userId for OTP verification
-      sessionStorage.setItem('pendingVerificationEmail', data.email);
-      sessionStorage.setItem('pendingVerificationUserId', userId);
-      
-      console.log(`✅ Stored in session - Email: ${data.email}, UserId: "${userId}"`);
-      
-      // Redirect to OTP verification page after successful registration
-      setTimeout(() => {
-        navigate('/verify-otp');
-      }, 2000);
-
     } catch (error) {
-      console.error('❌ Registration error:', error);
+      console.error('❌ Vendor registration error:', error);
       
-      // Handle specific error cases
-      if (error.message.includes('already exists')) {
+      // Handle new error codes
+      if (error.status === 400) {
+        if (error.message.includes('storeName')) {
+          setError('Store name is required for vendor registration.');
+        } else {
+          setError('Please fill in all required fields correctly.');
+        }
+      } else if (error.status === 409) {
         setError('This email is already registered. Please use a different email or try logging in.');
-      } else if (error.message.includes('DELIVERY_FAILED')) {
-        setError('Failed to send verification code. Please check your email address and try again.');
       } else {
         setError(error.message || 'Registration failed. Please try again.');
       }
@@ -99,12 +94,20 @@ export const RegisterForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col items-stretch mt-[66px] max-md:ml-1 max-md:mt-10">
+      {/* Vendor Onboarding Indicator */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
+          Vendor Portal
+        </div>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">Business Registration</span>
+      </div>
+
+      <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
         <h1 className="text-black text-[32px] font-bold">
-          Create Your Account
+          Create Vendor Account
         </h1>
         <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
-          Get started for free
+          Start selling on our platform today!
         </p>
       </div>
 
@@ -122,7 +125,21 @@ export const RegisterForm = () => {
         </div>
       )}
 
+      {/* Store Name Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
+        Store Name
+      </label>
+      <input
+        type="text"
+        name="storeName"
+        placeholder="Enter Store name"
+        required
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+      />
+
+      {/* Email Address Field */}
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Email Address
       </label>
       <input
@@ -134,26 +151,27 @@ export const RegisterForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
+      {/* Password Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Password
       </label>
       <PasswordInput 
         name="password"
         placeholder="Enter Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/fa61a7ea2e8a3f0de0c22adc1913896bf9ccc751?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 
+      {/* Repeat Password Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Repeat Password
       </label>
       <PasswordInput 
         name="repeatPassword"
         placeholder="Repeat Password" 
-        eyeIconUrl="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/721587a1008fbb598d4b26f6f18fcdb426762d83?placeholderIfAbsent=true"
         disabled={isLoading}
       />
 
+      {/* Terms and Conditions */}
       <div className="flex items-center gap-[5px] text-xs text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-2.5 max-md:ml-0.5">
         <input
           type="checkbox"
@@ -168,19 +186,21 @@ export const RegisterForm = () => {
         </label>
       </div>
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={isLoading}
-        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[60px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[44px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Creating Account...' : 'Continue'}
+        {isLoading ? 'Creating account...' : 'Create Vendor Account'}
       </button>
 
+      {/* Navigation Link */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
-        <span className="self-stretch my-auto">Already have account?</span>
+        <span className="self-stretch my-auto">Already have an account?</span>
         <button 
-          type="button" 
-          onClick={() => navigate('/login')}
+          type="button"
+          onClick={() => navigate('/login/vendor')}  // ✅ Fixed: Routes to vendor login
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >
@@ -193,4 +213,4 @@ export const RegisterForm = () => {
   );
 };
 
-export default RegisterForm;
+export default VendorRegisterForm;

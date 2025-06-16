@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "lucide-react": "^0.263.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
@@ -20,11 +21,24 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "build:production": "REACT_APP_ENV=production react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "env:check": "echo $REACT_APP_API_BASE_URL",
-    "preview": "npx serve -s build",
-    "netlify:build": "npm run build"
+    "prebuild": "npm run ensure-ui",
+    "prebuild:designer": "npm run switch:designer",
+    "prebuild:ai": "npm run switch:ai",
+    "build:designer": "npm run switch:designer && npm run build",
+    "build:ai": "npm run switch:ai && npm run build",
+    "ensure-ui": "node scripts/ensure-ui.js",
+    "netlify:build": "npm run ensure-ui && npm run build",
+    "switch:ai": "node scripts/switch-ui.js ai",
+    "switch:designer": "node scripts/switch-ui.js designer",
+    "dev:ai": "npm run switch:ai && npm start",
+    "dev:designer": "npm run switch:designer && npm start",
+    "check:ui": "node scripts/check-ui.js",
+    "git:add-core": "git add package.json src/App.jsx public/ *.config.js netlify.toml .gitignore",
+    "git:add-shared": "git add src/services/ src/contexts/ src/utils/ src/hooks/ src/components/Common/ src/components/Vendor/",
+    "git:add-docs": "git add README.md docs/",
+    "git:add-all-shared": "npm run git:add-core && npm run git:add-shared && npm run git:add-docs",
+    "git:add-ai": "git add src/components/Auth-AI/ src/pages/",
+    "git:add-designer": "git add src/components/Auth-Designer/ src/pages/"
   },
   "eslintConfig": {
     "extends": [
