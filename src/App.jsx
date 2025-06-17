@@ -29,6 +29,9 @@ import VendorDashboardPage from './pages/VendorDashboardPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 
+// Import vendor product upload page
+import VendorProductUploadPage from './pages/VendorProductUploadPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -64,6 +67,9 @@ function App() {
               <Route path="/dashboard" element={<ShopperDashboardPage />} />
               <Route path="/shopper/dashboard" element={<ShopperDashboardPage />} />
               <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
+              
+              {/* Vendor routes */}
+              <Route path="/vendor/products/add" element={<VendorProductUploadPage />} />
               
               {/* Sidebar navigation routes */}
               <Route path="/explore" element={<ExplorePage />} />

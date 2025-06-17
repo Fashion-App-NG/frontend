@@ -1,9 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 // React Component: Vendor navigation sidebar matching design specs
 export const VendorSidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
 
   // React Event Handler: Logout functionality
@@ -48,8 +49,15 @@ export const VendorSidebar = () => {
           <span className="text-[#2e2e2e] text-[16px] leading-[120%]">Orders</span>
         </div>
 
-        {/* Products */}
-        <div className="h-[47px] flex items-center px-[21px] gap-[22px] hover:bg-gray-100 cursor-pointer">
+        {/* Products - Active when on product pages */}
+        <div 
+          className={`h-[47px] flex items-center px-[21px] gap-[22px] cursor-pointer transition-colors ${
+            location.pathname.includes('/vendor/products') 
+              ? 'bg-[#cfe1ca] rounded-none' 
+              : 'hover:bg-gray-100'
+          }`}
+          onClick={() => navigate('/vendor/products/add')}
+        >
           <div className="w-[20px] h-[18px] text-gray-700">📋</div>
           <span className="text-[#2e2e2e] text-[16px] leading-[120%]">Products</span>
         </div>
