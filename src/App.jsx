@@ -30,7 +30,12 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 
 // Import vendor product upload page
+import VendorNotificationsPage from './pages/VendorNotificationsPage';
+import VendorOrdersPage from './pages/VendorOrdersPage';
+import VendorProductListPage from './pages/VendorProductListPage';
 import VendorProductUploadPage from './pages/VendorProductUploadPage';
+import VendorSalesPage from './pages/VendorSalesPage';
+import VendorSettingsPage from './pages/VendorSettingsPage';
 
 function App() {
   return (
@@ -69,7 +74,13 @@ function App() {
               <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
               
               {/* Vendor routes */}
+              <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
+              <Route path="/vendor/orders" element={<VendorOrdersPage />} />
+              <Route path="/vendor/products" element={<VendorProductListPage />} />
               <Route path="/vendor/products/add" element={<VendorProductUploadPage />} />
+              <Route path="/vendor/sales" element={<VendorSalesPage />} />
+              <Route path="/vendor/notifications" element={<VendorNotificationsPage />} />
+              <Route path="/vendor/settings" element={<VendorSettingsPage />} />
               
               {/* Sidebar navigation routes */}
               <Route path="/explore" element={<ExplorePage />} />
