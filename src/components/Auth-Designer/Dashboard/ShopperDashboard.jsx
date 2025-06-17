@@ -1,32 +1,30 @@
-import React from 'react';
 import { SearchIcon } from 'lucide-react';
-import { SidebarSection } from './sections/SidebarSection';
-import { DiscoverSection } from './sections/DiscoverSection';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
+import { DiscoverSection } from './sections/DiscoverSection'; // ✅ Now displays "Discover Your Fashion Culture"
 import { FeaturedSection } from './sections/FeaturedSection';
 import { PopularFabricsSection } from './sections/PopularFabricsSection';
-import { RecommendationSection } from './sections/RecommendationSection';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { RecommendationSection } from './sections/RecommendationSection'; // ✅ Now displays "Recommendations" product grid
+import { SidebarSection } from './sections/SidebarSection';
 
 export const ShopperDashboard = ({ isGuest = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // Guest user object for display purposes
   const displayUser = isGuest ? { firstName: 'Guest' } : user;
 
   return (
-    <div className="w-full max-w-[1440px] min-h-screen bg-[#d8dfe9] overflow-hidden mx-auto">
+    <div className="w-full min-h-screen bg-[#d8dfe9] overflow-hidden">
       <div className="relative flex">
-        {/* Sidebar */}
-        <div className="w-[18%] h-screen fixed">
+        {/* Fixed Sidebar */}
+        <div className="w-[280px] h-screen fixed left-0 top-0 z-10">
           <SidebarSection isGuest={isGuest} />
         </div>
 
         {/* Main content area */}
-        <div className="flex-1 flex flex-col ml-[18%]">
+        <div className="flex-1 flex flex-col ml-[280px] min-h-screen max-w-[calc(100vw-280px)]">
           {/* Top navigation bar */}
-          <header className="w-full py-7 px-6 flex items-center justify-between border-b border-gray-200 bg-white/50 backdrop-blur-sm">
+          <header className="w-full py-7 px-6 flex items-center justify-between border-b border-gray-200 bg-[#d8dfe9] backdrop-blur-sm sticky top-0 z-20">
             {/* User greeting */}
             <div className="flex flex-col w-[300px] items-start gap-1">
               <div className="flex items-center gap-3">
@@ -74,59 +72,30 @@ export const ShopperDashboard = ({ isGuest = false }) => {
             </div>
           </header>
 
-          {/* Guest Welcome Banner */}
-          {isGuest && (
-            <div className="mx-6 mt-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-['Urbanist',Helvetica] font-semibold text-blue-900 text-lg">
-                    Welcome, Guest! 👋
-                  </h3>
-                  <p className="font-['Urbanist',Helvetica] font-normal text-blue-700 text-sm mt-1">
-                    You're browsing as a guest. Sign up to save favorites and complete purchases!
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate('/register/shopper')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Sign Up
-                  </button>
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="bg-white text-blue-600 border border-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Main content sections */}
-          <main className="flex-1 relative p-6 space-y-8">
-            {/* Hero Section with Featured and Recommendation */}
-            <div className="grid grid-cols-12 gap-6 h-[300px]">
-              {/* Recommendation Section */}
-              <div className="col-span-5">
-                <RecommendationSection />
-              </div>
-              
-              {/* Featured Section */}
-              <div className="col-span-7 flex items-center justify-center">
-                <FeaturedSection />
+          <main className="flex-1 p-6 space-y-6">
+            {/* Hero Section - Fixed layout with correct components */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="grid grid-cols-12 gap-6 min-h-[300px]">
+                {/* ✅ FIXED: DiscoverSection now shows "Discover Your Fashion Culture" */}
+                <div className="col-span-5">
+                  <DiscoverSection />
+                </div>
+                
+                {/* Featured Section */}
+                <div className="col-span-7 flex items-center justify-center">
+                  <FeaturedSection />
+                </div>
               </div>
             </div>
 
-            {/* Popular Fabrics Section */}
-            <div className="w-full">
+            {/* Combined Popular Fabrics and Recommendations Section */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-8">
+              {/* Popular Fabrics Section */}
               <PopularFabricsSection />
-            </div>
-
-            {/* Discover/Recommendation Products */}
-            <div className="w-full">
-              <DiscoverSection isGuest={isGuest} />
+              
+              {/* ✅ FIXED: RecommendationSection now shows "Recommendations" product grid */}
+              <RecommendationSection isGuest={isGuest} />
             </div>
           </main>
         </div>

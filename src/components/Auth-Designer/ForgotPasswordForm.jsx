@@ -1,12 +1,28 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 
 export const ForgotPasswordForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // ✅ Enhanced user type detection
+  const getUserType = () => {
+    // First check the current path
+    const path = location.pathname;
+    if (path.includes('/admin')) return 'admin';
+    if (path.includes('/vendor')) return 'vendor';
+    
+    // Check if navigated from specific login page
+    const fromPath = location.state?.from;
+    if (fromPath?.includes('/admin')) return 'admin';
+    if (fromPath?.includes('/vendor')) return 'vendor';
+    
+    return 'shopper';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,8 +53,12 @@ export const ForgotPasswordForm = () => {
       
       console.log('✅ Forgot password request successful:', response);
       
-      // Store email for password reset flow
+      // ✅ Store email AND user type for password reset flow
+      const userType = getUserType();
       sessionStorage.setItem('passwordResetEmail', email);
+      sessionStorage.setItem('passwordResetUserType', userType);
+      
+      console.log('🔍 Stored user type for password reset:', userType);
       
       setSuccess(response.message || 'An OTP has been sent to your email. Please check your email.');
       

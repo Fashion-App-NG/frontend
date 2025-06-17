@@ -164,6 +164,7 @@ export const VendorLoginForm = () => {
       <div className="flex justify-end mt-2">
         <button 
           type="button" 
+          onClick={() => navigate('/forgot-password')}
           disabled={isLoading}
           className="text-[rgba(46,46,46,1)] text-sm font-normal underline hover:no-underline disabled:opacity-50"
         >

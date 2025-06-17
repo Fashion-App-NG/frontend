@@ -7,24 +7,42 @@ export const PasswordResetForm = () => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [email, setEmail] = useState('');
+  const [userType, setUserType] = useState('shopper'); // ✅ Track user type
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [step, setStep] = useState('otp'); // 'otp' or 'password'
+  const [step, setStep] = useState('otp');
   const [lastResendTime, setLastResendTime] = useState(0);
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    // Get email from session storage
+    // Get email and user type from session storage
     const resetEmail = sessionStorage.getItem('passwordResetEmail');
+    const resetUserType = sessionStorage.getItem('passwordResetUserType') || 'shopper';
     
     if (resetEmail) {
       setEmail(resetEmail);
+      setUserType(resetUserType);
+      console.log('🔍 Retrieved user type for password reset:', resetUserType);
     } else {
       // Redirect to forgot password if no email found
       navigate('/forgot-password');
     }
   }, [navigate]);
+
+  // ✅ Enhanced navigation based on user type
+  const getLoginPath = (userType) => {
+    console.log('🎯 Determining login path for user type:', userType);
+    switch (userType) {
+      case 'vendor':
+        return '/login/vendor';
+      case 'admin':
+        return '/admin/login';
+      case 'shopper':
+      default:
+        return '/login';
+    }
+  };
 
   // Rate limiting for resend
   const canResend = () => {
@@ -103,6 +121,7 @@ export const PasswordResetForm = () => {
     }
   }, [otp, handleOtpSubmit]); // ✅ Include handleOtpSubmit in dependencies
 
+  // ✅ Fixed password reset with proper navigation
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -113,7 +132,6 @@ export const PasswordResetForm = () => {
     const password = formData.get('password');
     const confirmPassword = formData.get('confirmPassword');
 
-    // Validation
     if (!password || !confirmPassword) {
       setError('Please fill in all required fields');
       setIsLoading(false);
@@ -143,12 +161,16 @@ export const PasswordResetForm = () => {
       
       // Clear session data
       sessionStorage.removeItem('passwordResetEmail');
+      sessionStorage.removeItem('passwordResetUserType');
       
       setSuccess(response.message || 'Password reset successfully.');
       
-      // Redirect to login after success
+      // ✅ Navigate to appropriate login page based on user type
+      const loginPath = getLoginPath(userType);
+      console.log(`🎯 Redirecting ${userType} to ${loginPath}`);
+      
       setTimeout(() => {
-        navigate('/login', {
+        navigate(loginPath, {
           state: { message: 'Password reset successful! Please sign in with your new password.' }
         });
       }, 2000);
@@ -158,7 +180,7 @@ export const PasswordResetForm = () => {
       
       if (error.message.includes('Missing fields') || error.message.includes('400')) {
         setError('Invalid or expired reset code. Please try again.');
-        setStep('otp'); // Go back to OTP step
+        setStep('otp');
       } else if (error.message.includes('User not found') || error.message.includes('404')) {
         setError('Account not found. Please try the forgot password process again.');
         navigate('/forgot-password');
@@ -170,6 +192,12 @@ export const PasswordResetForm = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ✅ Also fix the "Remember your password?" link
+  const handleBackToLogin = () => {
+    const loginPath = getLoginPath(userType);
+    navigate(loginPath);
   };
 
   const handleResendCode = async () => {
@@ -204,13 +232,13 @@ export const PasswordResetForm = () => {
 
   return (
     <div className="flex flex-col">
-      {/* Password Reset Indicator */}
+      {/* Password Reset Indicator with user type */}
       <div className="flex items-center gap-2 mb-4">
         <div className="bg-[#3b82f6] text-white px-3 py-1 rounded-full text-xs font-semibold">
           Password Reset
         </div>
         <span className="text-[rgba(46,46,46,0.6)] text-sm">
-          {step === 'otp' ? 'Verify Code' : 'Set New Password'}
+          {step === 'otp' ? 'Verify Code' : 'Set New Password'} • {userType.charAt(0).toUpperCase() + userType.slice(1)}
         </span>
       </div>
 
@@ -343,12 +371,12 @@ export const PasswordResetForm = () => {
         </form>
       )}
 
-      {/* Navigation Links */}
+      {/* Navigation Links with proper routing */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">Remember your password?</span>
         <button 
           type="button"
-          onClick={() => navigate('/login')}
+          onClick={handleBackToLogin}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >

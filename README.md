@@ -1,251 +1,217 @@
-# Fashion App Frontend
+# Fashion Culture - Frontend
 
-React-based frontend for the Fashion Shopping Platform MVP with complete authentication flow and plans for comprehensive e-commerce functionality.
+A modern React-based fashion marketplace platform supporting multiple user types (shoppers, vendors, and admins) with role-based authentication and dashboards.
 
-## ✅ Current Features
-- **User Registration** with email/password validation
-- **OTP Email Verification** with JWT token handling  
-- **User Login** with persistent authentication
-- **Password Reset** with email OTP verification
-- **User Logout** with session cleanup
-- **Public Landing Page** with auth-aware navigation
-- **Session Management** with localStorage and React Context
+## 🚀 Features
 
-## 🚧 Planned Features
-- Product catalog with search and cart functionality
-- Vendor portal for inventory management
-- Admin dashboard for platform management
+### 🔐 Authentication System
+- **Multi-Role Support**: Shoppers, Vendors, and Admins
+- **Email Verification**: OTP-based email verification for all registrations
+- **Password Reset**: Secure password reset functionality
+- **JWT Token Management**: Secure token-based authentication
+- **Role-Based Routing**: Automatic redirection to appropriate dashboards
 
-## Tech Stack
-- **React.js** (>=18) with hooks and functional components
-- **Tailwind CSS** for responsive styling
-- **React Router** (v6) for client-side routing
-- **Context API** for global state management
-- **JWT** authentication with localStorage persistence
+### 👥 User Types
+- **Shoppers**: Browse products, manage favorites, place orders
+- **Vendors**: Manage store, track orders, view analytics
+- **Admins**: User management, vendor approval, system oversight
 
-## Architecture
-```
-src/
-├── components/
-│   ├── Auth-Designer/     # Authentication UI components
-│   │   ├── LoginForm.jsx
-│   │   ├── RegisterForm.jsx  
-│   │   ├── OTPInput.jsx
-│   │   ├── ForgotPasswordForm.jsx
-│   │   └── PasswordResetForm.jsx
-│   └── Common/           # Reusable UI components
-├── contexts/             # React Context providers
-│   ├── AuthContext.jsx
-│   └── CartContext.jsx
-├── pages/               # Route-level components
-├── services/            # API integration
-│   └── authService.js
-└── App.jsx             # Main app with routing
-```
+### 🎨 Dashboard Features
+- **Vendor Dashboard**: Analytics, order management, sales tracking
+- **Shopper Dashboard**: Order history, favorites, recommendations
+- **Admin Dashboard**: User management, vendor approval workflow
 
-## Getting Started
+### 🛡️ Security Features
+- **Role-Based Access Control**: Protected routes based on user roles
+- **JWT Token Validation**: Secure API communication
+- **Admin Invitation System**: Secure admin onboarding (planned)
+- **Input Validation**: Client-side and server-side validation
 
-### Prerequisites
-- Node.js (>=16)
-- Backend API running on `localhost:3002` (development) or production backend
+## 🛠️ Tech Stack
 
-### Installation
+- **Frontend**: React 18.3.1
+- **Routing**: React Router DOM 6.30.1
+- **Styling**: Tailwind CSS 3.1.0
+- **Authentication**: JWT tokens with localStorage
+- **State Management**: React Context API
+- **API Communication**: Fetch API with custom authService
+
+## 📦 Installation
+
 ```bash
-git clone git@github.com:Fashion-App-NG/frontend.git
-cd frontend
+# Clone the repository
+git clone <repository-url>
+cd fashion-app/frontend
+
+# Install dependencies
 npm install
+
+# Start development server
 npm start
 ```
 
-### Environment Variables
-Create `.env.local`:
+## 🔧 Environment Variables
+
+Create a `.env` file in the root directory:
+
 ```env
-# Development
 REACT_APP_API_BASE_URL=http://localhost:3002/api
 REACT_APP_ENV=development
-
-# Production (example)
-# REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com/api
-# REACT_APP_ENV=production
 ```
 
-## Authentication Flow
+## 📜 Available Scripts
 
-### User Journey
+### Development
+- `npm start` - Start development server
+- `npm run dev:ai` - Switch to AI UI and start
+- `npm run dev:designer` - Switch to Designer UI and start
+
+### Building
+- `npm run build` - Build for production
+- `npm run build:production` - Build with production environment
+- `npm run build:ai` - Build AI UI version
+- `npm run build:designer` - Build Designer UI version
+
+### Git Workflows
+- `npm run git:add-core` - Add core files (App.jsx, package.json, config)
+- `npm run git:add-shared` - Add shared components (services, contexts, utils, Vendor components)
+- `npm run git:add-designer` - Add Auth-Designer components and pages
+- `npm run git:add-all-shared` - Add all shared files including docs
+
+### UI Switching
+- `npm run switch:ai` - Switch to AI-generated UI
+- `npm run switch:designer` - Switch to Designer UI
+- `npm run check:ui` - Check current UI mode
+
+## 🏗️ Project Structure
+
 ```
-Registration: Register → OTP Verification → Login → Dashboard
-Login: Login → Dashboard
-Password Reset: Forgot Password → OTP Verification → Set New Password → Login
+src/
+├── components/
+│   ├── Auth-Designer/          # Authentication forms and components
+│   │   ├── Dashboard/          # User dashboards
+│   │   ├── AdminLoginForm.jsx
+│   │   ├── CreateAdminForm.jsx
+│   │   ├── LoginForm.jsx
+│   │   ├── RegisterForm.jsx
+│   │   ├── VendorLoginForm.jsx
+│   │   └── VendorRegisterForm.jsx
+│   ├── Common/                 # Shared components
+│   └── Vendor/                 # Vendor-specific components
+│       ├── VendorDashboardContent.jsx
+│       ├── VendorSidebar.jsx
+│       ├── InventoryItem.jsx
+│       └── InventoryList.jsx
+├── contexts/
+│   ├── AuthContext.jsx         # Authentication state management
+│   └── CartContext.jsx         # Shopping cart state
+├── pages/                      # Page components
+│   ├── AdminDashboardPage.jsx
+│   ├── LoginPage.jsx
+│   ├── RegisterPage.jsx
+│   ├── ShopperDashboardPage.jsx
+│   ├── VendorDashboardPage.jsx
+│   ├── TermsOfServicePage.jsx
+│   └── PrivacyPolicyPage.jsx
+├── services/
+│   └── authService.js          # API communication service
+└── utils/                      # Utility functions
 ```
 
-### API Endpoints
-- **POST** `/auth/register` - User registration
-- **POST** `/auth/login` - User authentication
-- **POST** `/auth/verify-otp` - Email verification
-- **POST** `/auth/resend-otp` - Resend verification code  
-- **POST** `/auth/forgot-password` - Request password reset
-- **POST** `/auth/reset-password` - Reset password with OTP
-- **POST** `/auth/logout` - User logout
+## 🔐 Authentication Flow
 
-## Development
+### Shopper Registration
+1. User fills registration form
+2. Email verification via OTP
+3. Email verification
+4. Login and redirect to shopper dashboard
 
-### UI Management
-This project supports dual UI approaches:
+### Vendor Registration
+1. Vendor fills registration form with store details
+2. OTP verification sent to email
+3. Email verification with store name
+4. Login with store name and redirect to vendor dashboard
+5. Pending admin approval (planned feature)
 
+### Admin Management
+1. SuperAdmin creates admin accounts
+2. Admin receives credentials
+3. Admin login with elevated permissions
+4. Access to user management and vendor approval
+
+## 🎯 Routing Structure
+
+- `/` - User type selection homepage
+- `/login` - Shopper login
+- `/login/vendor` - Vendor login
+- `/register` - Shopper registration
+- `/register/vendor` - Vendor registration
+- `/verify-otp` - Email verification
+- `/dashboard` - Redirects to role-specific dashboard
+- `/shopper/dashboard` - Shopper dashboard
+- `/vendor/dashboard` - Vendor dashboard
+- `/admin/dashboard` - Admin dashboard
+- `/admin/login` - Admin login
+- `/admin/create-admin` - Admin creation (SuperAdmin only)
+- `/forgot-password` - Password reset request
+- `/reset-password` - Password reset form
+- `/terms-of-service` - Terms of service
+- `/privacy-policy` - Privacy policy
+
+## 🚀 Deployment
+
+### Netlify (Recommended)
 ```bash
-npm run switch:designer    # Switch to Designer UI components
-npm run switch:ai          # Switch to AI-generated UI components
-npm run check:ui           # Check current UI version
+# Build for production
+npm run build:production
 
-npm run dev:designer       # Start with Designer UI
-npm run dev:ai            # Start with AI UI
+# Deploy to Netlify
+npm run netlify:build
 ```
 
-### Git Workflow
-Organized commit scripts for better development workflow:
-
+### Manual Deployment
 ```bash
-npm run git:add-core          # App structure & config files
-npm run git:add-shared        # Business logic (services, contexts)
-npm run git:add-docs          # Documentation updates
-npm run git:add-all-shared    # Complete features (core + shared + docs)
-npm run git:add-designer      # Designer-specific components
-npm run git:add-ai           # AI-specific components
+# Build the project
+npm run build
+
+# Serve static files
+npm run preview
 ```
 
-### Branch Strategy
-- `main` - Production-ready code
-- `dev` - Development integration
-- `feature/*` - Feature-specific branches
+## 🔄 Recent Updates
 
-### Testing
-```bash
-npm test                 # Run tests
-npm run test:coverage    # Generate coverage report
-```
+### Version 1.0.0 (Current)
+- ✅ Complete authentication system for all user types
+- ✅ Role-based dashboard routing
+- ✅ Vendor dashboard with analytics and order management
+- ✅ Admin account creation functionality
+- ✅ OTP email verification system
+- ✅ Password reset functionality
+- ✅ Responsive design with Tailwind CSS
 
-## Deployment
+### Upcoming Features
+- 🔄 Admin invitation workflow (security improvement)
+- 🔄 Vendor approval system
+- 🔄 Real-time notifications
+- 🔄 Advanced analytics dashboard
+- 🔄 Product management system
+- 🔄 Order tracking system
 
-### Live Deployment
-- **Frontend**: [https://fashionappng.netlify.app/](https://fashionappng.netlify.app/) (Netlify)
-- **Backend API**: [https://backend-bsm1.onrender.com/api](https://backend-bsm1.onrender.com/api) (Render)
+## 🤝 Contributing
 
-### Local Development
-```bash
-npm start               # Development server (http://localhost:3000)
-npm run build          # Production build
-```
+1. Follow the existing code structure and patterns
+2. Use the provided npm scripts for git operations
+3. Ensure all components have proper TypeScript-style comments
+4. Test authentication flows before committing
+5. Update README for any new features
 
-### Production Deployment
+## 📞 Support
 
-#### Frontend (Netlify)
-1. **Automatic Deployment**: Connected to GitHub repository
-2. **Build Settings**:
-   - Build command: `npm run build`
-   - Publish directory: `build`
-3. **Environment Variables**:
-   ```
-   REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com/api
-   REACT_APP_ENV=production
-   ```
-4. **Custom Domain**: [fashionappng.netlify.app](https://fashionappng.netlify.app/)
+For technical support or questions:
+- Email: dev@fashionculture.com
+- Documentation: `/docs` folder
+- Issues: Create GitHub issues for bugs and feature requests
 
-#### Backend (Render)
-- **API Base URL**: `https://backend-bsm1.onrender.com`
-- **Health Check**: `https://backend-bsm1.onrender.com/health`
-- **Auto-deployment** from backend repository
+## 📄 License
 
-### Environment Configuration
-```bash
-# Development
-REACT_APP_API_BASE_URL=http://localhost:3002/api
-
-# Production  
-REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com/api
-```
-
-## Cross-Platform Support
-
-**Windows Users**: If you encounter permission issues with UI switching, see [Windows Setup Guide](docs/WINDOWS_SETUP.md) for troubleshooting.
-
-**All Platforms**: UI switching scripts work on Windows, macOS, and Linux with automatic fallbacks.
-
-## Key Components
-
-### Authentication
-- **LoginForm/VendorLoginForm**: Email/password authentication with error handling
-- **RegisterForm/VendorRegisterForm**: Registration with validation and terms acceptance
-- **OTPInput**: 6-digit verification with paste support, auto-submit, and resend functionality
-- **ForgotPasswordForm**: Email-based password reset request
-- **PasswordResetForm**: OTP verification and new password setting
-- **PasswordInput**: Secure input with visibility toggle (excluded from tab navigation)
-
-### Services
-- **authService**: Complete API integration with JWT management and error handling
-- **AuthContext**: Global authentication state with login/logout functionality
-
-## Security & Performance
-
-### Security
-- JWT tokens in localStorage with proper cleanup
-- Input validation on all forms
-- Session management with automatic cleanup
-- Rate limiting on OTP resend requests
-- HTTPS-only in production (Netlify SSL)
-
-### Performance
-- Lazy loading for route components
-- Optimistic UI updates
-- Efficient re-renders with proper dependencies
-- Form validation debouncing
-- CDN delivery via Netlify
-
-## Contributing
-
-1. Fork repository
-2. Create feature branch: `git checkout -b feature/feature-name`
-3. Use appropriate git scripts: `npm run git:add-shared`
-4. Commit with conventional format: `feat: add new feature`
-5. Push and create Pull Request
-
-### Commit Format
-```
-feat: new feature
-fix: bug fix
-docs: documentation
-style: formatting
-refactor: code restructuring
-test: testing
-chore: maintenance
-```
-
-## Roadmap
-
-### Phase 2: Shopping Experience
-- [ ] Product catalog with search/filtering
-- [ ] Shopping cart with persistent state
-- [ ] Checkout flow with payment integration
-- [ ] Order history and tracking
-
-### Phase 3: Advanced Features
-- [ ] Vendor portal for sellers
-- [ ] Admin dashboard
-- [ ] Analytics and reporting
-- [ ] Mobile app (React Native)
-
-## Documentation
-
-- [Windows Setup Guide](docs/WINDOWS_SETUP.md) - Cross-platform development setup
-- [API Integration Guide](docs/API_INTEGRATION.md) - Backend integration (coming soon)
-- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment (coming soon)
-
-## Links
-
-- **Live App**: [https://fashionappng.netlify.app/](https://fashionappng.netlify.app/)
-- **Backend API**: [https://backend-bsm1.onrender.com/api](https://backend-bsm1.onrender.com/api)
-- **GitHub Repository**: [https://github.com/Fashion-App-NG/frontend](https://github.com/Fashion-App-NG/frontend)
-
----
-
-**Current Status**: ✅ Complete authentication system with dual UI support  
-**Next Phase**: 🚧 Product catalog and shopping cart functionality
+This project is proprietary and confidential. All rights reserved.

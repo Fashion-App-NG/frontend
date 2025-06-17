@@ -25,6 +25,10 @@ import CreateAdminPageWrapper from './pages/CreateAdminPage';
 import ShopperDashboardPage from './pages/ShopperDashboardPage';
 import VendorDashboardPage from './pages/VendorDashboardPage';
 
+// Import legal pages
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+
 function App() {
   return (
     <AuthProvider>
@@ -51,6 +55,7 @@ function App() {
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
+              <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
               
               {/* Guest browsing route */}
               <Route path="/browse" element={<ShopperDashboardPage />} />
@@ -64,6 +69,10 @@ function App() {
               <Route path="/explore" element={<ExplorePage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/favourites" element={<FavouritesPage />} />
+              
+              {/* Legal pages */}
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               
               {/* 404 page */}
               <Route path="*" element={<NotFoundPage />} />

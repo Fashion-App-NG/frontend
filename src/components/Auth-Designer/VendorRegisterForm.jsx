@@ -171,7 +171,7 @@ export const VendorRegisterForm = () => {
         disabled={isLoading}
       />
 
-      {/* Terms and Conditions */}
+      {/* Terms and Conditions with clickable links */}
       <div className="flex items-center gap-[5px] text-xs text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-2.5 max-md:ml-0.5">
         <input
           type="checkbox"
@@ -181,8 +181,22 @@ export const VendorRegisterForm = () => {
           className="border w-[17px] h-[17px] rounded-sm border-[rgba(46,46,46,1)] border-solid disabled:opacity-50"
         />
         <label className="self-stretch my-auto">
-          I agree to the <span className="underline">Terms of Service</span> and{' '}
-          <span className="underline">Privacy Policy</span>
+          I agree to the{' '}
+          <button
+            type="button"
+            onClick={() => window.open('/terms-of-service', '_blank')}
+            className="underline text-blue-600 hover:text-blue-800"
+          >
+            Terms of Service
+          </button>
+          {' '}and{' '}
+          <button
+            type="button"
+            onClick={() => window.open('/privacy-policy', '_blank')}
+            className="underline text-blue-600 hover:text-blue-800"
+          >
+            Privacy Policy
+          </button>
         </label>
       </div>
 
