@@ -1,35 +1,91 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const VendorProductListContent = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('monthly');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+  const [products, setProducts] = useState([]);
   const [activeContextMenu, setActiveContextMenu] = useState(null);
 
-  // Placeholder product data - will be replaced with DB data
-  const [products] = useState([
-    {
-      id: '#12490',
-      name: 'Adire Fabric',
-      description: 'Tie-and-dye fabric',
-      image: '/images/adire-fabric-pattern.jpg', // Updated path to public folder
-      quantity: 10,
-      date: 'Dec 10, 2024',
-      price: 300000,
-      status: 'In Stock',
-      statusColor: '#28b446'
+  // Load products from localStorage
+  const loadProducts = useCallback(() => {
+    const localProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
+    
+    // If no local products, show a sample product as demonstration
+    if (localProducts.length === 0) {
+      const sampleProduct = {
+        id: '#SAMPLE',
+        name: 'Sample Product',
+        description: 'Upload your first product to see it here',
+        image: '/api/placeholder/86/66',
+        quantity: 0,
+        date: new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        }),
+        uploadDate: new Date().toISOString(),
+        price: 0,
+        status: 'Sample',
+        statusColor: '#9ca3af',
+        isLocalProduct: false,
+        isSample: true
+      };
+      return [sampleProduct];
     }
-  ]);
+    
+    return localProducts;
+  }, []);
+
+  // Initialize products
+  useEffect(() => {
+    setProducts(loadProducts());
+  }, [loadProducts]);
+
+  // Check for success message from product upload
+  useEffect(() => {
+    if (location.state?.message) {
+      setMessage(location.state.message);
+      setMessageType(location.state.type || 'info');
+      
+      // If a product was added, refresh the product list
+      if (location.state?.productAdded) {
+        setProducts(loadProducts());
+      }
+      
+      // Clear the state to prevent message from showing again on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+      
+      // Auto-hide message after 8 seconds (longer for the detailed message)
+      const timer = setTimeout(() => {
+        setMessage('');
+        setMessageType('');
+      }, 8000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, navigate, location.pathname, loadProducts]);
+
+  // Handle clicking outside dropdowns
+  const handleOutsideClick = useCallback((e) => {
+    if (!e.target.closest('.dropdown-container')) {
+      setShowSortDropdown(false);
+      setActiveContextMenu(null);
+    }
+  }, []);
 
   // Filter products based on active tab and search
   const filteredProducts = useMemo(() => {
-    let filtered = products;
+    let filtered = products.filter(p => !p.isSample); // Remove sample products from filtering
 
     // Filter by tab
     if (activeTab === 'available') {
@@ -47,15 +103,29 @@ export const VendorProductListContent = () => {
       );
     }
 
+    // Sort by date (newest first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.uploadDate || a.date);
+      const dateB = new Date(b.uploadDate || b.date);
+      return dateB - dateA;
+    });
+
     return filtered;
   }, [products, activeTab, searchTerm]);
 
+  // Get dynamic counts
   const getTabCount = (tab) => {
+    const nonSampleProducts = products.filter(p => !p.isSample);
+    
     switch(tab) {
-      case 'all': return products.length;
-      case 'available': return products.filter(p => p.status === 'In Stock').length;
-      case 'disabled': return products.filter(p => p.status === 'Out Of Stock').length;
-      default: return 0;
+      case 'all': 
+        return nonSampleProducts.length;
+      case 'available': 
+        return nonSampleProducts.filter(p => p.status === 'In Stock').length;
+      case 'disabled': 
+        return nonSampleProducts.filter(p => p.status === 'Out Of Stock').length;
+      default: 
+        return 0;
     }
   };
 
@@ -63,139 +133,206 @@ export const VendorProductListContent = () => {
     navigate('/vendor/products/add');
   };
 
-  const handleEditProduct = (product) => {
-    console.log('Edit product:', product);
-    navigate(`/vendor/products/edit/${product.id.replace('#', '')}`);
+  // Context menu handlers
+  const handleContextMenuAction = (action, product) => {
     setActiveContextMenu(null);
-  };
-
-  const handleRestockProduct = (product) => {
-    console.log('Restock product:', product);
-    // Implement restock functionality
-    setActiveContextMenu(null);
-  };
-
-  const handleDeleteProduct = (product) => {
-    console.log('Delete product:', product);
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      // Implement delete functionality
+    
+    switch(action) {
+      case 'edit':
+        // Navigate to edit page (placeholder for now)
+        alert(`Edit ${product.name} - Feature coming soon!`);
+        break;
+      case 'restock':
+        // Handle restock
+        alert(`Restock ${product.name} - Feature coming soon!`);
+        break;
+      case 'delete':
+        // Handle delete
+        if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+          const updatedProducts = products.filter(p => p.id !== product.id);
+          setProducts(updatedProducts);
+          localStorage.setItem('vendorProducts', JSON.stringify(updatedProducts.filter(p => !p.isSample)));
+          setMessage(`Product "${product.name}" has been deleted successfully.`);
+          setMessageType('success');
+          
+          // Auto-hide message
+          setTimeout(() => {
+            setMessage('');
+            setMessageType('');
+          }, 3000);
+        }
+        break;
+      default:
+        break;
     }
-    setActiveContextMenu(null);
   };
 
-  const toggleContextMenu = (productId) => {
-    setActiveContextMenu(activeContextMenu === productId ? null : productId);
-  };
+  const ProductRow = ({ product, index }) => {
+    const [imageError, setImageError] = useState(false);
+    
+    const handleImageError = (e) => {
+      console.log('Image failed to load for product:', product.name, 'src:', e.target.src);
+      setImageError(true);
+    };
 
-  // Context Menu Component
-  const ContextMenu = ({ product, isVisible }) => {
-    if (!isVisible) return null;
+    const getDisplayImage = () => {
+      // If there was an image error, use placeholder
+      if (imageError) {
+        return '/api/placeholder/86/66';
+      }
+      
+      // For local products with uploaded images
+      if (product.isLocalProduct && product.image && product.image.startsWith('data:image/')) {
+        return product.image;
+      }
+      
+      // For products with storage issues
+      if (product.hasStorageIssue) {
+        return '/api/placeholder/86/66';
+      }
+      
+      // Default fallback
+      return product.image || '/api/placeholder/86/66';
+    };
 
     return (
-      <div className="absolute right-0 top-8 w-[135px] bg-[#f9f9f9] rounded-[7px] shadow-[0px_7px_8px_-2px_rgba(0,0,0,0.15)] p-[15px_16px] z-20">
-        <div className="flex flex-col gap-[10px]">
-          {/* Edit */}
-          <div 
-            className="flex items-center gap-[15px] cursor-pointer hover:bg-gray-100 p-1 rounded"
-            onClick={() => handleEditProduct(product)}
-          >
-            <div className="w-[15px] h-[15px] text-[#2e2e2e]">✏️</div>
-            <span className="text-[16px] leading-[120%] text-[#2e2e2e]">Edit</span>
+      <div className="grid grid-cols-12 gap-4 items-center py-4 border-b border-[#e8e8e8] last:border-b-0 min-h-[80px]">
+        {/* Product Image - Col 1 */}
+        <div className="col-span-1 flex justify-center">
+          <div className="relative">
+            <img 
+              src={getDisplayImage()}
+              alt={product.name}
+              className="w-[86px] h-[66px] rounded-lg object-cover bg-gray-100"
+              onError={handleImageError}
+              onLoad={() => console.log('Image loaded successfully for:', product.name)}
+            />
+            
+            {/* Show storage issue indicator */}
+            {product.hasStorageIssue && (
+              <div className="absolute -top-1 -left-1 bg-yellow-500 text-white text-xs rounded px-1 font-semibold">
+                !
+              </div>
+            )}
+            
+            {/* Show image count badge if multiple images */}
+            {product.imageCount > 1 && (
+              <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                {product.imageCount}
+              </div>
+            )}
+            
+            {/* Show "NEW" badge for uploaded products */}
+            {product.isLocalProduct && !product.hasStorageIssue && (
+              <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-xs rounded px-1 font-semibold">
+                NEW
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Restock */}
-          <div 
-            className="flex items-center gap-[12px] cursor-pointer hover:bg-gray-100 p-1 rounded"
-            onClick={() => handleRestockProduct(product)}
-          >
-            <div className="w-[18px] h-[18px] text-[#2e2e2e]">📦</div>
-            <span className="text-[16px] leading-[120%] text-[#2e2e2e]">Restock</span>
+        {/* Product Name - Col 2-3 */}
+        <div className="col-span-2">
+          <div className="font-medium text-[14px] leading-[150%] text-black">{product.name}</div>
+          <div className="font-normal text-[12px] leading-[150%] text-gray-600">{product.description}</div>
+          {/* Show material type if available */}
+          {product.materialType && (
+            <div className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1 inline-block">
+              {product.materialType}
+            </div>
+          )}
+          {/* Show storage issue warning */}
+          {product.hasStorageIssue && (
+            <div className="text-[10px] text-yellow-600 bg-yellow-50 px-2 py-1 rounded mt-1 inline-block">
+              Limited storage
+            </div>
+          )}
+        </div>
+
+        {/* ID - Col 4 */}
+        <div className="col-span-1">
+          <span className="font-medium text-[14px] leading-[150%] text-black">{product.id}</span>
+        </div>
+
+        {/* Quantity - Col 5 */}
+        <div className="col-span-1 text-center">
+          <span className="font-medium text-[14px] leading-[150%] text-black">{product.quantity} Pcs</span>
+        </div>
+
+        {/* Date - Col 6 */}
+        <div className="col-span-1 text-center">
+          <span className="font-medium text-[14px] leading-[150%] text-black">{product.date}</span>
+        </div>
+
+        {/* Price - Col 7 */}
+        <div className="col-span-2 text-center">
+          <div className="flex items-center justify-center">
+            <span className="text-[14px] text-black">₦</span>
+            <span className="font-medium text-[14px] leading-[150%] text-black ml-1">
+              {product.price.toLocaleString()}
+            </span>
           </div>
+        </div>
 
-          {/* Delete */}
-          <div 
-            className="flex items-end gap-[9px] cursor-pointer hover:bg-gray-100 p-1 rounded"
-            onClick={() => handleDeleteProduct(product)}
-          >
-            <div className="w-[21px] h-[21px] text-[#cd0000]">🗑️</div>
-            <span className="text-[16px] leading-[120%] text-[#cd0000]">Delete</span>
+        {/* Status - Col 8 */}
+        <div className="col-span-1 flex justify-center">
+          <div className="flex items-center bg-white rounded-lg px-3 py-2 shadow-sm border">
+            <div 
+              className="w-2 h-2 rounded-full mr-2"
+              style={{ backgroundColor: product.statusColor }}
+            />
+            <span className="text-[12px] font-medium leading-[150%]">{product.status}</span>
+          </div>
+        </div>
+
+        {/* Action - Col 9 */}
+        <div className="col-span-1 flex justify-center relative">
+          <div className="dropdown-container">
+            <button 
+              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
+              onClick={() => setActiveContextMenu(activeContextMenu === product.id ? null : product.id)}
+            >
+              <div className="flex flex-col gap-1">
+                <div className="w-1 h-1 bg-gray-600 rounded-full" />
+                <div className="w-1 h-1 bg-gray-600 rounded-full" />
+                <div className="w-1 h-1 bg-gray-600 rounded-full" />
+              </div>
+            </button>
+            
+            {/* Context Menu */}
+            {activeContextMenu === product.id && (
+              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-20 min-w-[120px]">
+                <button
+                  onClick={() => handleContextMenuAction('edit', product)}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 border-b border-gray-100"
+                >
+                  <span>✏️</span>
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleContextMenuAction('restock', product)}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 border-b border-gray-100"
+                >
+                  <span>🔄</span>
+                  Restock
+                </button>
+                <button
+                  onClick={() => handleContextMenuAction('delete', product)}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 text-red-600"
+                >
+                  <span>🗑️</span>
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
-  const ProductRow = ({ product, index }) => (
-    <div className="flex items-center py-4 border-b border-[#e8e8e8] last:border-b-0">
-      {/* Product Image & Info */}
-      <div className="flex items-center gap-[62px] flex-1">
-        <img 
-          src={product.image} 
-          alt={product.name}
-          className="w-[86px] h-[66px] rounded-lg object-cover"
-        />
-        
-        <div className="flex items-center gap-[59px] flex-1">
-          {/* Product Name */}
-          <div className="w-[101px]">
-            <div className="font-medium text-[12px] leading-[150%]">{product.name}</div>
-            <div className="font-medium text-[12px] leading-[150%] text-gray-600">{product.description}</div>
-          </div>
-
-          {/* ID & Quantity */}
-          <div className="flex items-center gap-[44px]">
-            <div className="w-[163px] flex justify-between">
-              <span className="font-medium text-[12px] leading-[150%]">{product.id}</span>
-              <span className="font-medium text-[12px] leading-[150%] w-[57px]">{product.quantity} Pcs</span>
-            </div>
-
-            {/* Date & Price */}
-            <div className="flex items-center gap-[28px]">
-              <span className="font-medium text-[12px] leading-[150%] w-[75px]">{product.date}</span>
-              <div className="flex items-center">
-                <span className="text-[12px]">₦</span>
-                <span className="font-medium text-[12px] leading-[150%] text-[#111]">{product.price.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status & Actions */}
-      <div className="flex items-center gap-[30px]">
-        <div className="flex items-center bg-white rounded-lg px-3 py-1 shadow-sm">
-          <div 
-            className="w-2 h-2 rounded-full mr-2"
-            style={{ backgroundColor: product.statusColor }}
-          />
-          <span className="text-[12px] font-medium leading-[150%]">{product.status}</span>
-        </div>
-        
-        <div className="relative">
-          <button 
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded"
-            onClick={() => toggleContextMenu(product.id)}
-          >
-            <div className="flex flex-col gap-1">
-              <div className="w-1 h-1 bg-gray-400 rounded-full" />
-              <div className="w-1 h-1 bg-gray-400 rounded-full" />
-              <div className="w-1 h-1 bg-gray-400 rounded-full" />
-            </div>
-          </button>
-          
-          <ContextMenu 
-            product={product} 
-            isVisible={activeContextMenu === product.id} 
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Close context menu when clicking outside
-  const handleOutsideClick = () => {
-    setActiveContextMenu(null);
-  };
+  // Show sample product message when no products exist
+  const showSample = products.length === 1 && products[0]?.isSample;
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]" onClick={handleOutsideClick}>
@@ -238,6 +375,57 @@ export const VendorProductListContent = () => {
 
       {/* Main Content */}
       <div className="p-6">
+        {/* Success/Info Message */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            messageType === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-700'
+              : messageType === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : messageType === 'warning'
+              ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+              : 'bg-blue-50 border-blue-200 text-blue-700'
+          }`}>
+            <div className="flex items-start gap-2">
+              {messageType === 'success' && (
+                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              <div>
+                <p className="font-medium text-sm">{message}</p>
+              </div>
+              <button 
+                onClick={() => setMessage('')}
+                className="ml-auto text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State for No Products */}
+        {showSample && (
+          <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-2xl">📦</span>
+              </div>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">No Products Yet</h3>
+              <p className="text-blue-700 mb-4">
+                Start by uploading your first product to see it listed here. Your products will be stored locally for demonstration purposes.
+              </p>
+              <button
+                onClick={handleAddProduct}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Upload Your First Product
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Search & Actions */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -311,12 +499,12 @@ export const VendorProductListContent = () => {
         </div>
 
         {/* Product List */}
-        <div className="bg-white rounded-[10px] p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-white rounded-[10px] p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[24px] font-bold leading-[150%]">Product List</h2>
             
-            <div className="relative">
+            <div className="relative dropdown-container">
               <button
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
                 className="flex items-center gap-1 bg-white border rounded-lg px-3 py-1 shadow-sm"
@@ -338,58 +526,64 @@ export const VendorProductListContent = () => {
           </div>
 
           {/* Table Header */}
-          <div className="flex items-center text-[12px] font-semibold text-black border-b border-[#e8e8e8] pb-2 mb-4">
-            <div className="w-[151px]">Product Image</div>
-            <div className="flex items-center gap-1">
-              <span>Product Name</span>
-              <svg className="w-2 h-2" viewBox="0 0 10 10">
-                <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-              </svg>
+          {!showSample && (
+            <div className="grid grid-cols-12 gap-4 items-center text-[14px] font-semibold text-black border-b border-[#e8e8e8] pb-3 mb-4">
+              <div className="col-span-1 text-center">Product Image</div>
+              <div className="col-span-2 flex items-center gap-1">
+                <span>Product Name</span>
+                <svg className="w-3 h-3" viewBox="0 0 10 10">
+                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div className="col-span-1 flex items-center gap-1">
+                <span>ID</span>
+                <svg className="w-3 h-3" viewBox="0 0 12 12">
+                  <path d="M6 0L6 12M0 6L12 6" stroke="currentColor" strokeWidth="1"/>
+                </svg>
+              </div>
+              <div className="col-span-1 text-center">Qty</div>
+              <div className="col-span-1 text-center">Date</div>
+              <div className="col-span-2 text-center flex items-center justify-center gap-1">
+                <span>Price per yard</span>
+                <svg className="w-3 h-3" viewBox="0 0 10 10">
+                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div className="col-span-1 text-center flex items-center justify-center gap-1">
+                <span>Status</span>
+                <svg className="w-3 h-3" viewBox="0 0 10 10">
+                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div className="col-span-1 text-center">Action</div>
             </div>
-            <div className="ml-[90px] flex items-center gap-1">
-              <span>ID</span>
-              <svg className="w-3 h-3" viewBox="0 0 12 12">
-                <path d="M6 0L6 12M0 6L12 6" stroke="currentColor" strokeWidth="1"/>
-              </svg>
-            </div>
-            <div className="ml-[85px]">Qty</div>
-            <div className="ml-[44px]">Date</div>
-            <div className="ml-[28px] flex items-center gap-1">
-              <span>Price per yard</span>
-              <svg className="w-2 h-2" viewBox="0 0 10 10">
-                <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-              </svg>
-            </div>
-            <div className="ml-[63px] flex items-center gap-1">
-              <span>Status</span>
-              <svg className="w-2 h-2" viewBox="0 0 10 10">
-                <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-              </svg>
-            </div>
-            <div className="ml-[46px]">Action</div>
-          </div>
+          )}
 
           {/* Product Rows */}
-          <div className="space-y-0">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product, index) => (
+          {!showSample && (
+            <div className="space-y-0">
+              {filteredProducts.map((product, index) => (
                 <ProductRow key={`${product.id}-${index}`} product={product} index={index} />
-              ))
-            ) : (
-              /* Empty State */
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">📦</div>
-                <h3 className="text-[18px] font-semibold text-gray-600 mb-2">No products yet</h3>
-                <p className="text-gray-500 text-[14px] mb-4">Start by adding your first product to your store</p>
-                <button
-                  onClick={handleAddProduct}
-                  className="px-4 py-2 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold"
+              ))}
+            </div>
+          )}
+
+          {/* Empty State for Filtered Results */}
+          {!showSample && filteredProducts.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-[16px]">
+                {searchTerm ? `No products found for "${searchTerm}"` : 'No products found for this filter'}
+              </p>
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="mt-2 text-blue-600 hover:underline"
                 >
-                  Add Your First Product
+                  Clear search
                 </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

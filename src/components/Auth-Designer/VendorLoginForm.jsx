@@ -32,23 +32,22 @@ export const VendorLoginForm = () => {
     const formData = new FormData(e.target);
     const data = {
       email: formData.get('email'),
-      storeName: formData.get('storeName'),
       password: formData.get('password')
     };
 
     // Client-side validation
-    if (!data.email || !data.storeName || !data.password) {
+    if (!data.email || !data.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await authService.loginVendor({
+      // Use regular login without storeName requirement
+      const response = await authService.login({
         identifier: data.email,
         password: data.password,
-        role: "vendor",
-        storeName: data.storeName
+        role: "vendor"
       });
 
       console.log('✅ Vendor login successful:', response);
@@ -65,23 +64,19 @@ export const VendorLoginForm = () => {
 
       setIsAuthenticated(true);
 
-      // ✅ React Router: Navigate to VENDOR dashboard specifically
+      // Navigate to VENDOR dashboard
       navigate('/vendor/dashboard', { 
         state: { 
-          message: `Welcome back, ${response.user?.storeName || data.storeName}!` 
+          message: `Welcome back, ${response.user?.storeName || response.user?.email || 'Vendor'}!` 
         }
       });
 
     } catch (error) {
       console.error('❌ Vendor login failed:', error);
 
-      // Handle new error codes
+      // Handle error codes
       if (error.status === 401) {
-        if (error.message.includes('storeName')) {
-          setError('Incorrect store name. Please check your store name and try again.');
-        } else {
-          setError('Invalid credentials. Please check your email and password.');
-        }
+        setError('Invalid email or password. Please try again.');
       } else if (error.status === 403) {
         setError('Please verify your email address before logging in.');
       } else {
@@ -125,21 +120,8 @@ export const VendorLoginForm = () => {
         </div>
       )}
 
-      {/* Store Name Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
-        Store Name
-      </label>
-      <input
-        type="text"
-        name="storeName"
-        placeholder="Enter Store name"
-        required
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      />
-
       {/* Email Address Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
         Email Address
       </label>
       <input
@@ -161,6 +143,7 @@ export const VendorLoginForm = () => {
         disabled={isLoading}
       />
 
+      {/* Forgot Password Link */}
       <div className="flex justify-end mt-2">
         <button 
           type="button" 
@@ -186,7 +169,7 @@ export const VendorLoginForm = () => {
         <span className="self-stretch my-auto">New here?</span>
         <button 
           type="button"
-          onClick={() => navigate('/register/vendor')}  // ✅ Routes to vendor registration
+          onClick={() => navigate('/register/vendor')}
           disabled={isLoading}
           className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
         >

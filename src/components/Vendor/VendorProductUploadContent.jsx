@@ -11,7 +11,6 @@ export const VendorProductUploadContent = () => {
     productName: '',
     status: true, // Available by default
     pricePerYard: '',
-    date: '',
     quantity: '',
     materialType: '',
     pattern: '',
@@ -28,30 +27,81 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Utility function to compress image with better quality control
+  const compressImage = (file, maxWidth = 300, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions maintaining aspect ratio
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxWidth) {
+            width = (width * maxWidth) / height;
+            height = maxWidth;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // File upload handlers
-  const handleFileSelect = (files) => {
+  const handleFileSelect = async (files) => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
-    // Create preview URLs
-    const imagePromises = imageFiles.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve({
-          file,
-          preview: e.target.result,
-          id: Math.random().toString(36).substr(2, 9)
-        });
-        reader.readAsDataURL(file);
-      });
+    // Limit file size (5MB per file)
+    const validFiles = imageFiles.filter(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+        return false;
+      }
+      return true;
     });
 
-    Promise.all(imagePromises).then(newImages => {
+    if (validFiles.length === 0) return;
+
+    try {
+      // Process images with compression
+      const imagePromises = validFiles.map(async (file) => {
+        const compressedImage = await compressImage(file);
+        return {
+          file,
+          preview: compressedImage,
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          size: file.size
+        };
+      });
+
+      const newImages = await Promise.all(imagePromises);
+      
       setFormData(prev => ({
         ...prev,
         images: [...prev.images, ...newImages].slice(0, 4) // Limit to 4 images
       }));
-    });
+    } catch (error) {
+      console.error('Error processing images:', error);
+      alert('Error processing images. Please try again.');
+    }
   };
 
   const handleBrowseClick = () => {
@@ -95,6 +145,43 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, status: !prev.status }));
   };
 
+  // Improved utility function to check localStorage space
+  const checkLocalStorageSpace = (data) => {
+    try {
+      const dataString = JSON.stringify(data);
+      const testKey = 'test_storage_' + Date.now();
+      
+      // Try to store the data
+      localStorage.setItem(testKey, dataString);
+      localStorage.removeItem(testKey);
+      
+      // Also check if we're approaching the limit (leave some buffer)
+      const currentSize = JSON.stringify(localStorage).length;
+      const maxSize = 5 * 1024 * 1024; // 5MB typical limit
+      
+      return currentSize < maxSize * 0.8; // Use only 80% of available space
+    } catch (e) {
+      console.warn('Storage space check failed:', e.message);
+      return false;
+    }
+  };
+
+  // Simplified utility function to clean old products if storage is full
+  const cleanOldProducts = () => {
+    try {
+      const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
+      // Keep only the 5 most recent products to free up more space
+      const recentProducts = existingProducts.slice(0, 5);
+      localStorage.setItem('vendorProducts', JSON.stringify(recentProducts));
+      console.log(`Cleaned old products, kept ${recentProducts.length} recent items`);
+      return recentProducts;
+    } catch (error) {
+      console.error('Error cleaning old products:', error);
+      localStorage.removeItem('vendorProducts');
+      return [];
+    }
+  };
+
   const handlePublishProduct = useCallback(() => {
     // Validate required fields
     if (!formData.productName.trim()) {
@@ -110,14 +197,117 @@ export const VendorProductUploadContent = () => {
       return;
     }
 
-    // Add product publishing logic here
-    console.log('Publishing product:', formData);
-    
-    // Show success message
-    alert('Product published successfully!');
-    
-    // Navigate back to vendor dashboard
-    navigate('/vendor/dashboard');
+    // Create new product with current timestamp
+    const now = new Date();
+    const newProduct = {
+      id: `#${Math.floor(Math.random() * 100000)}`,
+      name: formData.productName,
+      description: formData.description || 'Custom fabric',
+      // Use the first uploaded image (compressed)
+      image: formData.images[0]?.preview || '/api/placeholder/86/66',
+      images: formData.images.map(img => ({
+        id: img.id,
+        preview: img.preview,
+        name: img.name,
+        size: img.size
+      })), // Store all images
+      imageCount: formData.images.length,
+      quantity: parseInt(formData.quantity) || 1,
+      date: now.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      uploadDate: now.toISOString(),
+      price: parseFloat(formData.pricePerYard) || 0,
+      status: formData.status ? 'In Stock' : 'Out Of Stock',
+      statusColor: formData.status ? '#28b446' : '#cd0000',
+      materialType: formData.materialType,
+      pattern: formData.pattern,
+      idNumber: formData.idNumber,
+      isLocalProduct: true
+    };
+
+    console.log('Attempting to store product:', newProduct.name, 'with image size:', newProduct.image?.length || 0);
+
+    try {
+      // Get existing products
+      let existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
+      
+      // Try a simple approach first - just add the product
+      existingProducts.unshift(newProduct);
+      
+      try {
+        localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
+        console.log('✅ Product stored successfully with images');
+        
+        // Navigate to product listing page
+        navigate('/vendor/products', {
+          state: {
+            message: 'Product uploaded successfully! Images are compressed and stored locally for demonstration.',
+            type: 'success',
+            productAdded: true
+          }
+        });
+        
+      } catch (storageError) {
+        console.warn('⚠️ Initial storage failed, trying with cleanup:', storageError.message);
+        
+        // Clean old products and try again
+        existingProducts = cleanOldProducts();
+        existingProducts.unshift(newProduct);
+        
+        try {
+          localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
+          console.log('✅ Product stored after cleanup');
+          
+          navigate('/vendor/products', {
+            state: {
+              message: 'Product uploaded successfully! Old products were cleaned to make space.',
+              type: 'success',
+              productAdded: true
+            }
+          });
+          
+        } catch (secondError) {
+          console.warn('⚠️ Storage failed even after cleanup, using fallback');
+          throw secondError;
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Storage error, using fallback:', error);
+      
+      // Ultimate fallback: store without images but keep metadata
+      try {
+        const fallbackProduct = {
+          ...newProduct,
+          image: '/api/placeholder/86/66',
+          images: [], // Clear images to save space
+          imageCount: formData.images.length,
+          hasStorageIssue: true
+        };
+        
+        const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
+        // Only keep 3 most recent to make sure we have space
+        const limitedProducts = existingProducts.slice(0, 3);
+        limitedProducts.unshift(fallbackProduct);
+        
+        localStorage.setItem('vendorProducts', JSON.stringify(limitedProducts));
+        
+        navigate('/vendor/products', {
+          state: {
+            message: 'Product uploaded successfully! Due to storage limitations, images are shown as placeholders. This will be resolved with backend integration.',
+            type: 'warning',
+            productAdded: true
+          }
+        });
+        
+      } catch (fallbackError) {
+        console.error('❌ Even fallback storage failed:', fallbackError);
+        alert('Unable to store product due to browser storage limitations. Please clear your browser data and try again with smaller images.');
+      }
+    }
   }, [formData, navigate]);
 
   const handleCancel = () => {
@@ -133,7 +323,7 @@ export const VendorProductUploadContent = () => {
       if (!confirmLeave) return;
     }
 
-    navigate('/vendor/dashboard');
+    navigate('/vendor/products');
   };
 
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
@@ -150,7 +340,7 @@ export const VendorProductUploadContent = () => {
               Welcome {user?.firstName || user?.storeName || 'Vendor'}
             </h1>
             <p className="text-[16px] text-[#2e2e2e] leading-[120%] w-[312px]">
-              Here is the information about all your products
+              Add new products to your store inventory
             </p>
           </div>
 
@@ -183,7 +373,7 @@ export const VendorProductUploadContent = () => {
         {/* Page Title and Actions */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[24px] font-bold text-black leading-[150%]">
-            Add Products
+            Add New Product
           </h2>
           
           <div className="flex gap-3">
@@ -241,7 +431,7 @@ export const VendorProductUploadContent = () => {
                 </div>
               </div>
 
-              {/* Price and Date */}
+              {/* Price and Quantity */}
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block font-semibold mb-2">Price Per Yard</label>
@@ -258,19 +448,6 @@ export const VendorProductUploadContent = () => {
                 </div>
                 
                 <div>
-                  <label className="block font-semibold mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
-                    className="w-full h-[52px] px-4 bg-white border border-[#ccc] rounded-[8px] text-black outline-none focus:border-[#2e2e2e] transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Quantity and Material Type */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
                   <label className="block font-semibold mb-2">
                     <span className="font-semibold">Quantity </span>
                     <span className="font-medium text-[#aeaeae]">(In yards)</span>
@@ -283,7 +460,10 @@ export const VendorProductUploadContent = () => {
                     className="w-full h-[52px] px-4 bg-white border border-[#ccc] rounded-[8px] text-black placeholder-[#afacac] outline-none focus:border-[#2e2e2e] transition-colors"
                   />
                 </div>
-                
+              </div>
+
+              {/* Material Type and Pattern */}
+              <div className="grid grid-cols-2 gap-6">
                 <div className="relative">
                   <label className="block font-semibold mb-2">Material Type</label>
                   <div
@@ -318,10 +498,7 @@ export const VendorProductUploadContent = () => {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Pattern and ID Number */}
-              <div className="grid grid-cols-2 gap-6">
+                
                 <div className="relative">
                   <label className="block font-semibold mb-2">Pattern</label>
                   <div
@@ -356,7 +533,10 @@ export const VendorProductUploadContent = () => {
                     </div>
                   )}
                 </div>
-                
+              </div>
+
+              {/* ID Number */}
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block font-semibold mb-2">ID Number</label>
                   <input
@@ -367,6 +547,7 @@ export const VendorProductUploadContent = () => {
                     className="w-full h-[52px] px-4 bg-white border border-[#ccc] rounded-[8px] text-black placeholder-[#afacac] outline-none focus:border-[#2e2e2e] transition-colors"
                   />
                 </div>
+                <div></div> {/* Empty space to maintain grid layout */}
               </div>
 
               {/* Description */}
@@ -411,9 +592,16 @@ export const VendorProductUploadContent = () => {
           <div className="col-span-5 bg-[#f9f9f9] rounded-[10px] p-6">
             <h3 className="text-[20px] font-bold mb-6 leading-[150%]">Upload Image</h3>
             
+            {/* Storage Warning */}
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-700">
+                <strong>Demo Mode:</strong> Images are compressed and stored locally for demonstration. Full resolution images will be supported with backend integration.
+              </p>
+            </div>
+            
             {/* Upload Area */}
             <div 
-              className={`border-2 border-dashed rounded-[12px] h-[250px] flex flex-col items-center justify-center mb-6 cursor-pointer transition-colors ${
+              className={`border-2 border-dashed rounded-[12px] h-[200px] flex flex-col items-center justify-center mb-6 cursor-pointer transition-colors ${
                 isDragOver 
                   ? 'border-[#347ae2] bg-blue-50' 
                   : 'border-black hover:border-[#347ae2] hover:bg-gray-50'
@@ -423,17 +611,17 @@ export const VendorProductUploadContent = () => {
               onDrop={handleDrop}
               onClick={handleBrowseClick}
             >
-              <div className="w-[60px] h-[60px] mb-4 text-gray-400">
-                <svg viewBox="0 0 60 60" className="w-full h-full" fill="none" stroke="currentColor">
-                  <path d="M30 15L30 45M15 30L45 30" strokeWidth="2" strokeLinecap="round"/>
-                  <circle cx="30" cy="30" r="25" strokeWidth="2" strokeDasharray="2,2"/>
+              <div className="w-[48px] h-[48px] mb-3 text-gray-400">
+                <svg viewBox="0 0 48 48" className="w-full h-full" fill="none" stroke="currentColor">
+                  <path d="M24 12L24 36M12 24L36 24" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="24" cy="24" r="20" strokeWidth="2" strokeDasharray="2,2"/>
                 </svg>
               </div>
-              <p className="text-center">
+              <p className="text-center text-sm">
                 <span className="text-[#0f0f0f]">Drag & drop files or </span>
                 <span className="text-[#347ae2] underline font-medium">Browse</span>
               </p>
-              <p className="text-xs text-gray-500 mt-2">Supports: JPG, PNG, GIF (Max 5MB each)</p>
+              <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF (Max 5MB each)</p>
             </div>
 
             {/* Hidden file input */}
@@ -449,7 +637,7 @@ export const VendorProductUploadContent = () => {
             {/* Image Thumbnails */}
             <div className="grid grid-cols-4 gap-3">
               {formData.images.map((image, index) => (
-                <div key={image.id} className="relative w-24 h-20 bg-gray-200 rounded-[5px] overflow-hidden group">
+                <div key={image.id} className="relative w-20 h-16 bg-gray-200 rounded-[5px] overflow-hidden group">
                   <img 
                     src={image.preview} 
                     alt={`Product ${index + 1}`} 
@@ -460,10 +648,13 @@ export const VendorProductUploadContent = () => {
                       e.stopPropagation();
                       removeImage(image.id);
                     }}
-                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                    className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                   >
                     ×
                   </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                    {Math.round(image.size / 1024)}KB
+                  </div>
                 </div>
               ))}
               
@@ -471,17 +662,17 @@ export const VendorProductUploadContent = () => {
               {Array.from({ length: 4 - formData.images.length }).map((_, index) => (
                 <div 
                   key={`empty-${index}`} 
-                  className="w-24 h-20 bg-gray-100 rounded-[5px] border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
+                  className="w-20 h-16 bg-gray-100 rounded-[5px] border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
                   onClick={handleBrowseClick}
                 >
-                  <span className="text-gray-400 text-2xl">+</span>
+                  <span className="text-gray-400 text-lg">+</span>
                 </div>
               ))}
             </div>
             
             {formData.images.length > 0 && (
               <p className="text-xs text-gray-600 mt-2">
-                {formData.images.length}/4 images uploaded
+                {formData.images.length}/4 images • Compressed for demo
               </p>
             )}
           </div>
