@@ -7,7 +7,7 @@ import TokenDebug from './TokenDebug';
 import VendorProductEditModal from './VendorProductEditModal';
 
 export const VendorProductListContent = () => {
-  const { user, logout } = useAuth(); // ✅ Get logout function
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -23,12 +23,12 @@ export const VendorProductListContent = () => {
   const [showDropdown, setShowDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
 
-  // ✅ Add restock modal state
+  // Restock modal state
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [restockingProduct, setRestockingProduct] = useState(null);
   const [restockQuantity, setRestockQuantity] = useState('');
 
-  // Enhanced load products function
+  // ✅ Enhanced load products function with Cloudinary image support
   const loadProducts = useCallback(async () => {
     if (!user?.id) {
       console.warn('⚠️ No user ID available for loading products');
@@ -61,12 +61,16 @@ export const VendorProductListContent = () => {
       console.log('📦 Raw API Response:', response);
       
       if (response && response.products && Array.isArray(response.products)) {
-        // Transform API data for the UI
+        // ✅ Transform API data for the UI with Cloudinary image support
         const transformedProducts = response.products.map(product => ({
-          id: product.id,
+          id: product.id || product._id,
           name: product.name,
           description: product.description || 'No description available',
-          image: '/api/placeholder/86/66',
+          // ✅ Use Cloudinary images if available, fallback to placeholder
+          images: product.images || [],
+          primaryImage: product.images && product.images.length > 0 
+            ? product.images[0].url 
+            : '/api/placeholder/86/66',
           quantity: product.quantity || 0,
           date: product.createdAt ? new Date(product.createdAt).toLocaleDateString('en-US', { 
             year: 'numeric', 
@@ -384,6 +388,87 @@ export const VendorProductListContent = () => {
     }
   };
 
+  // ✅ ADD THIS: ProductImageDisplay Component Definition
+  const ProductImageDisplay = ({ product }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [imageError, setImageError] = useState(false);
+
+    const handleImageError = () => {
+      console.warn('🖼️ Image failed to load:', product.images?.[currentImageIndex]?.url);
+      setImageError(true);
+    };
+
+    const handleImageLoad = () => {
+      setImageError(false);
+    };
+
+    // If no images or image error, show placeholder
+    if (!product.images || product.images.length === 0 || imageError) {
+      return (
+        <div className="h-20 w-24 rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative h-20 w-24 group">
+        {/* ✅ Main product image using Cloudinary URL */}
+        <img 
+          className="h-20 w-24 rounded-lg object-cover border-2 border-gray-200 shadow-sm transition-opacity duration-200" 
+          src={product.images[currentImageIndex].url}
+          alt={`${product.name} - Image ${currentImageIndex + 1}`}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+          loading="lazy"
+        />
+        
+        {/* ✅ Multiple images indicator and navigation */}
+        {product.images.length > 1 && (
+          <>
+            {/* Image counter */}
+            <div className="absolute top-1 right-1 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+              {currentImageIndex + 1}/{product.images.length}
+            </div>
+            
+            {/* Navigation arrows (visible on hover) */}
+            <div className="absolute inset-0 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {currentImageIndex > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(prev => prev - 1);
+                  }}
+                  className="ml-1 p-1 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              
+              {currentImageIndex < product.images.length - 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(prev => prev + 1);
+                  }}
+                  className="mr-1 p-1 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#d8dfe9] flex items-center justify-center">
@@ -400,7 +485,7 @@ export const VendorProductListContent = () => {
       {/* Debug Components - Development Only */}
       <TokenDebug />
 
-      {/* ✅ FIXED: Complete Header with All Elements */}
+      {/* Header - same as before */}
       <header className="bg-white border-b border-black/8 px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Welcome Section */}
@@ -476,7 +561,7 @@ export const VendorProductListContent = () => {
         </div>
       </header>
 
-      {/* Messages */}
+      {/* Messages - same as before */}
       {(message || error) && (
         <div className="px-6 py-4">
           <div className={`p-4 rounded-lg ${
@@ -554,22 +639,24 @@ export const VendorProductListContent = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                      {/* Product Image */}
+                      {/* ✅ Updated Product Image Cell with Cloudinary support */}
                       <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex-shrink-0 h-20 w-24">
-                          <img 
-                            className="h-20 w-24 rounded-lg object-cover border-2 border-gray-200 shadow-sm" 
-                            src={product.image} 
-                            alt={product.name}
-                          />
+                        <div className="flex-shrink-0">
+                          <ProductImageDisplay product={product} />
                         </div>
                       </td>
 
-                      {/* ✅ Product Name & Details - Enhanced Typography */}
+                      {/* ✅ Enhanced Product Name & Details with image count */}
                       <td className="px-6 py-5">
                         <div className="max-w-xs">
                           <div className="text-base font-bold text-gray-900 mb-2 leading-tight">
                             {product.name}
+                            {/* ✅ Show image count badge */}
+                            {product.images && product.images.length > 0 && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                📷 {product.images.length}
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-600 mb-2 leading-relaxed">
                             {product.description}
@@ -707,7 +794,7 @@ export const VendorProductListContent = () => {
         onSave={handleEditSave}
       />
 
-      {/* ✅ NEW: Restock Modal */}
+      {/* Restock Modal - same as before */}
       {showRestockModal && restockingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 max-w-lg mx-4">

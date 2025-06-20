@@ -83,12 +83,12 @@ export const VendorProductUploadContent = () => {
     if (validFiles.length === 0) return;
 
     try {
-      // Process images with compression
+      // ✅ Process images while preserving File objects
       const imagePromises = validFiles.map(async (file) => {
-        const compressedImage = await compressImage(file);
+        const compressedPreview = await compressImage(file); // For display only
         return {
-          file,
-          preview: compressedImage,
+          file: file, // ✅ Preserve original File object for upload
+          preview: compressedPreview, // For UI display
           id: Math.random().toString(36).substr(2, 9),
           name: file.name,
           size: file.size
@@ -163,24 +163,37 @@ export const VendorProductUploadContent = () => {
       return;
     }
 
+    // ✅ Validate user ID is available
+    if (!user?.id) {
+      alert('User authentication required. Please log in again.');
+      return;
+    }
+
     try {
       setIsUploading(true);
 
-      // ✅ Prepare API payload with ALL required fields
+      // ✅ Prepare API payload matching the specification
       const productData = {
         name: formData.productName.trim(),
         pricePerYard: parseFloat(formData.pricePerYard),
         quantity: parseInt(formData.quantity),
-        materialType: formData.materialType.toLowerCase(),
-        vendorId: user?.id, // Will be ensured in service
-        idNumber: formData.idNumber || `PRD-${Date.now()}`, // Auto-generate if empty
-        description: formData.description.trim() || 'High-quality fabric', // Required field
-        pattern: formData.pattern || 'solid', // Required field - default to 'solid'
-        status: formData.status, // Will be mapped in service
-        images: formData.images?.map(img => img.preview) || [] // Optional field
+        materialType: formData.materialType, // Keep original case, service will handle
+        vendorId: user.id, // ✅ Explicitly include vendorId as per API spec
+        idNumber: formData.idNumber.trim() || `PRD-${Date.now()}`,
+        description: formData.description.trim() || 'High-quality fabric',
+        pattern: formData.pattern || 'solid',
+        status: formData.status, // Service will map to 'available'/'unavailable'
+        images: formData.images // ✅ Pass full image objects with File instances
       };
 
-      console.log('📤 Sending product data:', productData);
+      console.log('📤 Sending product data:', {
+        ...productData,
+        images: productData.images.map(img => ({
+          name: img.name,
+          size: img.size,
+          hasFile: !!(img.file instanceof File)
+        }))
+      });
 
       // Create product via API
       const response = await VendorService.createProduct(productData);

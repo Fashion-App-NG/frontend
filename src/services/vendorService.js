@@ -124,7 +124,7 @@ class VendorService {
     }
   }
 
-  // ✅ FIXED: Create single product with ALL required fields
+  // ✅ UPDATED: Create product with proper multipart/form-data handling
   async createProduct(productData) {
     try {
       console.log('📤 Creating product with data:', productData);
@@ -136,38 +136,75 @@ class VendorService {
         console.log('✅ Added vendor ID from current user:', currentUser.id);
       }
 
-      // ✅ Map frontend status to backend format
-      let backendStatus = 'available'; // default
-      if (productData.status === true || productData.status === 'true') {
-        backendStatus = 'available';
-      } else if (productData.status === false || productData.status === 'false') {
-        backendStatus = 'unavailable';
-      } else if (typeof productData.status === 'string') {
-        backendStatus = productData.status.toLowerCase();
+      // ✅ Check if we have actual image files or just preview URLs
+      const hasImageFiles = productData.images && 
+        productData.images.some(img => img instanceof File || (img.file instanceof File));
+
+      let response;
+
+      if (hasImageFiles) {
+        // ✅ Use multipart/form-data for image uploads
+        const formData = new FormData();
+
+        // Add text fields
+        formData.append('name', productData.name);
+        formData.append('pricePerYard', productData.pricePerYard.toString());
+        formData.append('quantity', productData.quantity.toString());
+        formData.append('materialType', productData.materialType.toLowerCase());
+        formData.append('vendorId', productData.vendorId);
+        formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
+        formData.append('description', productData.description || '');
+        formData.append('pattern', productData.pattern || 'solid');
+        formData.append('status', productData.status === true ? 'available' : 'unavailable');
+
+        // ✅ Add image files with correct field name
+        productData.images.forEach((imageItem, index) => {
+          if (imageItem.file instanceof File) {
+            formData.append('images', imageItem.file);
+          } else if (imageItem instanceof File) {
+            formData.append('images', imageItem);
+          }
+        });
+
+        console.log('🌐 Using multipart/form-data endpoint:', `${this.baseURL}/product`);
+        
+        // ✅ Different headers for multipart (no Content-Type header - let browser set it)
+        const headers = {};
+        const token = this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: headers, // No Content-Type for multipart
+          body: formData
+        });
+
+      } else {
+        // ✅ Use JSON for products without image files
+        const jsonData = {
+          name: productData.name,
+          pricePerYard: productData.pricePerYard,
+          quantity: productData.quantity,
+          materialType: productData.materialType.toLowerCase(),
+          vendorId: productData.vendorId,
+          idNumber: productData.idNumber || `PRD-${Date.now()}`,
+          description: productData.description || '',
+          pattern: productData.pattern || 'solid',
+          status: productData.status === true ? 'available' : 'unavailable',
+          images: productData.images || []
+        };
+
+        console.log('🌐 Using JSON endpoint:', `${this.baseURL}/product`);
+        console.log('📦 JSON product data:', jsonData);
+        
+        response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: this.getHeaders(), // Standard JSON headers
+          body: JSON.stringify(jsonData)
+        });
       }
-
-      // ✅ Ensure ALL required fields are present
-      const completeProductData = {
-        name: productData.name,
-        pricePerYard: productData.pricePerYard,
-        quantity: productData.quantity,
-        materialType: productData.materialType,
-        vendorId: productData.vendorId,
-        idNumber: productData.idNumber || `PRD-${Date.now()}`,
-        description: productData.description || '', // Required but can be empty
-        pattern: productData.pattern || '', // Required but can be empty
-        status: backendStatus, // Required field
-        images: productData.images || [] // Optional field
-      };
-
-      console.log('🌐 Using endpoint:', `${this.baseURL}/product`);
-      console.log('📦 Complete product data:', completeProductData);
-      
-      const response = await fetch(`${this.baseURL}/product`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(completeProductData)
-      });
 
       const result = await this.handleResponse(response);
       console.log('✅ Product created successfully:', result);
@@ -177,6 +214,16 @@ class VendorService {
       console.error('❌ Create product error:', error);
       throw error;
     }
+  }
+
+  // ✅ Helper method to get headers without Content-Type (for multipart)
+  getHeadersWithoutContentType() {
+    const headers = {};
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   // Update product - fix the endpoint and data format
