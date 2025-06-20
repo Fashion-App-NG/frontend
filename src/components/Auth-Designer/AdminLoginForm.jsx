@@ -5,7 +5,7 @@ import authService from '../../services/authService';
 
 export const AdminLoginForm = () => {
   const navigate = useNavigate();
-  const { setUser, setIsAuthenticated } = useAuth();
+  const { login } = useAuth(); // ✅ Use login instead of setUser, setIsAuthenticated
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,55 +38,39 @@ export const AdminLoginForm = () => {
 
       console.log('✅ Admin login successful:', response);
 
-      // Store admin authentication data
-      if (response.token) {
-        authService.setAuthToken(response.token);
-        // ✅ Check if setAdminToken method exists
-        if (authService.setAdminToken) {
-          authService.setAdminToken(response.token);
-        }
+      // ✅ Use the new login function from AuthContext
+      if (response.admin && response.token) {
+        // ✅ Ensure the admin object has the role field
+        const adminWithRole = {
+          ...response.admin,
+          role: response.admin.role || 'admin' // Ensure role is set
+        };
+        
+        console.log('🔑 Admin user being stored:', adminWithRole);
+        
+        await login(adminWithRole, response.token);
+        
+        // Navigate to admin dashboard
+        navigate('/admin/dashboard', {
+          state: {
+            message: `Welcome back, ${response.admin?.name || response.admin?.email || 'Admin'}!`,
+            type: 'success'
+          }
+        });
+      } else {
+        setError('Invalid response from server. Please try again.');
       }
-
-      if (response.admin) {
-        authService.setUser(response.admin);
-        // ✅ Check if setAdminUser method exists
-        if (authService.setAdminUser) {
-          authService.setAdminUser(response.admin);
-        }
-        setUser(response.admin);
-      }
-
-      setIsAuthenticated(true);
-
-      // Navigate to admin dashboard
-      navigate('/admin/dashboard', {
-        state: {
-          message: response.message || `Welcome back, Admin ${response.admin?.email || data.username}!`,
-          user: response.admin
-        }
-      });
 
     } catch (error) {
       console.error('❌ Admin login failed:', error);
       
-      // ✅ FIXED: Use error.status instead of parsing message
+      // Handle specific error cases
       if (error.status === 401) {
-        setError('Invalid admin credentials. Please check your email and password.');
+        setError('Invalid email or password. Please check your credentials.');
       } else if (error.status === 403) {
-        setError('Access denied. This account does not have admin privileges.');
-      } else if (error.status === 429) {
-        setError('Too many login attempts. Please wait 5 minutes before trying again.');
-      } else if (error.status === 500) {
-        setError('Server temporarily unavailable. Please try again in a few minutes.');
+        setError('Access denied. Please contact the system administrator.');
       } else {
-        // ✅ If successful response but caught as error, check the response
-        if (error.message && error.message.includes('successful')) {
-          // This might be a successful response incorrectly caught as error
-          console.log('🔍 Response might be successful but caught as error:', error);
-          navigate('/admin/dashboard');
-          return;
-        }
-        setError('Login failed. Please check your credentials and try again.');
+        setError(error.message || 'Login failed. Please try again.');
       }
     } finally {
       setIsLoading(false);

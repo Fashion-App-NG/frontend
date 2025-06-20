@@ -3,12 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
-import { SocialLogin } from './SocialLogin';
+import SocialLogin from './SocialLogin';
 
 export const VendorLoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser, setIsAuthenticated } = useAuth();
+  const { login } = useAuth(); // ✅ Use login instead of setUser, setIsAuthenticated
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,24 +52,23 @@ export const VendorLoginForm = () => {
 
       console.log('✅ Vendor login successful:', response);
 
-      // Store authentication data
-      if (response.token) {
-        authService.setAuthToken(response.token);
-      }
-
-      if (response.user) {
-        authService.setUser(response.user);
-        setUser(response.user);
-      }
-
-      setIsAuthenticated(true);
-
-      // Navigate to VENDOR dashboard
-      navigate('/vendor/dashboard', { 
-        state: { 
-          message: `Welcome back, ${response.user?.storeName || response.user?.email || 'Vendor'}!` 
+      // ✅ Use the new login function from AuthContext
+      if (response.user && response.token) {
+        const success = await login(response.user, response.token);
+        
+        if (success) {
+          // Navigate to VENDOR dashboard
+          navigate('/vendor/dashboard', { 
+            state: { 
+              message: `Welcome back, ${response.user?.storeName || response.user?.email || 'Vendor'}!` 
+            }
+          });
+        } else {
+          setError('Failed to authenticate user. Please try again.');
         }
-      });
+      } else {
+        setError('Invalid response from server. Please try again.');
+      }
 
     } catch (error) {
       console.error('❌ Vendor login failed:', error);

@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import VendorService from '../../services/vendorService';
+import { handleError } from '../../utils/errorHandler';
 
 export const VendorProductUploadContent = () => {
   const { user } = useAuth();
@@ -11,7 +13,7 @@ export const VendorProductUploadContent = () => {
     productName: '',
     status: true, // Available by default
     pricePerYard: '',
-    quantity: '',
+    quantity: '1',
     materialType: '',
     pattern: '',
     idNumber: '',
@@ -22,6 +24,7 @@ export const VendorProductUploadContent = () => {
   const [showMaterialDropdown, setShowMaterialDropdown] = useState(false);
   const [showPatternDropdown, setShowPatternDropdown] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -145,44 +148,7 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, status: !prev.status }));
   };
 
-  // Improved utility function to check localStorage space
-  const checkLocalStorageSpace = (data) => {
-    try {
-      const dataString = JSON.stringify(data);
-      const testKey = 'test_storage_' + Date.now();
-      
-      // Try to store the data
-      localStorage.setItem(testKey, dataString);
-      localStorage.removeItem(testKey);
-      
-      // Also check if we're approaching the limit (leave some buffer)
-      const currentSize = JSON.stringify(localStorage).length;
-      const maxSize = 5 * 1024 * 1024; // 5MB typical limit
-      
-      return currentSize < maxSize * 0.8; // Use only 80% of available space
-    } catch (e) {
-      console.warn('Storage space check failed:', e.message);
-      return false;
-    }
-  };
-
-  // Simplified utility function to clean old products if storage is full
-  const cleanOldProducts = () => {
-    try {
-      const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-      // Keep only the 5 most recent products to free up more space
-      const recentProducts = existingProducts.slice(0, 5);
-      localStorage.setItem('vendorProducts', JSON.stringify(recentProducts));
-      console.log(`Cleaned old products, kept ${recentProducts.length} recent items`);
-      return recentProducts;
-    } catch (error) {
-      console.error('Error cleaning old products:', error);
-      localStorage.removeItem('vendorProducts');
-      return [];
-    }
-  };
-
-  const handlePublishProduct = useCallback(() => {
+  const handlePublishProduct = useCallback(async () => {
     // Validate required fields
     if (!formData.productName.trim()) {
       alert('Please enter a product name');
@@ -192,123 +158,51 @@ export const VendorProductUploadContent = () => {
       alert('Please enter a price');
       return;
     }
-    if (formData.images.length === 0) {
-      alert('Please upload at least one image');
+    if (!formData.materialType) {
+      alert('Please select a material type');
       return;
     }
 
-    // Create new product with current timestamp
-    const now = new Date();
-    const newProduct = {
-      id: `#${Math.floor(Math.random() * 100000)}`,
-      name: formData.productName,
-      description: formData.description || 'Custom fabric',
-      // Use the first uploaded image (compressed)
-      image: formData.images[0]?.preview || '/api/placeholder/86/66',
-      images: formData.images.map(img => ({
-        id: img.id,
-        preview: img.preview,
-        name: img.name,
-        size: img.size
-      })), // Store all images
-      imageCount: formData.images.length,
-      quantity: parseInt(formData.quantity) || 1,
-      date: now.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      uploadDate: now.toISOString(),
-      price: parseFloat(formData.pricePerYard) || 0,
-      status: formData.status ? 'In Stock' : 'Out Of Stock',
-      statusColor: formData.status ? '#28b446' : '#cd0000',
-      materialType: formData.materialType,
-      pattern: formData.pattern,
-      idNumber: formData.idNumber,
-      isLocalProduct: true
-    };
-
-    console.log('Attempting to store product:', newProduct.name, 'with image size:', newProduct.image?.length || 0);
-
     try {
-      // Get existing products
-      let existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-      
-      // Try a simple approach first - just add the product
-      existingProducts.unshift(newProduct);
-      
-      try {
-        localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
-        console.log('✅ Product stored successfully with images');
-        
-        // Navigate to product listing page
-        navigate('/vendor/products', {
-          state: {
-            message: 'Product uploaded successfully! Images are compressed and stored locally for demonstration.',
+      setIsUploading(true);
+
+      // ✅ Prepare API payload with ALL required fields
+      const productData = {
+        name: formData.productName.trim(),
+        pricePerYard: parseFloat(formData.pricePerYard),
+        quantity: parseInt(formData.quantity),
+        materialType: formData.materialType.toLowerCase(),
+        vendorId: user?.id, // Will be ensured in service
+        idNumber: formData.idNumber || `PRD-${Date.now()}`, // Auto-generate if empty
+        description: formData.description.trim() || 'High-quality fabric', // Required field
+        pattern: formData.pattern || 'solid', // Required field - default to 'solid'
+        status: formData.status, // Will be mapped in service
+        images: formData.images?.map(img => img.preview) || [] // Optional field
+      };
+
+      console.log('📤 Sending product data:', productData);
+
+      // Create product via API
+      const response = await VendorService.createProduct(productData);
+
+      if (response.message || response.product) {
+        // Success - navigate to products list
+        navigate('/vendor/products', { 
+          state: { 
+            message: `Product "${productData.name}" has been created successfully!`,
             type: 'success',
             productAdded: true
           }
         });
-        
-      } catch (storageError) {
-        console.warn('⚠️ Initial storage failed, trying with cleanup:', storageError.message);
-        
-        // Clean old products and try again
-        existingProducts = cleanOldProducts();
-        existingProducts.unshift(newProduct);
-        
-        try {
-          localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
-          console.log('✅ Product stored after cleanup');
-          
-          navigate('/vendor/products', {
-            state: {
-              message: 'Product uploaded successfully! Old products were cleaned to make space.',
-              type: 'success',
-              productAdded: true
-            }
-          });
-          
-        } catch (secondError) {
-          console.warn('⚠️ Storage failed even after cleanup, using fallback');
-          throw secondError;
-        }
       }
-
     } catch (error) {
-      console.error('❌ Storage error, using fallback:', error);
-      
-      // Ultimate fallback: store without images but keep metadata
-      try {
-        const fallbackProduct = {
-          ...newProduct,
-          image: '/api/placeholder/86/66',
-          images: [], // Clear images to save space
-          imageCount: formData.images.length,
-          hasStorageIssue: true
-        };
-        
-        const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-        // Only keep 3 most recent to make sure we have space
-        const limitedProducts = existingProducts.slice(0, 3);
-        limitedProducts.unshift(fallbackProduct);
-        
-        localStorage.setItem('vendorProducts', JSON.stringify(limitedProducts));
-        
-        navigate('/vendor/products', {
-          state: {
-            message: 'Product uploaded successfully! Due to storage limitations, images are shown as placeholders. This will be resolved with backend integration.',
-            type: 'warning',
-            productAdded: true
-          }
-        });
-        
-      } catch (fallbackError) {
-        console.error('❌ Even fallback storage failed:', fallbackError);
-        alert('Unable to store product due to browser storage limitations. Please clear your browser data and try again with smaller images.');
-      }
+      console.error('Failed to create product:', error);
+      const errorInfo = handleError(error, { context: 'createProduct' });
+      alert(`Error: ${errorInfo.message}`);
+    } finally {
+      setIsUploading(false);
     }
-  }, [formData, navigate]);
+  }, [formData, navigate, user?.id]);
 
   const handleCancel = () => {
     // Confirm before leaving if form has data
@@ -379,15 +273,24 @@ export const VendorProductUploadContent = () => {
           <div className="flex gap-3">
             <button
               onClick={handleCancel}
-              className="px-6 py-3 bg-[#f9f9f9] text-[#b2b2b2] rounded-[5px] border border-gray-300 hover:bg-gray-100 transition-colors"
+              disabled={isUploading}
+              className="px-6 py-3 bg-[#f9f9f9] text-[#b2b2b2] rounded-[5px] border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handlePublishProduct}
-              className="px-4 py-3 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors"
+              disabled={isUploading}
+              className="px-4 py-3 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              Publish Product
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#edff8c]"></div>
+                  Publishing...
+                </>
+              ) : (
+                'Publish Product'
+              )}
             </button>
           </div>
         </div>
@@ -509,7 +412,7 @@ export const VendorProductUploadContent = () => {
                     className="flex items-center justify-between h-[51px] px-4 bg-[#f9f9f9] border-[1.5px] border-[#ccc] rounded-[5px] cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     <span className={`${formData.pattern ? 'text-black' : 'text-[#aeaeae]'}`}>
-                      {formData.pattern || 'Choose Pattern'}
+                      {formData.pattern || 'Choose Pattern (defaults to Solid)'}
                     </span>
                     <svg className={`w-[10px] h-[5px] transition-transform ${showPatternDropdown ? 'rotate-180' : ''}`} viewBox="0 0 10 5">
                       <path d="M0 0L5 5L10 0" fill="#aeaeae"/>
@@ -533,21 +436,6 @@ export const VendorProductUploadContent = () => {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* ID Number */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block font-semibold mb-2">ID Number</label>
-                  <input
-                    type="text"
-                    placeholder="Enter ID number"
-                    value={formData.idNumber}
-                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                    className="w-full h-[52px] px-4 bg-white border border-[#ccc] rounded-[8px] text-black placeholder-[#afacac] outline-none focus:border-[#2e2e2e] transition-colors"
-                  />
-                </div>
-                <div></div> {/* Empty space to maintain grid layout */}
               </div>
 
               {/* Description */}

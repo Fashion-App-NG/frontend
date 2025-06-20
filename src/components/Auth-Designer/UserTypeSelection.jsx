@@ -1,10 +1,12 @@
 import { ShoppingBagIcon, UserIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext'; // ✅ Add this import
 
 export const UserTypeSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth(); // ✅ Get login function from AuthContext
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
@@ -45,6 +47,21 @@ export const UserTypeSelection = () => {
 
   const handleAdminClick = () => {
     navigate('/admin/login');
+  };
+
+  // If there's a vendor login form in this component, make sure it uses the login function correctly
+  const handleVendorSubmit = async (formData) => {
+    try {
+      // Use the login function from AuthContext
+      const success = login(formData.user, formData.token);
+      if (success) {
+        navigate('/vendor/dashboard');
+      }
+    } catch (error) {
+      console.error('❌ Vendor login failed:', error);
+      setMessage('Login failed. Please try again.');
+      setMessageType('error');
+    }
   };
 
   // ✅ LEARNING: Environment-aware feature flagging

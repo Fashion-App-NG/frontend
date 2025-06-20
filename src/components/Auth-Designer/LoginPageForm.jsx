@@ -1,7 +1,5 @@
-import React from 'react';
 import { Logo } from '../Common/Logo';
 import { LoginForm } from './LoginForm';
-import { SocialLogin } from './SocialLogin';
 
 export const LoginPageForm = () => {
   return (
@@ -11,7 +9,6 @@ export const LoginPageForm = () => {
           <div className="flex w-full flex-col items-stretch mt-16 max-md:max-w-full max-md:mt-10">
             <Logo />
             <LoginForm />
-            <SocialLogin isLogin={true} />
           </div>
         </div>
         <div className="w-6/12 ml-5 max-md:w-full max-md:ml-0">

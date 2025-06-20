@@ -1,591 +1,775 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import VendorService from '../../services/vendorService';
+import { handleError } from '../../utils/errorHandler';
+import TokenDebug from './TokenDebug';
+import VendorProductEditModal from './VendorProductEditModal';
 
 export const VendorProductListContent = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth(); // ✅ Get logout function
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [sortBy, setSortBy] = useState('monthly');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
-  const [products, setProducts] = useState([]);
-  const [activeContextMenu, setActiveContextMenu] = useState(null);
 
-  // Load products from localStorage
-  const loadProducts = useCallback(() => {
-    const localProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-    
-    // If no local products, show a sample product as demonstration
-    if (localProducts.length === 0) {
-      const sampleProduct = {
-        id: '#SAMPLE',
-        name: 'Sample Product',
-        description: 'Upload your first product to see it here',
-        image: '/api/placeholder/86/66',
-        quantity: 0,
-        date: new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        }),
-        uploadDate: new Date().toISOString(),
-        price: 0,
-        status: 'Sample',
-        statusColor: '#9ca3af',
-        isLocalProduct: false,
-        isSample: true
-      };
-      return [sampleProduct];
+  // Modal and dropdown states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+
+  // ✅ Add restock modal state
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockingProduct, setRestockingProduct] = useState(null);
+  const [restockQuantity, setRestockQuantity] = useState('');
+
+  // Enhanced load products function
+  const loadProducts = useCallback(async () => {
+    if (!user?.id) {
+      console.warn('⚠️ No user ID available for loading products');
+      console.log('🔍 Current user object:', user);
+      setLoading(false);
+      setError('User authentication required. Please log in again.');
+      return;
     }
-    
-    return localProducts;
-  }, []);
 
-  // Initialize products
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Clear localStorage products to force API usage
+      localStorage.removeItem('vendorProducts');
+      console.log('🗑️ Cleared localStorage products');
+      
+      console.log('🚀 Starting API call for vendor:', user.id);
+      
+      // Test API connection first
+      const connectionOk = await VendorService.testConnection();
+      console.log('🌐 API connection test:', connectionOk ? 'SUCCESS' : 'FAILED');
+      
+      if (!connectionOk) {
+        throw new Error('Backend API is not responding. Please ensure the server is running on http://localhost:3001');
+      }
+      
+      // Make the API call
+      const response = await VendorService.getVendorProducts(user.id);
+      console.log('📦 Raw API Response:', response);
+      
+      if (response && response.products && Array.isArray(response.products)) {
+        // Transform API data for the UI
+        const transformedProducts = response.products.map(product => ({
+          id: product.id,
+          name: product.name,
+          description: product.description || 'No description available',
+          image: '/api/placeholder/86/66',
+          quantity: product.quantity || 0,
+          date: product.createdAt ? new Date(product.createdAt).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          }) : new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          uploadDate: product.createdAt || new Date().toISOString(),
+          price: product.pricePerYard || 0,
+          status: product.display !== false ? 'In Stock' : 'Out Of Stock',
+          statusColor: product.display !== false ? '#28b446' : '#cd0000',
+          materialType: product.materialType,
+          pattern: product.pattern,
+          idNumber: product.idNumber,
+          display: product.display !== false,
+          isApiProduct: true
+        }));
+        
+        setProducts(transformedProducts);
+        console.log(`✅ Successfully loaded ${transformedProducts.length} products from API`);
+        
+        if (transformedProducts.length === 0) {
+          setMessage('No products found. Click "Add Product" to create your first product.');
+          setMessageType('info');
+        }
+        
+      } else {
+        setProducts([]);
+        console.log('📭 No products found for vendor');
+        setMessage('No products found. Click "Add Product" to create your first product.');
+        setMessageType('info');
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to load products from API:', error);
+      setError(`Failed to load products: ${error.message}`);
+      setProducts([]);
+      setMessage(`Unable to load products: ${error.message}`);
+      setMessageType('error');
+      
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Load products when component mounts or user changes
   useEffect(() => {
-    setProducts(loadProducts());
-  }, [loadProducts]);
+    console.log('👤 User effect triggered:', user);
+    if (user?.id) {
+      console.log('🔑 User ID available, loading products...');
+      loadProducts();
+    } else {
+      console.log('⚠️ No user ID, skipping product load');
+      setLoading(false);
+    }
+  }, [user?.id, loadProducts]);
 
-  // Check for success message from product upload
+  // Handle messages from navigation state
   useEffect(() => {
     if (location.state?.message) {
       setMessage(location.state.message);
       setMessageType(location.state.type || 'info');
       
-      // If a product was added, refresh the product list
-      if (location.state?.productAdded) {
-        setProducts(loadProducts());
-      }
-      
-      // Clear the state to prevent message from showing again on refresh
       navigate(location.pathname, { replace: true, state: {} });
       
-      // Auto-hide message after 8 seconds (longer for the detailed message)
       const timer = setTimeout(() => {
         setMessage('');
         setMessageType('');
-      }, 8000);
+      }, 5000);
       
       return () => clearTimeout(timer);
     }
-  }, [location.state, navigate, location.pathname, loadProducts]);
+  }, [location.state, navigate, location.pathname]);
 
-  // Handle clicking outside dropdowns
-  const handleOutsideClick = useCallback((e) => {
-    if (!e.target.closest('.dropdown-container')) {
-      setShowSortDropdown(false);
-      setActiveContextMenu(null);
-    }
-  }, []);
-
-  // Filter products based on active tab and search
-  const filteredProducts = useMemo(() => {
-    let filtered = products.filter(p => !p.isSample); // Remove sample products from filtering
-
-    // Filter by tab
-    if (activeTab === 'available') {
-      filtered = filtered.filter(p => p.status === 'In Stock');
-    } else if (activeTab === 'disabled') {
-      filtered = filtered.filter(p => p.status === 'Out Of Stock');
-    }
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Sort by date (newest first)
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.uploadDate || a.date);
-      const dateB = new Date(b.uploadDate || b.date);
-      return dateB - dateA;
-    });
-
-    return filtered;
-  }, [products, activeTab, searchTerm]);
-
-  // Get dynamic counts
-  const getTabCount = (tab) => {
-    const nonSampleProducts = products.filter(p => !p.isSample);
+  // Handle dropdown toggle
+  const handleDropdownToggle = (event, productId) => {
+    event.stopPropagation();
     
-    switch(tab) {
-      case 'all': 
-        return nonSampleProducts.length;
-      case 'available': 
-        return nonSampleProducts.filter(p => p.status === 'In Stock').length;
-      case 'disabled': 
-        return nonSampleProducts.filter(p => p.status === 'Out Of Stock').length;
-      default: 
-        return 0;
+    if (showDropdown === productId) {
+      setShowDropdown(null);
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownPosition({
+        x: rect.left - 100,
+        y: rect.bottom + 5
+      });
+      setShowDropdown(productId);
     }
   };
 
-  const handleAddProduct = () => {
-    navigate('/vendor/products/add');
-  };
-
-  // Context menu handlers
-  const handleContextMenuAction = (action, product) => {
-    setActiveContextMenu(null);
-    
-    switch(action) {
-      case 'edit':
-        // Navigate to edit page (placeholder for now)
-        alert(`Edit ${product.name} - Feature coming soon!`);
-        break;
-      case 'restock':
-        // Handle restock
-        alert(`Restock ${product.name} - Feature coming soon!`);
-        break;
-      case 'delete':
-        // Handle delete
-        if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
-          const updatedProducts = products.filter(p => p.id !== product.id);
-          setProducts(updatedProducts);
-          localStorage.setItem('vendorProducts', JSON.stringify(updatedProducts.filter(p => !p.isSample)));
-          setMessage(`Product "${product.name}" has been deleted successfully.`);
-          setMessageType('success');
-          
-          // Auto-hide message
-          setTimeout(() => {
-            setMessage('');
-            setMessageType('');
-          }, 3000);
-        }
-        break;
-      default:
-        break;
+  // Handle outside click to close dropdown
+  const handleOutsideClick = useCallback(() => {
+    if (showDropdown) {
+      setShowDropdown(null);
     }
-  };
+  }, [showDropdown]);
 
-  const ProductRow = ({ product, index }) => {
-    const [imageError, setImageError] = useState(false);
+  // Add event listener for outside clicks
+  useEffect(() => {
+    if (showDropdown) {
+      document.addEventListener('click', handleOutsideClick);
+      return () => document.removeEventListener('click', handleOutsideClick);
+    }
+  }, [showDropdown, handleOutsideClick]);
+
+  // Edit product handler - ensure we have valid ID
+  const handleEditProduct = (product) => {
+    console.log('🔍 Editing product:', product);
     
-    const handleImageError = (e) => {
-      console.log('Image failed to load for product:', product.name, 'src:', e.target.src);
-      setImageError(true);
+    // ✅ Ensure product has a valid ID
+    if (!product.id && !product._id) {
+      console.error('❌ Product missing ID:', product);
+      setMessage('Error: Product ID not found');
+      setMessageType('error');
+      return;
+    }
+    
+    // ✅ Ensure product has id field (map _id if needed)
+    const productWithId = {
+      ...product,
+      id: product.id || product._id
     };
+    
+    setEditingProduct(productWithId);
+    setShowEditModal(true);
+    setShowDropdown(null);
+  };
 
-    const getDisplayImage = () => {
-      // If there was an image error, use placeholder
-      if (imageError) {
-        return '/api/placeholder/86/66';
+  // Delete product handler - fix ID usage
+  const handleDeleteProduct = async (productId, productName) => {
+    try {
+      // ✅ Validate product ID
+      if (!productId || productId === 'undefined') {
+        throw new Error('Invalid product ID');
       }
       
-      // For local products with uploaded images
-      if (product.isLocalProduct && product.image && product.image.startsWith('data:image/')) {
-        return product.image;
+      if (!window.confirm(`Are you sure you want to delete "${productName}"?`)) {
+        return;
+      }
+
+      console.log('🗑️ Deleting product:', productId);
+      await VendorService.hideProduct(productId);
+      
+      await loadProducts();
+      setShowDropdown(null);
+      
+      setMessage(`Product "${productName}" deleted successfully!`);
+      setMessageType('success');
+      
+    } catch (error) {
+      console.error('❌ Failed to delete product:', error);
+      const errorInfo = handleError(error, { context: 'deleteProduct' });
+      setMessage(`Failed to delete product: ${errorInfo.message}`);
+      setMessageType('error');
+    }
+  };
+
+  // Save edited product - add validation
+  const handleEditSave = async (updateData) => {
+    try {
+      // ✅ Validate product ID exists
+      if (!editingProduct?.id) {
+        throw new Error('No product ID available for update');
       }
       
-      // For products with storage issues
-      if (product.hasStorageIssue) {
-        return '/api/placeholder/86/66';
+      console.log('📝 Attempting to update product:', editingProduct.id);
+      console.log('📦 Update data:', updateData);
+      
+      const result = await VendorService.updateProduct(editingProduct.id, updateData);
+      console.log('✅ Product updated:', result);
+      
+      // Reload products to get fresh data
+      await loadProducts();
+      
+      // Close modal
+      setShowEditModal(false);
+      setEditingProduct(null);
+      
+      // Show success message
+      setMessage(`Product "${updateData.name}" updated successfully!`);
+      setMessageType('success');
+      
+      // Auto-hide message after 3 seconds
+      setTimeout(() => {
+        setMessage('');
+        setMessageType('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Failed to update product:', error);
+      
+      // Don't close modal on error, let user see the error and try again
+      const errorInfo = handleError(error, { context: 'updateProduct' });
+      setMessage(`Failed to update product: ${errorInfo.message}`);
+      setMessageType('error');
+      
+      // Re-throw so the modal can handle it
+      throw error;
+    }
+  };
+
+  // Quantity update handler - fix ID usage
+  const handleQuantityUpdate = async (product, quantity) => {
+    try {
+      // ✅ Validate product ID
+      const productId = product.id || product._id;
+      if (!productId) {
+        throw new Error('Product ID not found');
       }
       
-      // Default fallback
-      return product.image || '/api/placeholder/86/66';
+      console.log('📦 Updating quantity for product:', productId, 'to:', quantity);
+      await VendorService.updateProduct(productId, { quantity });
+      
+      await loadProducts();
+      setShowDropdown(null);
+      
+      setMessage(`Quantity updated to ${quantity} for "${product.name}"`);
+      setMessageType('success');
+      
+    } catch (error) {
+      console.error('❌ Failed to update quantity:', error);
+      const errorInfo = handleError(error, { context: 'updateQuantity' });
+      setMessage(`Failed to update quantity: ${errorInfo.message}`);
+      setMessageType('error');
+    }
+  };
+
+  // ✅ NEW: Handle restock with addition logic
+  const handleRestockProduct = (product) => {
+    console.log('📦 Restocking product:', product);
+    
+    const productWithId = {
+      ...product,
+      id: product.id || product._id
     };
+    
+    setRestockingProduct(productWithId);
+    setRestockQuantity('');
+    setShowRestockModal(true);
+    setShowDropdown(null);
+  };
 
+  // ✅ NEW: Save restock - ADD to existing quantity
+  const handleRestockSave = async () => {
+    try {
+      if (!restockingProduct?.id) {
+        throw new Error('No product ID available for restock');
+      }
+
+      const addQuantity = parseInt(restockQuantity);
+      if (isNaN(addQuantity) || addQuantity <= 0) {
+        setMessage('Please enter a valid quantity to add');
+        setMessageType('error');
+        return;
+      }
+
+      // ✅ Calculate NEW total quantity (current + additional)
+      const currentQuantity = parseInt(restockingProduct.quantity) || 0;
+      const newTotalQuantity = currentQuantity + addQuantity;
+      
+      console.log('📦 Restocking:', {
+        productId: restockingProduct.id,
+        currentQuantity,
+        addingQuantity: addQuantity,
+        newTotalQuantity
+      });
+
+      // ✅ Send the NEW TOTAL to the database
+      const result = await VendorService.updateProduct(restockingProduct.id, { 
+        quantity: newTotalQuantity 
+      });
+      
+      console.log('✅ Product restocked:', result);
+      
+      // Reload products to get fresh data
+      await loadProducts();
+      
+      // Close modal
+      setShowRestockModal(false);
+      setRestockingProduct(null);
+      setRestockQuantity('');
+      
+      // Show success message
+      setMessage(`Added ${addQuantity} yards to "${restockingProduct.name}". New total: ${newTotalQuantity} yards`);
+      setMessageType('success');
+      
+      // Auto-hide message after 4 seconds
+      setTimeout(() => {
+        setMessage('');
+        setMessageType('');
+      }, 4000);
+      
+    } catch (error) {
+      console.error('❌ Failed to restock product:', error);
+      const errorInfo = handleError(error, { context: 'restockProduct' });
+      setMessage(`Failed to restock product: ${errorInfo.message}`);
+      setMessageType('error');
+    }
+  };
+
+  // ✅ Cancel restock
+  const handleRestockCancel = () => {
+    setShowRestockModal(false);
+    setRestockingProduct(null);
+    setRestockQuantity('');
+  };
+
+  // ✅ Add logout handler
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      logout();
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="grid grid-cols-12 gap-4 items-center py-4 border-b border-[#e8e8e8] last:border-b-0 min-h-[80px]">
-        {/* Product Image - Col 1 */}
-        <div className="col-span-1 flex justify-center">
-          <div className="relative">
-            <img 
-              src={getDisplayImage()}
-              alt={product.name}
-              className="w-[86px] h-[66px] rounded-lg object-cover bg-gray-100"
-              onError={handleImageError}
-              onLoad={() => console.log('Image loaded successfully for:', product.name)}
-            />
-            
-            {/* Show storage issue indicator */}
-            {product.hasStorageIssue && (
-              <div className="absolute -top-1 -left-1 bg-yellow-500 text-white text-xs rounded px-1 font-semibold">
-                !
-              </div>
-            )}
-            
-            {/* Show image count badge if multiple images */}
-            {product.imageCount > 1 && (
-              <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                {product.imageCount}
-              </div>
-            )}
-            
-            {/* Show "NEW" badge for uploaded products */}
-            {product.isLocalProduct && !product.hasStorageIssue && (
-              <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-xs rounded px-1 font-semibold">
-                NEW
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Product Name - Col 2-3 */}
-        <div className="col-span-2">
-          <div className="font-medium text-[14px] leading-[150%] text-black">{product.name}</div>
-          <div className="font-normal text-[12px] leading-[150%] text-gray-600">{product.description}</div>
-          {/* Show material type if available */}
-          {product.materialType && (
-            <div className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1 inline-block">
-              {product.materialType}
-            </div>
-          )}
-          {/* Show storage issue warning */}
-          {product.hasStorageIssue && (
-            <div className="text-[10px] text-yellow-600 bg-yellow-50 px-2 py-1 rounded mt-1 inline-block">
-              Limited storage
-            </div>
-          )}
-        </div>
-
-        {/* ID - Col 4 */}
-        <div className="col-span-1">
-          <span className="font-medium text-[14px] leading-[150%] text-black">{product.id}</span>
-        </div>
-
-        {/* Quantity - Col 5 */}
-        <div className="col-span-1 text-center">
-          <span className="font-medium text-[14px] leading-[150%] text-black">{product.quantity} Pcs</span>
-        </div>
-
-        {/* Date - Col 6 */}
-        <div className="col-span-1 text-center">
-          <span className="font-medium text-[14px] leading-[150%] text-black">{product.date}</span>
-        </div>
-
-        {/* Price - Col 7 */}
-        <div className="col-span-2 text-center">
-          <div className="flex items-center justify-center">
-            <span className="text-[14px] text-black">₦</span>
-            <span className="font-medium text-[14px] leading-[150%] text-black ml-1">
-              {product.price.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Status - Col 8 */}
-        <div className="col-span-1 flex justify-center">
-          <div className="flex items-center bg-white rounded-lg px-3 py-2 shadow-sm border">
-            <div 
-              className="w-2 h-2 rounded-full mr-2"
-              style={{ backgroundColor: product.statusColor }}
-            />
-            <span className="text-[12px] font-medium leading-[150%]">{product.status}</span>
-          </div>
-        </div>
-
-        {/* Action - Col 9 */}
-        <div className="col-span-1 flex justify-center relative">
-          <div className="dropdown-container">
-            <button 
-              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
-              onClick={() => setActiveContextMenu(activeContextMenu === product.id ? null : product.id)}
-            >
-              <div className="flex flex-col gap-1">
-                <div className="w-1 h-1 bg-gray-600 rounded-full" />
-                <div className="w-1 h-1 bg-gray-600 rounded-full" />
-                <div className="w-1 h-1 bg-gray-600 rounded-full" />
-              </div>
-            </button>
-            
-            {/* Context Menu */}
-            {activeContextMenu === product.id && (
-              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-20 min-w-[120px]">
-                <button
-                  onClick={() => handleContextMenuAction('edit', product)}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 border-b border-gray-100"
-                >
-                  <span>✏️</span>
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleContextMenuAction('restock', product)}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 border-b border-gray-100"
-                >
-                  <span>🔄</span>
-                  Restock
-                </button>
-                <button
-                  onClick={() => handleContextMenuAction('delete', product)}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 text-[14px] flex items-center gap-2 text-red-600"
-                >
-                  <span>🗑️</span>
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
+      <div className="min-h-screen bg-[#d8dfe9] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading products...</p>
         </div>
       </div>
     );
-  };
-
-  // Show sample product message when no products exist
-  const showSample = products.length === 1 && products[0]?.isSample;
+  }
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]" onClick={handleOutsideClick}>
-      {/* Header */}
+      {/* Debug Components - Development Only */}
+      <TokenDebug />
+
+      {/* ✅ FIXED: Complete Header with All Elements */}
       <header className="bg-white border-b border-black/8 px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Welcome Section */}
+          {/* Left: Welcome Section */}
           <div>
             <h1 className="text-[32px] font-bold text-[#3e3e3e] leading-[150%]">
               Welcome {user?.firstName || user?.storeName || 'Vendor'}
             </h1>
-            <p className="text-[16px] text-[#2e2e2e] leading-[120%] w-[312px]">
+            <p className="text-[16px] text-[#2e2e2e] leading-[120%]">
               Here is the information about all your products
             </p>
           </div>
 
-          {/* Search Bar */}
+          {/* Center: Search Bar */}
           <div className="w-[284px]">
             <div className="flex items-center bg-[#f5f5f5] rounded-[50px] px-3 py-2 gap-2">
               <div className="w-6 h-6 text-[#9e9e9e]">🔍</div>
               <input 
                 type="text" 
-                placeholder="Search"
+                placeholder="Search products..."
                 className="flex-1 bg-transparent outline-none text-[#9e9e9e] text-[16px]"
               />
             </div>
           </div>
 
-          {/* User Profile */}
+          {/* ✅ Right: Actions & User Profile */}
           <div className="flex items-center gap-4">
-            <div className="w-6 h-6 text-gray-600">🔔</div>
-            <div className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                {(user?.firstName?.[0] || user?.storeName?.[0] || 'V').toUpperCase()}
+            {/* Add Product Button */}
+            <button
+              onClick={() => navigate('/vendor/products/add')}
+              className="px-4 py-2 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors"
+            >
+              + Add Product
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              title="Toggle dark mode"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </button>
+
+            {/* Notifications */}
+            <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5-5 5-5H15m-6 0H4l5 5-5 5h5m3-10v10" />
+              </svg>
+              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+
+            {/* User Profile & Logout */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+                  {(user?.firstName?.[0] || user?.storeName?.[0] || 'V').toUpperCase()}
+                </div>
               </div>
+              
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
+      {/* Messages */}
+      {(message || error) && (
+        <div className="px-6 py-4">
+          <div className={`p-4 rounded-lg ${
+            messageType === 'error' || error 
+              ? 'bg-red-50 border border-red-200 text-red-700' 
+              : messageType === 'success' 
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-blue-50 border border-blue-200 text-blue-700'
+          }`}>
+            {error || message}
+            {error && (
+              <button
+                onClick={() => setError(null)}
+                className="ml-4 text-sm font-medium underline hover:no-underline"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="p-6">
-        {/* Success/Info Message */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-lg border ${
-            messageType === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-700'
-              : messageType === 'error'
-              ? 'bg-red-50 border-red-200 text-red-700'
-              : messageType === 'warning'
-              ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
-              : 'bg-blue-50 border-blue-200 text-blue-700'
-          }`}>
-            <div className="flex items-start gap-2">
-              {messageType === 'success' && (
-                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        {products.length === 0 ? (
+          <div className="bg-white rounded-lg p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="mb-4">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
-              )}
-              <div>
-                <p className="font-medium text-sm">{message}</p>
               </div>
-              <button 
-                onClick={() => setMessage('')}
-                className="ml-auto text-gray-500 hover:text-gray-700"
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No products yet</h3>
+              <p className="text-gray-500 mb-6">Get started by adding your first product to your store.</p>
+              <button
+                onClick={() => navigate('/vendor/products/add')}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                ×
+                Add Your First Product
               </button>
             </div>
           </div>
-        )}
+        ) : (
+          <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Product Image
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Product Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Qty (Yards)
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Upload Date
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Price per Yard
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {products.map((product) => (
+                    <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                      {/* Product Image */}
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex-shrink-0 h-20 w-24">
+                          <img 
+                            className="h-20 w-24 rounded-lg object-cover border-2 border-gray-200 shadow-sm" 
+                            src={product.image} 
+                            alt={product.name}
+                          />
+                        </div>
+                      </td>
 
-        {/* Empty State for No Products */}
-        {showSample && (
-          <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-2xl">📦</span>
-              </div>
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">No Products Yet</h3>
-              <p className="text-blue-700 mb-4">
-                Start by uploading your first product to see it listed here. Your products will be stored locally for demonstration purposes.
+                      {/* ✅ Product Name & Details - Enhanced Typography */}
+                      <td className="px-6 py-5">
+                        <div className="max-w-xs">
+                          <div className="text-base font-bold text-gray-900 mb-2 leading-tight">
+                            {product.name}
+                          </div>
+                          <div className="text-sm text-gray-600 mb-2 leading-relaxed">
+                            {product.description}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {product.materialType && (
+                              <span className="inline-block px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                {product.materialType}
+                              </span>
+                            )}
+                            {product.pattern && (
+                              <span className="inline-block px-3 py-1 text-sm font-semibold bg-purple-100 text-purple-800 rounded-full">
+                                {product.pattern}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* ✅ ID Number - Enhanced */}
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900 font-mono">
+                          {product.idNumber || product.id}
+                        </div>
+                      </td>
+
+                      {/* ✅ Quantity - Enhanced */}
+                      <td className="px-6 py-5 whitespace-nowrap text-center">
+                        <div className="text-lg font-bold text-gray-900">
+                          {product.quantity}
+                        </div>
+                        <div className="text-sm font-medium text-gray-500">
+                          yards
+                        </div>
+                      </td>
+
+                      {/* ✅ Upload Date - Enhanced */}
+                      <td className="px-6 py-5 whitespace-nowrap text-center">
+                        <div className="text-sm font-semibold text-gray-900">
+                          {product.date}
+                        </div>
+                      </td>
+
+                      {/* ✅ Price per Yard - Enhanced */}
+                      <td className="px-6 py-5 whitespace-nowrap text-center">
+                        <div className="text-lg font-bold text-gray-900">
+                          ₦{typeof product.price === 'number' ? product.price.toLocaleString() : product.price}
+                        </div>
+                      </td>
+
+                      {/* ✅ Status - Enhanced */}
+                      <td className="px-6 py-5 whitespace-nowrap text-center">
+                        <span 
+                          className="inline-flex px-4 py-2 text-sm font-bold rounded-full"
+                          style={{ 
+                            backgroundColor: product.statusColor === '#28b446' ? '#dcfce7' : '#fee2e2',
+                            color: product.statusColor 
+                          }}
+                        >
+                          {product.status}
+                        </span>
+                      </td>
+
+                      {/* Action Dropdown - Same as before */}
+                      <td className="px-6 py-5 whitespace-nowrap text-center relative">
+                        <button
+                          onClick={(e) => handleDropdownToggle(e, product.id)}
+                          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                          aria-label="More options"
+                        >
+                          <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {showDropdown === product.id && (
+                          <div 
+                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+                            style={{
+                              position: 'fixed',
+                              left: dropdownPosition.x,
+                              top: dropdownPosition.y
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => handleEditProduct(product)}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit Product
+                            </button>
+                            <button
+                              onClick={() => handleRestockProduct(product)}
+                              className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-gray-100 flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Restock (+Add)
+                            </button>
+                            <div className="border-t border-gray-100 my-1"></div>
+                            <button
+                              onClick={() => handleDeleteProduct(product.id, product.name)}
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete Product
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Modal */}
+      <VendorProductEditModal
+        product={editingProduct}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingProduct(null);
+        }}
+        onSave={handleEditSave}
+      />
+
+      {/* ✅ NEW: Restock Modal */}
+      {showRestockModal && restockingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-lg mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Restock Product</h3>
+              <button
+                onClick={handleRestockCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-xl">×</span>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">Product: <strong>{restockingProduct.name}</strong></p>
+              <p className="text-sm text-gray-600 mb-4">
+                Current Stock: <strong className="text-blue-600">{restockingProduct.quantity} yards</strong>
               </p>
-              <button
-                onClick={handleAddProduct}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Upload Your First Product
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search & Actions */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Search Products */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400">
-                🔍
-              </div>
-              <input
-                type="text"
-                placeholder="Search Products.."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-[#f9f9f9] rounded-lg border-none outline-none text-[14px] text-[#2e2e2e] w-[200px]"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-3 bg-[#f9f9f9] text-[#b2b2b2] rounded-[5px] border text-[16px]">
-              Bulk Upload
-            </button>
-            <button
-              onClick={handleAddProduct}
-              className="px-3 py-3 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold flex items-center gap-1"
-            >
-              <span className="text-lg">+</span>
-              <span>Add Product</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Product Tabs */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`px-4 py-2 rounded-[5px] text-[16px] ${
-              activeTab === 'all' 
-                ? 'bg-[#f9f9f9] text-black border' 
-                : 'bg-[#f9f9f9] text-[#b2b2b2]'
-            }`}
-          >
-            All Products ({getTabCount('all')})
-          </button>
-          <button
-            onClick={() => setActiveTab('available')}
-            className={`px-4 py-2 rounded-[5px] text-[16px] ${
-              activeTab === 'available' 
-                ? 'bg-[#f9f9f9] text-black border' 
-                : 'bg-[#f9f9f9] text-[#b2b2b2]'
-            }`}
-          >
-            Available ({getTabCount('available')})
-          </button>
-          <button
-            onClick={() => setActiveTab('disabled')}
-            className={`px-4 py-2 rounded-[5px] text-[16px] ${
-              activeTab === 'disabled' 
-                ? 'bg-[#f9f9f9] text-black border' 
-                : 'bg-[#f9f9f9] text-[#b2b2b2]'
-            }`}
-          >
-            Disabled ({getTabCount('disabled')})
-          </button>
-
-          {/* Filter Button */}
-          <button className="ml-auto px-3 py-2 bg-[#f9f9f9] text-[#b2b2b2] rounded-[5px] flex items-center gap-2">
-            <div className="w-[22px] h-[22px]">⚙️</div>
-            <span>Filter</span>
-          </button>
-        </div>
-
-        {/* Product List */}
-        <div className="bg-white rounded-[10px] p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[24px] font-bold leading-[150%]">Product List</h2>
-            
-            <div className="relative dropdown-container">
-              <button
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className="flex items-center gap-1 bg-white border rounded-lg px-3 py-1 shadow-sm"
-              >
-                <span className="text-[12px] font-medium">Monthly</span>
-                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M4 6l4 4 4-4H4z"/>
-                </svg>
-              </button>
               
-              {showSortDropdown && (
-                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[120px]">
-                  <button className="w-full px-3 py-2 text-left hover:bg-gray-50 text-[12px]">Monthly</button>
-                  <button className="w-full px-3 py-2 text-left hover:bg-gray-50 text-[12px]">Weekly</button>
-                  <button className="w-full px-3 py-2 text-left hover:bg-gray-50 text-[12px]">Daily</button>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Add Quantity (yards) *
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={restockQuantity}
+                onChange={(e) => setRestockQuantity(e.target.value)}
+                placeholder="Enter yards to add"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              {/* ✅ Crystal clear preview of the calculation */}
+              {restockQuantity && !isNaN(parseInt(restockQuantity)) && parseInt(restockQuantity) > 0 && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>Preview:</strong><br/>
+                    Current: {restockingProduct.quantity} yards<br/>
+                    Adding: +{parseInt(restockQuantity)} yards<br/>
+                    <strong>New Total: {parseInt(restockingProduct.quantity) + parseInt(restockQuantity)} yards</strong>
+                  </p>
                 </div>
               )}
             </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleRestockCancel}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRestockSave}
+                disabled={!restockQuantity || isNaN(parseInt(restockQuantity)) || parseInt(restockQuantity) <= 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Add Stock
+              </button>
+            </div>
           </div>
-
-          {/* Table Header */}
-          {!showSample && (
-            <div className="grid grid-cols-12 gap-4 items-center text-[14px] font-semibold text-black border-b border-[#e8e8e8] pb-3 mb-4">
-              <div className="col-span-1 text-center">Product Image</div>
-              <div className="col-span-2 flex items-center gap-1">
-                <span>Product Name</span>
-                <svg className="w-3 h-3" viewBox="0 0 10 10">
-                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div className="col-span-1 flex items-center gap-1">
-                <span>ID</span>
-                <svg className="w-3 h-3" viewBox="0 0 12 12">
-                  <path d="M6 0L6 12M0 6L12 6" stroke="currentColor" strokeWidth="1"/>
-                </svg>
-              </div>
-              <div className="col-span-1 text-center">Qty</div>
-              <div className="col-span-1 text-center">Date</div>
-              <div className="col-span-2 text-center flex items-center justify-center gap-1">
-                <span>Price per yard</span>
-                <svg className="w-3 h-3" viewBox="0 0 10 10">
-                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div className="col-span-1 text-center flex items-center justify-center gap-1">
-                <span>Status</span>
-                <svg className="w-3 h-3" viewBox="0 0 10 10">
-                  <path d="M5 0L9 4H1L5 0Z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div className="col-span-1 text-center">Action</div>
-            </div>
-          )}
-
-          {/* Product Rows */}
-          {!showSample && (
-            <div className="space-y-0">
-              {filteredProducts.map((product, index) => (
-                <ProductRow key={`${product.id}-${index}`} product={product} index={index} />
-              ))}
-            </div>
-          )}
-
-          {/* Empty State for Filtered Results */}
-          {!showSample && filteredProducts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-[16px]">
-                {searchTerm ? `No products found for "${searchTerm}"` : 'No products found for this filter'}
-              </p>
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')}
-                  className="mt-2 text-blue-600 hover:underline"
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 };
