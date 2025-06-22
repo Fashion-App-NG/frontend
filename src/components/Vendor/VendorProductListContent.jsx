@@ -32,12 +32,11 @@ export const VendorProductListContent = () => {
   const loadProducts = useCallback(async () => {
     if (!user?.id) {
       console.warn('⚠️ No user ID available for loading products');
-      console.log('🔍 Current user object:', user);
       setLoading(false);
       setError('User authentication required. Please log in again.');
       return;
     }
-
+    
     try {
       setLoading(true);
       setError(null);
@@ -108,16 +107,12 @@ export const VendorProductListContent = () => {
       }
       
     } catch (error) {
-      console.error('❌ Failed to load products from API:', error);
+      console.error('❌ Failed to load products:', error);
       setError(`Failed to load products: ${error.message}`);
-      setProducts([]);
-      setMessage(`Unable to load products: ${error.message}`);
-      setMessageType('error');
-      
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id]); // ✅ Keep only user?.id, remove redundant 'user'
 
   // Load products when component mounts or user changes
   useEffect(() => {
@@ -129,7 +124,7 @@ export const VendorProductListContent = () => {
       console.log('⚠️ No user ID, skipping product load');
       setLoading(false);
     }
-  }, [user?.id, loadProducts]);
+  }, [loadProducts, user]); // ✅ Added user dependency
 
   // Handle messages from navigation state
   useEffect(() => {
@@ -275,32 +270,6 @@ export const VendorProductListContent = () => {
     }
   };
 
-  // Quantity update handler - fix ID usage
-  const handleQuantityUpdate = async (product, quantity) => {
-    try {
-      // ✅ Validate product ID
-      const productId = product.id || product._id;
-      if (!productId) {
-        throw new Error('Product ID not found');
-      }
-      
-      console.log('📦 Updating quantity for product:', productId, 'to:', quantity);
-      await VendorService.updateProduct(productId, { quantity });
-      
-      await loadProducts();
-      setShowDropdown(null);
-      
-      setMessage(`Quantity updated to ${quantity} for "${product.name}"`);
-      setMessageType('success');
-      
-    } catch (error) {
-      console.error('❌ Failed to update quantity:', error);
-      const errorInfo = handleError(error, { context: 'updateQuantity' });
-      setMessage(`Failed to update quantity: ${errorInfo.message}`);
-      setMessageType('error');
-    }
-  };
-
   // ✅ NEW: Handle restock with addition logic
   const handleRestockProduct = (product) => {
     console.log('📦 Restocking product:', product);
@@ -417,9 +386,9 @@ export const VendorProductListContent = () => {
       <div className="relative h-20 w-24 group">
         {/* ✅ Main product image using Cloudinary URL */}
         <img 
-          className="h-20 w-24 rounded-lg object-cover border-2 border-gray-200 shadow-sm transition-opacity duration-200" 
+          className="h-20 w-24 rounded-lg object-cover border-2 border-gray-200 shadow-sm" 
           src={product.images[currentImageIndex].url}
-          alt={`${product.name} - Image ${currentImageIndex + 1}`}
+          alt={`${product.name}`} // ✅ Removed redundant "Image" text
           onError={handleImageError}
           onLoad={handleImageLoad}
           loading="lazy"

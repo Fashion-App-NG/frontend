@@ -31,6 +31,11 @@ export const AdminDashboard = () => {
   console.log('🔍 Admin Dashboard - Current user:', user);
   console.log('🔍 Admin Dashboard - User role:', user?.role);
 
+  // ✅ Fix: Standardize user name field access
+  const getUserDisplayName = (user) => {
+    return user?.name || user?.firstName || user?.email || 'Admin User';
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
       {/* Header */}
@@ -55,7 +60,7 @@ export const AdminDashboard = () => {
             {/* User Info & Logout */}
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600">
-                <span>Welcome, {user?.firstName || user?.name || user?.email || 'Admin'}</span>
+                <span>Welcome, {getUserDisplayName(user)}</span>
                 {user?.role && (
                   <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
                     user.role === 'superadmin' 
@@ -136,7 +141,7 @@ export const AdminDashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.firstName || user?.name || user?.email || 'Admin'}!
+              Welcome back, {getUserDisplayName(user)}!
             </h1>
             <p className="text-gray-600 mt-1">
               {user?.role === 'superadmin' 

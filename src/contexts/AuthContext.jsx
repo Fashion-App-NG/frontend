@@ -37,9 +37,14 @@ export const AuthProvider = ({ children }) => {
 
         setUser(userData);
         setIsAuthenticated(true);
-        console.log('✅ User authenticated:', userData);
+        // ✅ Fix: Gate authentication logs behind development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ User authenticated:', userData);
+        }
       } else {
-        console.log('❌ No valid authentication found');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ No valid authentication found');
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);

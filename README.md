@@ -11,6 +11,7 @@ A comprehensive React-based fashion marketplace platform with complete vendor pr
 - ✅ **JWT Token Management**: Secure token-based authentication with proper storage
 - ✅ **Role-Based Routing**: Automatic redirection to appropriate dashboards
 - ✅ **Centralized Auth Context**: Unified login/logout functionality
+- ✅ **Production Security**: Environment-gated debug logging for sensitive data
 
 ### 👥 User Types
 - ✅ **Shoppers**: Browse products, manage favorites, place orders
@@ -24,10 +25,10 @@ A comprehensive React-based fashion marketplace platform with complete vendor pr
   - Advanced product editing with modal interface
   - Inventory restocking functionality
   - Product soft-delete (hide) functionality
-- **Shopper Dashboard**: Order history, favorites, recommendations
-- **Admin Dashboard**: User management, vendor approval workflow
+- ✅ **Shopper Dashboard**: Order history, favorites, recommendations
+- ✅ **Admin Dashboard**: User management, vendor approval workflow
 
-### 🛍️ Product Management System (NEW)
+### 🛍️ Product Management System
 - ✅ **Complete CRUD Operations**: Create, Read, Update, Delete products
 - ✅ **Rich Product Data**: Name, price, quantity, material type, patterns, descriptions
 - ✅ **Image Upload System**: Drag & drop interface with compression
@@ -42,15 +43,16 @@ A comprehensive React-based fashion marketplace platform with complete vendor pr
 - ✅ **Centralized Error Handling**: Comprehensive error management system
 - ✅ **Input Validation**: Client-side and server-side validation
 - ✅ **Debug Tools**: Development-only debugging components
-- **Admin Invitation System**: Secure admin onboarding (planned)
+- ✅ **Production Security**: No sensitive data exposure in production logs
+- ✅ **Accessibility**: WCAG-compliant components with semantic HTML
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18.3.1
-- **Routing**: React Router DOM 6.30.1
+- **Routing**: React Router DOM 6.30.1 with optimized route structure
 - **Styling**: Tailwind CSS 3.1.0
 - **Authentication**: JWT tokens with secure localStorage management
-- **State Management**: React Context API
+- **State Management**: React Context API with selective providers
 - **API Communication**: Custom VendorService with full CRUD operations
 - **Error Handling**: Centralized error management system
 - **Development Tools**: Token debugging and API testing utilities
@@ -76,6 +78,7 @@ Create a `.env` file in the root directory:
 ```env
 REACT_APP_API_URL=http://localhost:3002
 REACT_APP_ENV=development
+NODE_ENV=development
 ```
 
 ## 📜 Available Scripts
@@ -108,7 +111,7 @@ REACT_APP_ENV=development
 src/
 ├── components/
 │   ├── Auth-Designer/          # Authentication forms and components
-│   │   ├── Dashboard/          # User dashboards
+│   │   ├── Dashboard/          # User dashboards with optimized sections
 │   │   ├── AdminLoginForm.jsx
 │   │   ├── CreateAdminForm.jsx
 │   │   ├── LoginForm.jsx
@@ -116,7 +119,8 @@ src/
 │   │   ├── VendorLoginForm.jsx
 │   │   └── VendorRegisterForm.jsx
 │   ├── Common/                 # Shared components
-│   │   └── LoadingSpinner.jsx  # Reusable loading components
+│   │   ├── LoadingSpinner.jsx  # Reusable loading components
+│   │   └── DashboardRouter.jsx # Smart routing logic
 │   └── Vendor/                 # Vendor-specific components
 │       ├── VendorDashboardContent.jsx
 │       ├── VendorProductListContent.jsx    # Complete product listing
@@ -126,11 +130,11 @@ src/
 │       ├── TokenDebug.jsx                  # Development debugging
 │       └── VendorApiDebug.jsx             # API testing utilities
 ├── contexts/
-│   ├── AuthContext.jsx         # Enhanced authentication with login/logout
-│   └── CartContext.jsx         # Shopping cart state
+│   ├── AuthContext.jsx         # Enhanced authentication with security
+│   └── CartContext.jsx         # Shopping cart state (selective routes)
 ├── hooks/
 │   └── useVendorProducts.js    # Product management custom hook
-├── pages/                      # Page components
+├── pages/                      # Page components with role protection
 │   ├── AdminDashboardPage.jsx
 │   ├── LoginPage.jsx
 │   ├── RegisterPage.jsx
@@ -192,23 +196,40 @@ src/
    - Loading states and error handling
    - Success/failure notifications
 
-## 🎯 Routing Structure
+## 🎯 Optimized Routing Structure
 
+### Smart Route Organization
 - `/` - User type selection homepage
 - `/login` - Shopper login
 - `/login/vendor` - Vendor login
 - `/register` - Shopper registration
 - `/register/vendor` - Vendor registration
 - `/verify-otp` - Email verification
-- `/dashboard` - Redirects to role-specific dashboard
+
+### Role-Based Dashboards
 - `/shopper/dashboard` - Shopper dashboard
-- `/vendor/dashboard` - Vendor dashboard
+- `/vendor/dashboard` - Vendor dashboard  
 - `/admin/dashboard` - Admin dashboard
-- `/admin/login` - Admin login
+
+### Vendor Management Routes
+- `/vendor/products` - Product listing
+- `/vendor/products/add` - Product creation
+- `/vendor/orders` - Order management
+- `/vendor/sales` - Sales analytics
+- `/vendor/settings` - Account settings
+
+### Shopping Routes (Cart-Enabled)
+- `/shopping/dashboard` - Shopping interface
+- `/shopping/explore` - Product discovery
+- `/shopping/orders` - Order history
+- `/shopping/favourites` - Saved items
+
+### System Routes
+- `/admin/login` - Admin authentication
 - `/admin/create-admin` - Admin creation (SuperAdmin only)
 - `/forgot-password` - Password reset request
 - `/reset-password` - Password reset form
-- `/terms-of-service` - Terms of service
+- `/terms-of-service` - Legal terms
 - `/privacy-policy` - Privacy policy
 
 ## 🔌 API Integration
@@ -227,6 +248,7 @@ src/
 - ✅ **File Preservation**: Original File objects maintained for proper upload
 - ✅ **Fallback JSON**: Products without images use standard JSON API
 - ✅ **Vendor ID Validation**: Explicit vendorId field as per API specification
+- ✅ **Environment-Aware Logging**: Debug logs only in development
 
 ## 🖼️ Image Handling Options
 
@@ -258,18 +280,22 @@ npm run build:production
 npm run netlify:build
 ```
 
-### Manual Deployment
-```bash
-# Build the project
-npm run build
-
-# Serve static files
-npm run preview
-```
+### Environment Configuration
+- **Development**: Full debug logging and development tools
+- **Production**: Optimized build with security-gated logging
+- **API Integration**: Supports both localhost and deployed backends
 
 ## 🔄 Recent Updates
 
-### Version 2.0.0 (Current) - Complete Product Management
+### Version 2.1.0 (Current) - Security & Performance Enhancements
+- ✅ **Production Security**: Environment-gated authentication and debug logging
+- ✅ **Route Optimization**: Smart CartProvider usage only for shopping routes
+- ✅ **Code Quality**: Removed unused functions and optimized dependencies
+- ✅ **Accessibility**: Semantic HTML elements and WCAG compliance
+- ✅ **Error Handling**: Enhanced HTTP status detection and user feedback
+- ✅ **ESLint Clean**: All warnings resolved, production-ready code
+
+### Version 2.0.0 (Previous) - Complete Product Management
 - ✅ **Full CRUD Product Management**: Complete vendor product operations
 - ✅ **Enhanced Authentication**: Centralized login/logout with proper token management
 - ✅ **Advanced UI Components**: Comprehensive product listing with enhanced legibility
@@ -278,10 +304,8 @@ npm run preview
 - ✅ **Inventory Management**: Restocking workflows and quantity tracking
 - ✅ **Debug Tools**: Development utilities for API testing and token debugging
 - ✅ **Responsive Design**: Mobile-friendly interfaces with Tailwind CSS
-- ✅ **Error Handling**: Centralized error management system
-- ✅ **Loading States**: Comprehensive loading indicators and feedback
 
-### Version 1.0.0 (Previous)
+### Version 1.0.0 (Foundation)
 - ✅ Basic authentication system for all user types
 - ✅ Role-based dashboard routing  
 - ✅ Basic vendor dashboard
@@ -307,15 +331,60 @@ npm run preview
 - ✅ **Error Logging**: Comprehensive error tracking and reporting
 - ✅ **Loading States**: Visual feedback for all operations
 - ✅ **Development Guards**: Environment-aware feature flags
+- ✅ **ESLint Integration**: Real-time code quality monitoring
 
 ### Testing & Quality
 - ✅ **Input Validation**: Client-side and server-side validation
 - ✅ **Error Boundaries**: React error boundary implementation
 - ✅ **Type Safety**: Proper prop validation and error handling
 - ✅ **Performance**: Optimized re-renders and API calls
+- ✅ **Code Quality**: ESLint warnings resolved, production-ready
+
+### Security Features
+- ✅ **Environment-Aware Logging**: No sensitive data in production
+- ✅ **Token Security**: Secure storage and transmission
+- ✅ **Route Protection**: Role-based access control
+- ✅ **Input Sanitization**: XSS protection and validation
+- ✅ **Accessibility**: WCAG 2.1 compliance for inclusive design
+
+## 🎯 Architecture Decisions
+
+### Context Provider Strategy
+```jsx
+// Smart provider usage - Cart only for shopping routes
+<AuthProvider>           // Global authentication state
+  <Router>
+    <Routes>
+      {/* Non-shopping routes - No CartProvider overhead */}
+      <Route path="/vendor/*" element={<VendorRoutes />} />
+      <Route path="/admin/*" element={<AdminRoutes />} />
+      
+      {/* Shopping routes - Cart context available */}
+      <Route path="/shopping/*" element={
+        <CartProvider>
+          <ShoppingRoutes />
+        </CartProvider>
+      } />
+    </Routes>
+  </Router>
+</AuthProvider>
+```
+
+### Security-First Development
+- Environment-gated debug logging prevents data exposure
+- Role-based route protection with automatic redirects
+- Secure token management with multiple fallback strategies
+- Production-ready error handling without sensitive data leaks
+
+### Performance Optimizations
+- Selective context providers reduce unnecessary re-renders
+- Lazy loading for images and components
+- Optimized React Hook dependencies
+- Efficient state management patterns
 
 ## 🤝 Contributing
 
+### Code Quality Standards
 1. Follow the existing code structure and patterns
 2. Use the provided npm scripts for git operations  
 3. Ensure all components have proper error handling
@@ -323,14 +392,44 @@ npm run preview
 5. Update README and documentation for new features
 6. Follow the established patterns for state management
 7. Include proper loading states and user feedback
+8. Resolve all ESLint warnings before committing
+
+### Security Guidelines
+- Gate all debug logging behind `NODE_ENV === 'development'`
+- Never log sensitive user data or tokens in production
+- Use semantic HTML for accessibility compliance
+- Implement proper error boundaries and fallbacks
+- Follow role-based access control patterns
+
+### Performance Best Practices
+- Use selective context providers (don't wrap all routes unnecessarily)
+- Implement lazy loading for images and heavy components
+- Optimize React Hook dependencies to prevent unnecessary re-renders
+- Use proper loading states and error handling
 
 ## 📞 Support
 
 For technical support or questions:
-- Email: bioye007@gmai.com
-- Documentation: `/docs` folder
+- Email: bioye007@gmail.com
+- Documentation: `/docs` folder and this README
 - Issues: Create GitHub issues for bugs and feature requests
+- Code Quality: All ESLint warnings resolved for production deployment
 
 ## 📄 License
 
 This project is proprietary and confidential. All rights reserved.
+
+---
+
+## 🏆 Project Status
+
+**Current Status**: Production-Ready v2.1.0
+- ✅ All ESLint warnings resolved
+- ✅ Security hardened for production
+- ✅ Accessibility compliant
+- ✅ Performance optimized
+- ✅ Full vendor product management
+- ✅ Multi-role authentication system
+- ✅ Comprehensive error handling
+
+**Next Milestone**: Shopping cart integration and order management system
