@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002'; // ✅ Changed from 3002 to 3001
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 class VendorService {
   constructor() {
@@ -12,11 +12,14 @@ class VendorService {
     const authToken = localStorage.getItem('authToken');
     const token = vendorToken || authToken;
     
-    console.log('🔑 Token retrieval debug:', {
-      vendorToken: vendorToken ? `${vendorToken.substring(0, 20)}...` : 'None',
-      authToken: authToken ? `${authToken.substring(0, 20)}...` : 'None',
-      finalToken: token ? `${token.substring(0, 20)}...` : 'None'
-    });
+    // ✅ Fix: Gate debug logs behind development environment
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔑 Token retrieval debug:', {
+        vendorToken: vendorToken ? `${vendorToken.substring(0, 20)}...` : 'None',
+        authToken: authToken ? `${authToken.substring(0, 20)}...` : 'None',
+        finalToken: token ? `${token.substring(0, 20)}...` : 'None'
+      });
+    }
     
     return token;
   }
@@ -30,7 +33,10 @@ class VendorService {
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      console.log('🔑 Adding Authorization header:', `Bearer ${token.substring(0, 20)}...`);
+      // ✅ Fix: Gate debug logs behind development environment
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔑 Adding Authorization header:', `Bearer ${token.substring(0, 20)}...`);
+      }
     } else {
       console.warn('⚠️ No auth token available for request');
     }

@@ -200,6 +200,29 @@ export const VendorRegisterForm = () => {
         </label>
       </div>
 
+      <div className="text-xs text-[rgba(128,128,128,1)] font-normal leading-[1.2] mt-[19px]">
+        By creating an account, you agree to our{' '}
+        {/* ✅ Fix: Use semantic anchor tags for better accessibility */}
+        <a 
+          href="/terms-of-service" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[rgba(46,46,46,1)] font-bold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Terms of Service
+        </a>{' '}
+        and{' '}
+        <a 
+          href="/privacy-policy" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[rgba(46,46,46,1)] font-bold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Privacy Policy
+        </a>
+        .
+      </div>
+
       {/* Submit Button */}
       <button
         type="submit"
