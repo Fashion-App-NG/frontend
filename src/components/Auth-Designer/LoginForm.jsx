@@ -87,7 +87,9 @@ export const LoginForm = () => {
     }
   };
 
-  console.log('🔍 LoginForm rendering');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 LoginForm rendering');
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
