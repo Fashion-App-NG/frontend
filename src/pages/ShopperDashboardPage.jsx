@@ -4,8 +4,15 @@ import { useAuth } from '../contexts/AuthContext';
 
 // React Component: Shopper dashboard page wrapper using existing ShopperDashboard
 export const ShopperDashboardPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth(); // ✅ Add user back
   const location = useLocation();
+  
+  console.log('🔍 ShopperDashboard Debug:', {
+    isAuthenticated,
+    pathname: location.pathname,
+    search: location.search,
+    state: location.state
+  });
   
   // ✅ LEARNING: Multiple ways to detect guest mode for reliability
   const isGuest = Boolean(

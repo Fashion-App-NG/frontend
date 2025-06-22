@@ -62,14 +62,8 @@ function App() {
             <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
             <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Guest browsing route */}
-            <Route path="/browse" element={<ShopperDashboardPage />} />
-
-            {/* Smart dashboard routing */}
-            <Route path="/shopper/dashboard" element={<ShopperDashboardPage />} />
-            <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
-
             {/* Vendor routes */}
+            <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
             <Route path="/vendor/orders" element={<VendorOrdersPage />} />
             <Route path="/vendor/products" element={<VendorProductListPage />} />
             <Route path="/vendor/products/add" element={<VendorProductUploadPage />} />
@@ -93,9 +87,17 @@ function App() {
               </CartProvider>
             } />
 
+            {/* ✅ Add browse as a direct CartProvider route */}
+            <Route path="/browse" element={
+              <CartProvider>
+                <ShopperDashboardPage />
+              </CartProvider>
+            } />
+
             {/* Backwards compatibility redirects */}
             <Route path="/dashboard" element={<Navigate to="/shopping/dashboard" replace />} />
             <Route path="/explore" element={<Navigate to="/shopping/explore" replace />} />
+            <Route path="/shopper/dashboard" element={<Navigate to="/shopping/dashboard" replace />} />
 
             {/* 404 page */}
             <Route path="*" element={<NotFoundPage />} />
