@@ -33,7 +33,7 @@ export const AdminDashboard = () => {
 
   // ✅ Fix: Standardize user name field access
   const getUserDisplayName = (user) => {
-    return user?.name || user?.firstName || user?.email || 'Admin User';
+    return user?.name ?? user?.firstName ?? user?.email ?? 'Admin User';
   };
 
   return (
