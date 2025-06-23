@@ -40,8 +40,6 @@ import VendorSettingsPage from './pages/VendorSettingsPage';
 // Import new vendor hybrid bulk upload page
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 
-// Import ProtectedRoute component
-
 function App() {
   return (
     <AuthProvider>

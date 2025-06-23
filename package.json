@@ -35,7 +35,7 @@
     "dev:ai": "npm run switch:ai && npm start",
     "dev:designer": "npm run switch:designer && npm start",
     "check:ui": "node scripts/check-ui.js",
-    "git:add-core": "git add package.json src/App.jsx public/ *.config.js netlify.toml .gitignore",
+    "git:add-core": "git add package.json package-lock.json src/App.jsx public/ *.config.js netlify.toml .gitignore",
     "git:add-shared": "git add src/services/ src/contexts/ src/utils/ src/hooks/ src/components/Common/ src/components/Vendor/",
     "git:add-docs": "git add README.md docs/",
     "git:add-all-shared": "npm run git:add-core && npm run git:add-shared && npm run git:add-docs",
