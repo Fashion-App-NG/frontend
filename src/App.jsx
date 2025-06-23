@@ -1,4 +1,4 @@
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 
@@ -37,10 +37,16 @@ import VendorProductUploadPage from './pages/VendorProductUploadPage';
 import VendorSalesPage from './pages/VendorSalesPage';
 import VendorSettingsPage from './pages/VendorSettingsPage';
 
+// Import new vendor hybrid bulk upload page
+import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
+
+// Import ProtectedRoute component
+
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <DebugRoutes />
         <div className="App">
           <Routes>
             {/* Non-cart routes */}
@@ -67,6 +73,7 @@ function App() {
             <Route path="/vendor/orders" element={<VendorOrdersPage />} />
             <Route path="/vendor/products" element={<VendorProductListPage />} />
             <Route path="/vendor/products/add" element={<VendorProductUploadPage />} />
+            <Route path="/vendor/products/bulk" element={<VendorHybridBulkUploadPage />} />
             <Route path="/vendor/sales" element={<VendorSalesPage />} />
             <Route path="/vendor/notifications" element={<VendorNotificationsPage />} />
             <Route path="/vendor/settings" element={<VendorSettingsPage />} />
@@ -106,6 +113,13 @@ function App() {
       </Router>
     </AuthProvider>
   );
+}
+
+// src/App.jsx - Add temporarily for debugging
+function DebugRoutes() {
+  const location = useLocation();
+  console.log('Current location:', location.pathname);
+  return null;
 }
 
 export default App;

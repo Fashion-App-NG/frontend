@@ -484,9 +484,23 @@ export const VendorProductListContent = () => {
             {/* Add Product Button */}
             <button
               onClick={() => navigate('/vendor/products/add')}
-              className="px-4 py-2 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors"
+              className="px-4 py-2 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors flex items-center gap-2"
             >
-              + Add Product
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Product
+            </button>
+            
+            {/* ✅ NEW: Hybrid Bulk Upload Button */}
+            <button
+              onClick={() => navigate('/vendor/products/bulk')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-[5px] font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Bulk Upload
             </button>
 
             {/* Dark Mode Toggle */}

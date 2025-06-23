@@ -119,17 +119,6 @@ class VendorService {
     }
   }
 
-  // Get current user helper
-  getCurrentUser() {
-    try {
-      const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
-    } catch (error) {
-      console.error('Failed to get current user:', error);
-      return null;
-    }
-  }
-
   // ✅ UPDATED: Create product with proper multipart/form-data handling
   async createProduct(productData) {
     try {
@@ -304,6 +293,220 @@ class VendorService {
     } catch (error) {
       console.error('❌ API connection test failed:', error);
       return false;
+    }
+  }
+
+  // ✅ NEW: Bulk product creation with CSV support
+  async createBulkProducts(productsData, options = {}) {
+    try {
+      console.log('📤 Creating bulk products:', productsData.length, 'products');
+      
+      if (productsData.length > 100) {
+        throw new Error('Bulk upload limited to 100 products at once');
+      }
+
+      // Check if any products have image files
+      const hasImageFiles = productsData.some(product => 
+        product.images && product.images.some(img => img.file instanceof File)
+      );
+
+      let response;
+
+      if (hasImageFiles) {
+        // Use multipart/form-data for products with images
+        const formData = new FormData();
+
+        // Add products array as JSON
+        const productsJson = productsData.map((product, index) => ({
+          name: product.name || product.productName,
+          pricePerYard: parseFloat(product.pricePerYard),
+          quantity: parseInt(product.quantity),
+          materialType: product.materialType.toLowerCase(),
+          vendorId: product.vendorId || this.getCurrentUser()?.id,
+          idNumber: product.idNumber || `PRD-${Date.now()}-${index}`,
+          description: product.description || 'Bulk uploaded product',
+          pattern: product.pattern || 'solid',
+          status: product.status === true || product.status === 'available' ? 'available' : 'unavailable'
+        }));
+
+        formData.append('products', JSON.stringify(productsJson));
+
+        // Add images with product association
+        productsData.forEach((product, productIndex) => {
+          if (product.images && product.images.length > 0) {
+            product.images.forEach((imageItem, imageIndex) => {
+              if (imageItem.file instanceof File) {
+                formData.append(`images[${productIndex}][${imageIndex}]`, imageItem.file);
+              }
+            });
+          }
+        });
+
+        const headers = {};
+        const token = this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: headers,
+          body: formData
+        });
+
+      } else {
+        // Use JSON for products without images
+        const jsonData = productsData.map((product, index) => ({
+          name: product.name || product.productName,
+          pricePerYard: parseFloat(product.pricePerYard),
+          quantity: parseInt(product.quantity),
+          materialType: product.materialType.toLowerCase(),
+          vendorId: product.vendorId || this.getCurrentUser()?.id,
+          idNumber: product.idNumber || `PRD-${Date.now()}-${index}`,
+          description: product.description || 'Bulk uploaded product',
+          pattern: product.pattern || 'solid',
+          status: product.status === true || product.status === 'available' ? 'available' : 'unavailable'
+        }));
+
+        response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify(jsonData)
+        });
+      }
+
+      const result = await this.handleResponse(response);
+      console.log('✅ Bulk products created:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Bulk create products error:', error);
+      throw error;
+    }
+  }
+
+  // ✅ NEW: Generate CSV template for download
+  generateCSVTemplate() {
+    const headers = [
+      'name', 'pricePerYard', 'quantity', 'materialType', 'pattern', 
+      'description', 'idNumber', 'status', 'image1', 'image2', 'image3', 'image4'
+    ];
+    
+    const sampleData = [
+      {
+        name: 'Premium Cotton Fabric',
+        pricePerYard: 25.99,
+        quantity: 100,
+        materialType: 'cotton',
+        pattern: 'solid',
+        description: 'High quality cotton fabric perfect for garments',
+        idNumber: 'PRD001',
+        status: 'available',
+        image1: 'cotton_fabric_1.jpg',
+        image2: 'cotton_fabric_2.jpg',
+        image3: '',
+        image4: ''
+      },
+      {
+        name: 'Silk Floral Print',
+        pricePerYard: 45.99,
+        quantity: 50,
+        materialType: 'silk',
+        pattern: 'floral',
+        description: 'Beautiful silk fabric with floral pattern',
+        idNumber: 'PRD002',
+        status: 'available',
+        image1: 'silk_floral_1.jpg',
+        image2: '',
+        image3: '',
+        image4: ''
+      }
+    ];
+    
+    // Convert to CSV string
+    const csvContent = [
+      headers.join(','),
+      ...sampleData.map(row => headers.map(header => {
+        const value = row[header] || '';
+        // Escape commas and quotes in values
+        if (value.toString().includes(',') || value.toString().includes('"')) {
+          return `"${value.toString().replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(','))
+    ].join('\n');
+    
+    return csvContent;
+  }
+
+  // ✅ NEW: Validate CSV data structure
+  validateCSVData(csvData) {
+    const errors = [];
+    const warnings = [];
+    
+    if (!Array.isArray(csvData) || csvData.length === 0) {
+      errors.push('CSV must contain at least one product');
+      return { errors, warnings };
+    }
+
+    csvData.forEach((product, index) => {
+      const rowNum = index + 2; // +2 because of header row and 0-based index
+      
+      // Required field validation
+      if (!product.name?.trim()) {
+        errors.push(`Row ${rowNum}: Product name is required`);
+      }
+      
+      if (!product.pricePerYard || isNaN(parseFloat(product.pricePerYard))) {
+        errors.push(`Row ${rowNum}: Valid price per yard is required`);
+      } else if (parseFloat(product.pricePerYard) <= 0) {
+        errors.push(`Row ${rowNum}: Price must be greater than 0`);
+      }
+      
+      if (!product.quantity || isNaN(parseInt(product.quantity))) {
+        errors.push(`Row ${rowNum}: Valid quantity is required`);
+      } else if (parseInt(product.quantity) < 0) {
+        errors.push(`Row ${rowNum}: Quantity cannot be negative`);
+      }
+      
+      if (!product.materialType?.trim()) {
+        errors.push(`Row ${rowNum}: Material type is required`);
+      }
+      
+      // Validate material type against allowed values
+      const validMaterials = ['cotton', 'linen', 'silk', 'lace', 'wool', 'polyester', 'chiffon', 'satin'];
+      if (product.materialType && !validMaterials.includes(product.materialType.toLowerCase())) {
+        warnings.push(`Row ${rowNum}: Material type "${product.materialType}" may not be recognized. Valid options: ${validMaterials.join(', ')}`);
+      }
+      
+      // Image warnings
+      const imageNames = [product.image1, product.image2, product.image3, product.image4].filter(Boolean);
+      if (imageNames.length === 0) {
+        warnings.push(`Row ${rowNum}: No images specified for "${product.name}"`);
+      }
+      
+      // Duplicate ID check
+      if (product.idNumber) {
+        const duplicateIndex = csvData.findIndex((other, otherIndex) => 
+          otherIndex !== index && other.idNumber === product.idNumber
+        );
+        if (duplicateIndex !== -1) {
+          errors.push(`Row ${rowNum}: Duplicate product ID "${product.idNumber}" (also found in row ${duplicateIndex + 2})`);
+        }
+      }
+    });
+    
+    return { errors, warnings };
+  }
+
+  // ✅ NEW: Get current user helper
+  getCurrentUser() {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      return null;
     }
   }
 }
