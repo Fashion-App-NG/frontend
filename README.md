@@ -73,13 +73,25 @@ npm start
 
 ## 🔧 Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory with:
 
-```env
-REACT_APP_API_URL=http://localhost:3002
-REACT_APP_ENV=development
-NODE_ENV=development
+```bash
+# API Configuration
+REACT_APP_API_BASE_URL=process.env.REACT_APP_API_BASE_URL;
+
+# For production deployment:
+REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com
 ```
+
+## Development Setup
+
+1. Start the backend server on port 3002
+2. Start the frontend server: `npm start`
+3. The app will connect to the API at the configured URL
+
+## Deployment
+
+Update `REACT_APP_API_BASE_URL` to your production API URL before building.
 
 ## 📜 Available Scripts
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 const VendorApiDebug = () => {
   const { user } = useAuth();
   const [testResults, setTestResults] = useState({});
@@ -29,7 +31,7 @@ const VendorApiDebug = () => {
 
       // Test 3: Environment Check
       results.environment = {
-        apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+        apiUrl: API_BASE_URL,
         userId: user?.id,
         userRole: user?.role,
         hasAuthToken: !!(localStorage.getItem('authToken') || localStorage.getItem('vendorToken'))

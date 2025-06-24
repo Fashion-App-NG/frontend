@@ -1,5 +1,5 @@
 // Base API URL - uses environment variables with fallback
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Debug logging in development
 if (process.env.NODE_ENV === 'development') {
@@ -32,11 +32,11 @@ class AuthService {
 
   async register(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      console.log('🔄 Registering user:', userData.email, 'as', userData.role);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: userData.email,
           password: userData.password,
@@ -71,28 +71,19 @@ class AuthService {
 
   async login(credentials) {
     try {
-      // 🎓 Advanced React Pattern: Conditional Spread Operator
-      // This is a more concise way to conditionally include properties
-      const requestBody = {
-        identifier: credentials.identifier || credentials.email,
-        password: credentials.password,
-        role: credentials.role || 'shopper',
-        // 🚨 TEMPORARY: Conditional spread for storeName
-        // Only includes storeName property if credentials.storeName exists
-        ...(credentials.storeName && { storeName: credentials.storeName })
-      };
-
-      console.log('🔐 Login request payload:', {
-        ...requestBody,
-        password: '***'
-      });
-
-      const response = await fetch(`${API_BASE_URL}/auth/login`, { // ✅ Remove /api prefix
+      console.log('🔄 Attempting login for:', credentials.identifier, 'as', credentials.role);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: credentials.identifier || credentials.email,
+          password: credentials.password,
+          role: credentials.role || 'shopper',
+          // 🚨 TEMPORARY: Conditional spread for storeName
+          // Only includes storeName property if credentials.storeName exists
+          ...(credentials.storeName && { storeName: credentials.storeName })
+        }),
       });
 
       const data = await response.json();
@@ -121,11 +112,11 @@ class AuthService {
 
   async verifyOTP(otpData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, { // ✅ Remove /api prefix
+      console.log('🔄 Verifying OTP for user:', otpData.userId);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: otpData.userId,
           code: otpData.code,
@@ -147,27 +138,27 @@ class AuthService {
     }
   }
 
-  async resendOTP(email) {
+  async resendOTP(requestData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, { // ✅ Remove /api prefix
+      console.log('🔄 Resending OTP to:', requestData.email || requestData.phone);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email,
+          email: requestData.email,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Failed to resend OTP');
+        const error = new Error(responseData.message || 'Failed to resend OTP');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Resend OTP error:', error);
       throw error;
@@ -241,11 +232,11 @@ class AuthService {
   // ✅ Add admin methods
   async adminLogin(credentials) {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/login`, { // ✅ Remove /api prefix
+      console.log('🔄 Admin login attempt for:', credentials.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
 
@@ -267,22 +258,13 @@ class AuthService {
   // ✅ ADD MISSING createAdmin METHOD
   async createAdmin(adminData) {
     try {
-      console.log('🔐 Creating admin with data:', {
-        ...adminData,
-        password: '***'
-      });
-
-      // Get current auth token for authorization
-      const token = this.getAuthToken();
-      if (!token) {
-        throw new Error('Authentication required. Please login again.');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/admin`, {
+      console.log('🔄 Creating admin:', adminData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/admin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ✅ Include JWT token for auth
+          'Authorization': `Bearer ${this.getAuthToken()}`
         },
         body: JSON.stringify({
           email: adminData.email,
@@ -315,25 +297,25 @@ class AuthService {
     }
   }
 
-  async forgotPassword(email) {
+  async forgotPassword(requestData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, { // ✅ Remove /api prefix
+      console.log('🔄 Forgot password request for:', requestData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Forgot password failed');
+        const error = new Error(responseData.message || 'Forgot password failed');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Forgot password error:', error);
       throw error;
@@ -342,23 +324,23 @@ class AuthService {
 
   async resetPassword(resetData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, { // ✅ Remove /api prefix
+      console.log('🔄 Resetting password for:', resetData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(resetData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resetData)
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Password reset failed');
+        const error = new Error(responseData.message || 'Password reset failed');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;

@@ -1,8 +1,13 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 class VendorService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
+    
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Vendor Service Base URL:', this.baseURL);
+    }
   }
 
   // Enhanced auth token retrieval

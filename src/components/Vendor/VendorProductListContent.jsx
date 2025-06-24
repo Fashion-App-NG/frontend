@@ -6,6 +6,8 @@ import { handleError } from '../../utils/errorHandler';
 import TokenDebug from './TokenDebug';
 import VendorProductEditModal from './VendorProductEditModal';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 export const VendorProductListContent = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -107,10 +109,14 @@ export const VendorProductListContent = () => {
       }
       
     } catch (error) {
-      console.error('❌ Failed to load products:', error);
-      setError(`Failed to load products: ${error.message}`);
-    } finally {
+      console.error('Failed to load vendor products:', error);
+      setError(`Failed to connect to backend API. Please ensure the server is running on ${API_BASE_URL}`);
       setLoading(false);
+      
+      // Fallback to empty products array after error
+      setProducts([]);
+      setMessage('No products found. Click "Add Product" to create your first product.');
+      setMessageType('info');
     }
   }, [user?.id]); // ✅ Keep only user?.id, remove redundant 'user'
 
