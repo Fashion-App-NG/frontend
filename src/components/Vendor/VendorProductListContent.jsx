@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import VendorService from '../../services/vendorService';
+import productService from '../../services/productService';
 import { handleError } from '../../utils/errorHandler';
 import TokenDebug from './TokenDebug';
 import VendorProductEditModal from './VendorProductEditModal';
@@ -50,7 +50,7 @@ export const VendorProductListContent = () => {
       console.log('🚀 Starting API call for vendor:', user.id);
       
       // Test API connection first
-      const connectionOk = await VendorService.testConnection();
+      const connectionOk = await productService.testConnection();
       console.log('🌐 API connection test:', connectionOk ? 'SUCCESS' : 'FAILED');
       
       if (!connectionOk) {
@@ -58,7 +58,7 @@ export const VendorProductListContent = () => {
       }
       
       // Make the API call
-      const response = await VendorService.getVendorProducts(user.id);
+      const response = await productService.getVendorProducts(user.id);
       console.log('📦 Raw API Response:', response);
       
       if (response && response.products && Array.isArray(response.products)) {
@@ -216,7 +216,7 @@ export const VendorProductListContent = () => {
       }
 
       console.log('🗑️ Deleting product:', productId);
-      await VendorService.hideProduct(productId);
+      await productService.hideProduct(productId);
       
       await loadProducts();
       setShowDropdown(null);
@@ -243,7 +243,7 @@ export const VendorProductListContent = () => {
       console.log('📝 Attempting to update product:', editingProduct.id);
       console.log('📦 Update data:', updateData);
       
-      const result = await VendorService.updateProduct(editingProduct.id, updateData);
+      const result = await productService.updateProduct(editingProduct.id, updateData);
       console.log('✅ Product updated:', result);
       
       // Reload products to get fresh data
@@ -317,7 +317,7 @@ export const VendorProductListContent = () => {
       });
 
       // ✅ Send the NEW TOTAL to the database
-      const result = await VendorService.updateProduct(restockingProduct.id, { 
+      const result = await productService.updateProduct(restockingProduct.id, { 
         quantity: newTotalQuantity 
       });
       

@@ -40,6 +40,10 @@ import VendorSettingsPage from './pages/VendorSettingsPage';
 // Import new vendor hybrid bulk upload page
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 
+// Import product browse and detail pages
+import ProductBrowsePage from './pages/ProductBrowsePage';
+import ProductDetailPage from './pages/ProductDetailPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -98,6 +102,10 @@ function App() {
                 <ShopperDashboardPage />
               </CartProvider>
             } />
+
+            {/* Product browse and detail routes */}
+            <Route path="/products" element={<ProductBrowsePage />} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
 
             {/* Backwards compatibility redirects */}
             <Route path="/dashboard" element={<Navigate to="/shopping/dashboard" replace />} />
