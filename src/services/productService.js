@@ -1,61 +1,177 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 class ProductService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
     
-    // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔧 Product Service Base URL:', this.baseURL);
     }
   }
 
-  // Get all public products with optional filters
+  getAuthHeaders() {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('vendorToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+  }
+
+  async testConnection() {
+    try {
+      console.log('🔄 Testing API connection to:', this.baseURL);
+      
+      const response = await fetch(`${this.baseURL}/product`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('📡 Connection test response status:', response.status);
+      return response.status < 500;
+      
+    } catch (error) {
+      console.error('❌ API connection test failed:', error);
+      return false;
+    }
+  }
+
+  // ✅ FIX: Enhanced getAllProducts with better error handling
   async getAllProducts(filters = {}) {
     try {
-      // Build query parameters
-      const queryParams = new URLSearchParams();
+      console.log('🔄 Loading products with filters:', filters);
       
-      // Add filters if provided
-      if (filters.materialType) queryParams.append('materialType', filters.materialType);
-      if (filters.minPrice) queryParams.append('minPrice', filters.minPrice);
-      if (filters.maxPrice) queryParams.append('maxPrice', filters.maxPrice);
-      if (filters.pattern) queryParams.append('pattern', filters.pattern);
-      if (filters.search) queryParams.append('search', filters.search);
-      if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
-      if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
-      
-      const url = `${this.baseURL}/product${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      
-      console.log('🔄 Fetching products:', url);
-      
-      const response = await fetch(url);
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value.toString().trim()) {
+          params.append(key, value);
+        }
+      });
+
+      const url = `${this.baseURL}/product${params.toString() ? `?${params}` : ''}`;
+      console.log('📡 API URL:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        // ✅ Add timeout to prevent infinite loading
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch products');
+      // ✅ FIX: Ensure products have proper IDs
+      if (data.products && Array.isArray(data.products)) {
+        data.products = data.products.map((product, index) => ({
+          ...product,
+          // Ensure each product has an ID
+          id: product.id || product._id || product.productId || `product-${index}`,
+          // Ensure display field exists
+          display: product.display !== false
+        })).filter(product => product.display !== false);
       }
-      
+
       console.log('✅ Products fetched:', data.products?.length || 0);
       return data;
     } catch (error) {
       console.error('❌ Error fetching products:', error);
-      throw error;
+      
+      // ✅ FIX: Return structured error response instead of throwing
+      return { 
+        products: [], 
+        error: error.message,
+        message: 'Failed to load products. Please try again.' 
+      };
     }
   }
 
-  // Get single product by ID
-  async getProduct(productId) {
+  async getVendorProducts(vendorId) {
     try {
-      console.log('🔄 Fetching product:', productId);
+      console.log('🔄 Fetching vendor products for:', vendorId);
       
-      const response = await fetch(`${this.baseURL}/product/${productId}`);
-      const data = await response.json();
+      const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        signal: AbortSignal.timeout(30000)
+      });
       
       if (!response.ok) {
-        throw new Error(data.message || 'Product not found');
+        if (response.status === 404) {
+          console.log('📭 No products found for vendor:', vendorId);
+          return { products: [], message: 'No products found' };
+        }
+        throw new Error(`HTTP ${response.status}: Failed to fetch vendor products`);
       }
       
+      const data = await response.json();
+      
+      // ✅ Ensure vendor products have proper IDs
+      if (data.products && Array.isArray(data.products)) {
+        data.products = data.products.map((product, index) => ({
+          ...product,
+          id: product.id || product._id || product.productId || `vendor-product-${index}`
+        }));
+      }
+      
+      console.log('✅ Vendor products fetched:', data.products?.length || 0);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Error fetching vendor products:', error);
+      return { products: [], error: error.message };
+    }
+  }
+
+  async getProductById(productId) {
+    try {
+      console.log('🔄 Fetching product by ID:', productId);
+      
+      const response = await fetch(`${this.baseURL}/product/${productId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Product not found (${response.status})`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Use default error message
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      
+      // ✅ Ensure product has proper ID
+      if (data.product) {
+        data.product.id = data.product.id || data.product._id || data.product.productId || productId;
+      }
+
       console.log('✅ Product fetched:', data.product?.name);
       return data;
     } catch (error) {
@@ -63,49 +179,78 @@ class ProductService {
       throw error;
     }
   }
+  
+  async getProduct(productId) {
+    return this.getProductById(productId);
+  }
 
-  // Get vendor products (for vendor dashboard)
-  async getVendorProducts(vendorId) {
+  getImageUrl(imagePath, fallback = '/api/placeholder/300/200') {
+    // ✅ FIX: Add proper type checking
+    if (!imagePath) return fallback;
+    
+    // Handle string paths
+    if (typeof imagePath === 'string') {
+      if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
+        return imagePath;
+      }
+      return `${API_BASE_URL}/uploads/${imagePath}`;
+    }
+    
+    // Handle object paths (e.g., {url: "..."})
+    if (typeof imagePath === 'object' && imagePath.url) {
+      if (typeof imagePath.url === 'string') {
+        if (imagePath.url.startsWith('http') || imagePath.url.startsWith('data:')) {
+          return imagePath.url;
+        }
+        return `${API_BASE_URL}/uploads/${imagePath.url}`;
+      }
+    }
+    
+    // Fallback for any other type
+    return fallback;
+  }
+
+  async createProduct(productData) {
     try {
-      console.log('🔄 Fetching vendor products for:', vendorId);
+      console.log('🔄 Creating product:', productData.name);
       
-      const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`);
+      const response = await fetch(`${this.baseURL}/product`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(productData)
+      });
+
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch vendor products');
+        throw new Error(data.message || 'Failed to create product');
       }
-      
-      console.log('✅ Vendor products fetched:', data.products?.length || 0);
+
+      console.log('✅ Product created:', data.product?.id);
       return data;
     } catch (error) {
-      console.error('❌ Error fetching vendor products:', error);
+      console.error('❌ Error creating product:', error);
       throw error;
     }
   }
 
-  // Update product (vendor only)
   async updateProduct(productId, productData) {
     try {
       console.log('🔄 Updating product:', productId);
       
-      const token = localStorage.getItem('token');
       const response = await fetch(`${this.baseURL}/product/${productId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(productData)
       });
-      
+
       const data = await response.json();
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to update product');
       }
-      
-      console.log('✅ Product updated:', data.product?.name);
+
+      console.log('✅ Product updated:', data.product?.id);
       return data;
     } catch (error) {
       console.error('❌ Error updating product:', error);
@@ -113,47 +258,32 @@ class ProductService {
     }
   }
 
-  // Hide product (soft delete)
-  async hideProduct(productId) {
+  async deleteProduct(productId) {
     try {
-      console.log('🔄 Hiding product:', productId);
+      console.log('🔄 Deleting product:', productId);
       
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${this.baseURL}/product/${productId}/hide`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`${this.baseURL}/product/${productId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
       });
-      
+
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to hide product');
+        throw new Error(data.message || 'Failed to delete product');
       }
-      
-      console.log('✅ Product hidden:', productId);
+
+      console.log('✅ Product deleted:', productId);
       return data;
     } catch (error) {
-      console.error('❌ Error hiding product:', error);
+      console.error('❌ Error deleting product:', error);
       throw error;
     }
   }
 
-  // Utility method to get image URL with fallback
-  getImageUrl(imageObj, fallback = '/api/placeholder/300/200') {
-    if (!imageObj) return fallback;
-    
-    // Handle different image object formats
-    if (typeof imageObj === 'string') return imageObj;
-    if (imageObj.url) return imageObj.url;
-    if (imageObj.preview) return imageObj.preview;
-    
-    return fallback;
-  }
-
-  // Format price for display
+  // ✅ ADD: Missing formatPrice method
   formatPrice(price) {
+    if (!price) return 'Price not available';
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
@@ -163,4 +293,5 @@ class ProductService {
   }
 }
 
-export default new ProductService();
+const productServiceInstance = new ProductService();
+export default productServiceInstance;

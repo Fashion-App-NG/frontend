@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { ShopperDashboard } from '../components/Auth-Designer/Dashboard/ShopperDashboard';
+import ShopperDashboard from '../components/Auth-Designer/Dashboard/ShopperDashboard'; // ✅ Use default import
 import { useAuth } from '../contexts/AuthContext';
 
 // React Component: Shopper dashboard page wrapper using existing ShopperDashboard
@@ -57,7 +57,7 @@ export const ShopperDashboardPage = () => {
   }
 
   console.log('🎯 Rendering authenticated SHOPPER dashboard');
-  return <ShopperDashboard isGuest={false} />;
+  return <ShopperDashboard isGuest={!user} />;
 };
 
 export default ShopperDashboardPage;

@@ -1,6 +1,6 @@
 // src/components/Vendor/VendorHybridBulkUpload.jsx - Updated component
 import Papa from 'papaparse';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState, useRef } from 'react'; // ✅ Add useRef import
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
@@ -19,16 +19,15 @@ export const VendorHybridBulkUpload = () => {
   });
 
   const navigate = useNavigate();
-  const csvInputRef = useRef(null);
-  const imagesInputRef = useRef(null);
   
   const [step, setStep] = useState('method'); // 'method', 'csv', 'form', 'images', 'review', 'uploading'
   const [products, setProducts] = useState([]);
-  const [csvData, setCsvData] = useState([]);
+  const [csvFile, setCsvFile] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
   const [validationWarnings, setValidationWarnings] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, message: '' });
-  const [imageFiles, setImageFiles] = useState({});
+  // ✅ Remove unused imageFiles state if not being used in the component
+  // const [imageFiles, setImageFiles] = useState({});
   
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
@@ -114,7 +113,7 @@ export const VendorHybridBulkUpload = () => {
           }));
 
           setProducts(convertedProducts);
-          setCsvData(results.data);
+          setCsvFile(file);
           setStep('form');
         }
       },
@@ -393,7 +392,7 @@ export const VendorHybridBulkUpload = () => {
             onRemove={removeProduct}
             onImageUpload={handleImageUpload}
             onNext={() => products.some(p => p.csvImages?.length > 0) ? setStep('images') : setStep('review')}
-            onBack={() => setStep(csvData.length > 0 ? 'csv' : 'method')}
+            onBack={() => setStep(csvFile ? 'csv' : 'method')}
             validationWarnings={validationWarnings}
           />
         )}

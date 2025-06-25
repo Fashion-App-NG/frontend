@@ -7,12 +7,11 @@ import {
   SettingsIcon,
   ShoppingBagIcon
 } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 
 export const SidebarSection = ({ isGuest = false }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { logout, isAuthenticated } = useAuth();
 
   // ✅ LEARNING: Smart dashboard navigation based on auth state
@@ -28,9 +27,9 @@ export const SidebarSection = ({ isGuest = false }) => {
     // Special handling for dashboard
     if (path === '/dashboard') {
       handleDashboardClick();
-      return;
+    } else {
+      navigate(path);
     }
-    navigate(path);
   };
 
   // ✅ FIXED: Add missing handleLogout function

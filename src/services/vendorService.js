@@ -4,123 +4,132 @@ class VendorService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
     
-    // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔧 Vendor Service Base URL:', this.baseURL);
     }
   }
 
-  // Enhanced auth token retrieval
-  getAuthToken() {
-    // Try multiple token sources
-    const vendorToken = localStorage.getItem('vendorToken');
-    const authToken = localStorage.getItem('authToken');
-    const token = vendorToken || authToken;
+  getAuthHeaders() {
+    // ✅ FIX: Check multiple token sources
+    const token = localStorage.getItem('token') || 
+                  localStorage.getItem('vendorToken') || 
+                  localStorage.getItem('authToken');
     
-    // ✅ Fix: Gate debug logs behind development environment
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔑 Token retrieval debug:', {
-        vendorToken: vendorToken ? `${vendorToken.substring(0, 20)}...` : 'None',
-        authToken: authToken ? `${authToken.substring(0, 20)}...` : 'None',
-        finalToken: token ? `${token.substring(0, 20)}...` : 'None'
-      });
+    if (!token) {
+      console.warn('⚠️ No auth token found for vendor service');
     }
     
-    return token;
-  }
-
-  // Create headers with auth token
-  getHeaders() {
-    const token = this.getAuthToken();
-    const headers = {
-      'Content-Type': 'application/json'
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
     };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      // ✅ Fix: Gate debug logs behind development environment
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔑 Adding Authorization header:', `Bearer ${token.substring(0, 20)}...`);
-      }
-    } else {
-      console.warn('⚠️ No auth token available for request');
-    }
-    
-    return headers;
   }
 
-  // Handle API response
-  async handleResponse(response) {
-    let data;
-    try {
-      data = await response.json();
-    } catch (e) {
-      data = { message: `HTTP ${response.status}: ${response.statusText}` };
-    }
-    
-    if (!response.ok) {
-      console.error('API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.url,
-        data
-      });
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
-    }
-    
-    return data;
-  }
-
-  // ✅ FIXED: Get vendor's products with proper auth
+  // ✅ FIX: Enhanced vendor products method
   async getVendorProducts(vendorId) {
     try {
-      console.log('🔍 Fetching products for vendor:', vendorId);
+      console.log('🔄 Fetching vendor products for:', vendorId);
       console.log('🌐 Using endpoint:', `${this.baseURL}/product/vendor/${vendorId}`);
       
-      const token = this.getAuthToken();
-      console.log('🔑 Auth token available:', !!token);
-      
-      if (!token) {
-        throw new Error('Authentication required. Please log in again.');
-      }
+      const headers = this.getAuthHeaders();
+      console.log('🔑 Auth headers:', { 
+        hasAuth: !!headers.Authorization, 
+        contentType: headers['Content-Type'] 
+      });
       
       const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
         method: 'GET',
-        headers: this.getHeaders() // ✅ NOW includes Authorization header
+        headers: headers,
+        signal: AbortSignal.timeout(30000)
       });
-
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Request headers:', this.getHeaders());
-
-      const data = await this.handleResponse(response);
-      console.log('✅ Vendor products response:', data);
       
-      // ✅ Map _id to id for frontend compatibility
-      if (data.products && Array.isArray(data.products)) {
-        data.products = data.products.map(product => ({
-          ...product,
-          id: product._id // Map MongoDB _id to id
-        }));
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries([...response.headers.entries()]));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
+        
+        if (response.status === 404) {
+          console.log('📭 No products found for vendor:', vendorId);
+          return { 
+            success: true,
+            products: [], 
+            count: 0,
+            vendorId: vendorId,
+            message: 'No products found for this vendor' 
+          };
+        }
+        
+        if (response.status === 401 || response.status === 403) {
+          console.error('🔒 Authentication failed for vendor products');
+          throw new Error('Authentication required. Please log in again.');
+        }
+        
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      return data;
+      const data = await response.json();
+      console.log('📦 Raw vendor products response:', data);
+      
+      // ✅ Handle the API response format based on documentation
+      let processedData = {
+        success: data.success || true,
+        message: data.message || 'Vendor products fetched successfully',
+        count: data.count || 0,
+        vendorId: data.vendorId || vendorId,
+        products: []
+      };
+      
+      // ✅ Ensure vendor products have proper IDs and structure
+      if (data.products && Array.isArray(data.products)) {
+        processedData.products = data.products.map((product, index) => ({
+          ...product,
+          id: product.id || product._id || product.productId || `vendor-product-${vendorId}-${index}`,
+          // Ensure price field consistency
+          pricePerYard: product.pricePerYard || product.price || 0,
+          // Ensure display field (only show products with display: true)
+          display: product.display !== false
+        })).filter(product => product.display !== false);
+        
+        processedData.count = processedData.products.length;
+      } else {
+        console.warn('⚠️ Unexpected vendor products response structure:', data);
+      }
+      
+      console.log('✅ Vendor products processed:', processedData.products.length);
+      return processedData;
       
     } catch (error) {
-      console.error('❌ Get vendor products error:', error);
-      
-      // Handle 404 specifically (no products found)
-      if (error.message.includes('404')) {
-        console.log('📭 No products found for vendor (404)');
-        return {
+      if (error.name === 'AbortError') {
+        console.error('⏱️ Vendor products request timed out');
+        return { 
           success: false,
-          message: 'No products found for this vendor',
-          products: [],
+          products: [], 
           count: 0,
-          vendorId: vendorId
+          vendorId: vendorId,
+          error: 'Request timed out. Please try again.',
+          retry: true
         };
       }
       
-      throw error;
+      console.error('❌ Error fetching vendor products:', error);
+      return { 
+        success: false,
+        products: [], 
+        count: 0,
+        vendorId: vendorId,
+        error: error.message || 'Failed to load vendor products',
+        retry: true
+      };
     }
   }
 
@@ -516,5 +525,5 @@ class VendorService {
   }
 }
 
-const vendorService = new VendorService();
-export default vendorService;
+const vendorServiceInstance = new VendorService();
+export default vendorServiceInstance;

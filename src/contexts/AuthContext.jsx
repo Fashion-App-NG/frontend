@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import authService from '../services/authService'; // Adjust the import based on your project structure
 
 const AuthContext = createContext();
 
@@ -100,19 +101,34 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    // Clear localStorage
-    localStorage.removeItem('user');
-    localStorage.removeItem('vendorToken');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('adminToken'); // Clear admin token on logout
-    localStorage.removeItem('vendorProducts'); // Clear cached products
-    
-    console.log('✅ User logged out');
-  };
+  const logout = useCallback(async () => {
+    try {
+      console.log('🔄 Logging out user...');
+      
+      // Clear all authentication data
+      await authService.logout();
+      
+      // Reset state
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      
+      console.log('✅ User logged out successfully');
+      
+      // ✅ FIXED: Force navigation to login page
+      window.location.href = '/login';
+      
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      
+      // ✅ FIXED: Even if logout fails, clear local state and redirect
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+  }, []);
 
   // Update user data
   const updateUser = (newUserData) => {

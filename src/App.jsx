@@ -1,11 +1,14 @@
-import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+
+// Import header component
+import Header from './components/Common/Header';
 
 // ✅ LEARNING: Verify all page imports exist
 import ExplorePage from './pages/ExplorePage';
 import FavouritesPage from './pages/FavouritesPage';
-import LoginPage from './pages/LoginPage'; // ✅ This will now work
+import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import OrdersPage from './pages/OrdersPage';
 import OTPPage from './pages/OTPPage';
@@ -22,14 +25,14 @@ import PasswordResetPage from './pages/PasswordResetPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
-import ShopperDashboardPage from './pages/ShopperDashboardPage';
-import VendorDashboardPage from './pages/VendorDashboardPage';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 
-// Import vendor product upload page
+// Import vendor pages
+import VendorDashboardPage from './pages/VendorDashboardPage';
+import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 import VendorNotificationsPage from './pages/VendorNotificationsPage';
 import VendorOrdersPage from './pages/VendorOrdersPage';
 import VendorProductListPage from './pages/VendorProductListPage';
@@ -37,95 +40,110 @@ import VendorProductUploadPage from './pages/VendorProductUploadPage';
 import VendorSalesPage from './pages/VendorSalesPage';
 import VendorSettingsPage from './pages/VendorSettingsPage';
 
-// Import new vendor hybrid bulk upload page
-import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
-
 // Import product browse and detail pages
-import ProductBrowsePage from './pages/ProductBrowsePage';
+import GuestBrowsePage from './pages/GuestBrowsePage';
 import ProductDetailPage from './pages/ProductDetailPage';
+
+// Import shopper layout and pages
+import ShopperLayout from './components/Layout/ShopperLayout';
+import VendorLayout from './components/Layout/VendorLayout';
+import ShopperCart from './pages/ShopperCart';
+import ShopperDashboardPage from './pages/ShopperDashboardPage';
+import ShopperFavorites from './pages/ShopperFavorites';
+import ShopperNotifications from './pages/ShopperNotifications';
+import ShopperOrders from './pages/ShopperOrders';
+import ShopperProfile from './pages/ShopperProfile';
+import ShopperSettings from './pages/ShopperSettings';
+
+// Import the shopper browse page
+import ShopperBrowsePage from './pages/ShopperBrowsePage';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <DebugRoutes />
-        <div className="App">
-          <Routes>
-            {/* Non-cart routes */}
-            <Route path="/" element={<UserTypeSelectionPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/login/vendor" element={<VendorLoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/register/shopper" element={<RegisterPage />} />
-            <Route path="/register/vendor" element={<VendorRegisterPage />} />
-            <Route path="/verify-otp" element={<OTPPage />} />
+      <CartProvider>
+        <Router>
+          <div className="App">
+            <Header />
+            <Routes>
+              {/* Home route */}
+              <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
+              
+              {/* Public routes */}
+              <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
+              <Route path="/browse" element={<GuestBrowsePage />} />
+              {/* ✅ FIXED: Move product detail inside shopper layout for authenticated users */}
+              <Route path="/products" element={<Navigate to="/browse" replace />} />
+              <Route path="/explore" element={<GuestBrowsePage />} />
 
-            {/* Password reset routes */}
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<PasswordResetPage />} />
+              {/* Auth routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login/shopper" element={<LoginPage />} />
+              <Route path="/login/vendor" element={<VendorLoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register/shopper" element={<RegisterPage />} />
+              <Route path="/register/vendor" element={<VendorRegisterPage />} />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin/create" element={<CreateAdminPageWrapper />} />
+              <Route path="/otp" element={<OTPPage />} />
+              <Route path="/verify-otp" element={<OTPPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<PasswordResetPage />} />
 
-            {/* Admin routes */}
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/create-admin" element={<CreateAdminPageWrapper />} />
-            <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
+              {/* Shopper routes with layout */}
+              <Route path="/shopper/*" element={<ShopperLayout />}>
+                <Route index element={<ShopperDashboardPage />} />
+                <Route path="dashboard" element={<ShopperDashboardPage />} />
+                <Route path="browse" element={<ShopperBrowsePage />} />
+                <Route path="product/:id" element={<ProductDetailPage />} />
+                <Route path="orders" element={<ShopperOrders />} />
+                <Route path="cart" element={<ShopperCart />} />
+                <Route path="profile" element={<ShopperProfile />} />
+                <Route path="favorites" element={<ShopperFavorites />} />
+                <Route path="notifications" element={<ShopperNotifications />} />
+                <Route path="settings" element={<ShopperSettings />} />
+              </Route>
 
-            {/* Vendor routes */}
-            <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
-            <Route path="/vendor/orders" element={<VendorOrdersPage />} />
-            <Route path="/vendor/products" element={<VendorProductListPage />} />
-            <Route path="/vendor/products/add" element={<VendorProductUploadPage />} />
-            <Route path="/vendor/products/bulk" element={<VendorHybridBulkUploadPage />} />
-            <Route path="/vendor/sales" element={<VendorSalesPage />} />
-            <Route path="/vendor/notifications" element={<VendorNotificationsPage />} />
-            <Route path="/vendor/settings" element={<VendorSettingsPage />} />
+              {/* ✅ FIXED: Guest product detail route for unauthenticated users */}
+              <Route path="/product/:id" element={<ProductDetailPage />} />
 
-            {/* Legal pages */}
-            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              {/* Legacy shopper routes */}
+              <Route path="/dashboard" element={<Navigate to="/shopper" replace />} />
+              <Route path="/explore-page" element={<ExplorePage />} />
+              <Route path="/favourites" element={<FavouritesPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
 
-            {/* Shopping routes with cart */}
-            <Route path="/shopping/*" element={
-              <CartProvider>
-                <Routes>
-                  <Route path="dashboard" element={<ShopperDashboardPage />} />
-                  <Route path="explore" element={<ExplorePage />} />
-                  <Route path="orders" element={<OrdersPage />} />
-                  <Route path="favourites" element={<FavouritesPage />} />
-                </Routes>
-              </CartProvider>
-            } />
+              {/* Vendor routes */}
+              <Route path="/vendor/*" element={<VendorLayout />}>
+                <Route index element={<VendorDashboardPage />} />
+                <Route path="dashboard" element={<VendorDashboardPage />} />
+                <Route path="products" element={<VendorProductListPage />} />
+                <Route path="upload" element={<VendorProductUploadPage />} />
+                <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
+                <Route path="orders" element={<VendorOrdersPage />} />
+                <Route path="sales" element={<VendorSalesPage />} />
+                <Route path="notifications" element={<VendorNotificationsPage />} />
+                <Route path="settings" element={<VendorSettingsPage />} />
+                {/* ✅ FIXED: Add product detail for vendors */}
+                <Route path="product/:id" element={<ProductDetailPage />} />
+              </Route>
 
-            {/* ✅ Add browse as a direct CartProvider route */}
-            <Route path="/browse" element={
-              <CartProvider>
-                <ShopperDashboardPage />
-              </CartProvider>
-            } />
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
 
-            {/* Product browse and detail routes */}
-            <Route path="/products" element={<ProductBrowsePage />} />
-            <Route path="/product/:id" element={<ProductDetailPage />} />
+              {/* Legal routes */}
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
-            {/* Backwards compatibility redirects */}
-            <Route path="/dashboard" element={<Navigate to="/shopping/dashboard" replace />} />
-            <Route path="/explore" element={<Navigate to="/shopping/explore" replace />} />
-            <Route path="/shopper/dashboard" element={<Navigate to="/shopping/dashboard" replace />} />
-
-            {/* 404 page */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </div>
-      </Router>
+              {/* 404 route */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </div>
+        </Router>
+      </CartProvider>
     </AuthProvider>
   );
-}
-
-// src/App.jsx - Add temporarily for debugging
-function DebugRoutes() {
-  const location = useLocation();
-  console.log('Current location:', location.pathname);
-  return null;
 }
 
 export default App;

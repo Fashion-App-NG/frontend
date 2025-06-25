@@ -4,8 +4,8 @@ const ProductGrid = ({
   products = [], 
   loading = false, 
   error = null, 
-  showVendorInfo = true,
-  emptyMessage = "No products found"
+  showVendorInfo = true, 
+  emptyMessage = "No products found." 
 }) => {
   if (loading) {
     return (
@@ -15,8 +15,7 @@ const ProductGrid = ({
             <div className="aspect-[4/3] bg-gray-200 rounded-t-lg"></div>
             <div className="p-4">
               <div className="h-4 bg-gray-200 rounded mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
-              <div className="h-5 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
             </div>
           </div>
         ))}
@@ -27,9 +26,9 @@ const ProductGrid = ({
   if (error) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-500 mb-4">
+        <div className="text-red-400 mb-4">
           <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Error loading products</h3>
@@ -56,7 +55,7 @@ const ProductGrid = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {products.map((product) => (
         <ProductCard
-          key={product.id}
+          key={product.id || product._id}
           product={product}
           showVendorInfo={showVendorInfo}
         />
