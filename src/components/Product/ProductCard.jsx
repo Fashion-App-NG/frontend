@@ -26,13 +26,15 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
 
   const productUrl = getProductUrl();
 
-  // ✅ Debug logging to verify URL generation
-  console.log('🔗 ProductCard URL generation:', {
-    productId: product.id || product._id,
-    currentPath: location.pathname,
-    generatedUrl: productUrl,
-    userRole: user?.role || 'none'
-  });
+  // ✅ Debug logging to verify URL generation (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔗 ProductCard URL generation:', {
+      productId: product.id || product._id,
+      currentPath: location.pathname,
+      generatedUrl: productUrl,
+      userRole: user?.role || 'none'
+    });
+  }
 
   const handleImageError = () => {
     setImageError(true);
