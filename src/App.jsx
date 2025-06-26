@@ -5,7 +5,7 @@ import { CartProvider } from './contexts/CartContext';
 // Import header component
 import Header from './components/Common/Header';
 
-// ✅ LEARNING: Verify all page imports exist
+// ✅ Import all page types
 import ExplorePage from './pages/ExplorePage';
 import FavouritesPage from './pages/FavouritesPage';
 import LoginPage from './pages/LoginPage';
@@ -40,7 +40,7 @@ import VendorProductUploadPage from './pages/VendorProductUploadPage';
 import VendorSalesPage from './pages/VendorSalesPage';
 import VendorSettingsPage from './pages/VendorSettingsPage';
 
-// Import product browse and detail pages
+// ✅ FIXED: Import browse and ONE adaptive ProductDetail component
 import GuestBrowsePage from './pages/GuestBrowsePage';
 import ProductDetailPage from './pages/ProductDetailPage';
 
@@ -72,7 +72,8 @@ function App() {
               {/* Public routes */}
               <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
               <Route path="/browse" element={<GuestBrowsePage />} />
-              {/* ✅ FIXED: Move product detail inside shopper layout for authenticated users */}
+              {/* ✅ FIXED: Guest product detail route - adaptive component */}
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/products" element={<Navigate to="/browse" replace />} />
               <Route path="/explore" element={<GuestBrowsePage />} />
 
@@ -95,6 +96,7 @@ function App() {
                 <Route index element={<ShopperDashboardPage />} />
                 <Route path="dashboard" element={<ShopperDashboardPage />} />
                 <Route path="browse" element={<ShopperBrowsePage />} />
+                {/* ✅ FIXED: Shopper product detail route - same adaptive component */}
                 <Route path="product/:id" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="cart" element={<ShopperCart />} />
@@ -103,9 +105,6 @@ function App() {
                 <Route path="notifications" element={<ShopperNotifications />} />
                 <Route path="settings" element={<ShopperSettings />} />
               </Route>
-
-              {/* ✅ FIXED: Guest product detail route for unauthenticated users */}
-              <Route path="/product/:id" element={<ProductDetailPage />} />
 
               {/* Legacy shopper routes */}
               <Route path="/dashboard" element={<Navigate to="/shopper" replace />} />
@@ -124,7 +123,7 @@ function App() {
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />
-                {/* ✅ FIXED: Add product detail for vendors */}
+                {/* ✅ FIXED: Vendor product detail route - same adaptive component */}
                 <Route path="product/:id" element={<ProductDetailPage />} />
               </Route>
 

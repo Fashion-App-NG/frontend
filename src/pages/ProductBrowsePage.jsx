@@ -2,11 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/Product/ProductFilters';
 import ProductGrid from '../components/Product/ProductGrid';
-import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
 
 const ProductBrowsePage = () => {
-  const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

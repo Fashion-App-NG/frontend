@@ -4,7 +4,6 @@ import ProductCard from '../components/Product/ProductCard';
 import ProductFilters from '../components/Product/ProductFilters';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
-import VendorSidebar from '../components/Vendor/VendorSidebar';
 
 const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -25,9 +24,12 @@ const VendorProductListPage = () => {
     sortOrder: searchParams.get('sortOrder') || 'asc'
   }));
 
-  // ✅ FIXED: Load vendor products using correct endpoint
+  // ✅ ENHANCED: Load vendor products using correct endpoint with debug logging
   const loadVendorProducts = useCallback(async (currentFilters) => {
     if (!user?.id) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ No user ID available for loading vendor products');
+      }
       setError('Vendor ID not found. Please log in again.');
       setLoading(false);
       return;
@@ -37,7 +39,9 @@ const VendorProductListPage = () => {
     setError(null);
 
     try {
-      console.log('🔄 Loading vendor products for vendor ID:', user.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Loading vendor products for vendor ID:', user.id);
+      }
       
       // ✅ Use the vendor-specific endpoint from productService
       const response = await productService.getVendorProducts(user.id);
@@ -48,7 +52,9 @@ const VendorProductListPage = () => {
 
       let vendorProducts = response.products || [];
       
-      console.log('📦 Raw vendor products:', vendorProducts);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📦 Raw vendor products:', vendorProducts.length);
+      }
 
       // ✅ Apply client-side filtering since the API endpoint may not support all filters
       if (currentFilters.search && currentFilters.search.trim()) {
@@ -111,7 +117,9 @@ const VendorProductListPage = () => {
       setProducts(vendorProducts);
       setTotalCount(vendorProducts.length);
       
-      console.log('✅ Vendor products processed and loaded:', vendorProducts.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Vendor products processed and loaded:', vendorProducts.length);
+      }
       
     } catch (err) {
       console.error('❌ Failed to load vendor products:', err);
@@ -124,7 +132,9 @@ const VendorProductListPage = () => {
   }, [user?.id]);
 
   const handleFiltersChange = useCallback((newFilters) => {
-    console.log('🔄 Filters changed:', newFilters);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Filters changed:', newFilters);
+    }
     setFilters(newFilters);
     
     const params = new URLSearchParams();
@@ -144,7 +154,6 @@ const VendorProductListPage = () => {
     }
   }, [user?.id, loadVendorProducts, filters]);
 
-  // ✅ FIXED: Move early returns AFTER all hooks
   // Redirect unauthenticated users
   if (!isAuthenticated) {
     return <Navigate to="/login/vendor" replace />;
@@ -160,7 +169,7 @@ const VendorProductListPage = () => {
     }
   }
 
-  // ✅ Handle authentication issues
+  // Handle authentication issues
   if (!user?.id) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -183,13 +192,12 @@ const VendorProductListPage = () => {
     );
   }
 
+  // ✅ FIXED: Return content only (no sidebar - let VendorLayout handle it)
   return (
-    <div className="min-h-screen bg-[#d8dfe9] flex">
-      {/* Sidebar */}
-      <VendorSidebar />
+    <div className="p-6 max-w-7xl mx-auto"> {/* ✅ REMOVED: min-h-screen bg-[#d8dfe9] flex wrapper */}
       
-      {/* Main Content */}
-      <div className="flex-1 ml-[254px] p-6 max-w-7xl mx-auto">
+      {/* ✅ REMOVED: ml-[254px] since VendorLayout handles spacing */}
+      <div className="w-full"> {/* ✅ CHANGED: from flex-1 ml-[254px] to w-full */}
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -230,13 +238,13 @@ const VendorProductListPage = () => {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ✅ PRESERVED: Your amazing filters functionality */}
         <ProductFilters 
           onFiltersChange={handleFiltersChange}
           loading={loading}
         />
 
-        {/* Loading State */}
+        {/* ✅ PRESERVED: Loading State */}
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
             {[...Array(8)].map((_, index) => (
@@ -251,7 +259,7 @@ const VendorProductListPage = () => {
           </div>
         )}
 
-        {/* Error State */}
+        {/* ✅ PRESERVED: Error State */}
         {error && !loading && (
           <div className="text-center py-12">
             <div className="text-red-400 mb-4">
@@ -270,7 +278,7 @@ const VendorProductListPage = () => {
           </div>
         )}
 
-        {/* Products Grid */}
+        {/* ✅ PRESERVED: Your beautiful Products Grid */}
         {!loading && !error && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
             {products.map((product) => (
@@ -284,7 +292,7 @@ const VendorProductListPage = () => {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* ✅ PRESERVED: Empty State with your smart filter/no-filter logic */}
         {!loading && !error && products.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">

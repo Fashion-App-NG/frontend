@@ -9,7 +9,6 @@ if (process.env.NODE_ENV === 'development') {
 
 // Authentication service functions
 class AuthService {
-  // ✅ Simplified userId extraction from JWT
   extractUserIdFromToken(token) {
     try {
       if (!token) return null;
@@ -22,7 +21,6 @@ class AuthService {
       const decodedPayload = atob(paddedPayload);
       const parsed = JSON.parse(decodedPayload);
 
-      // Extract userId based on common JWT patterns
       return parsed.userId || parsed.id || parsed.sub || null;
     } catch (error) {
       console.error('Failed to extract userId from token:', error);
@@ -41,7 +39,6 @@ class AuthService {
           email: userData.email,
           password: userData.password,
           role: userData.role || 'shopper',
-          // ✅ Include storeName if present (for vendors)
           ...(userData.storeName && { storeName: userData.storeName })
         }),
       });
@@ -54,7 +51,6 @@ class AuthService {
         throw error;
       }
 
-      // Extract userId from the JWT token
       const userId = data.token ? this.extractUserIdFromToken(data.token) : null;
 
       return {
@@ -73,17 +69,20 @@ class AuthService {
     try {
       console.log('🔄 Attempting login for:', credentials.identifier, 'as', credentials.role);
       
+      const requestBody = {
+        identifier: credentials.identifier || credentials.email,
+        password: credentials.password,
+        role: credentials.role || 'shopper'
+      };
+
+      if (credentials.role === 'vendor' && credentials.storeName) {
+        requestBody.storeName = credentials.storeName;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: credentials.identifier || credentials.email,
-          password: credentials.password,
-          role: credentials.role || 'shopper',
-          // 🚨 TEMPORARY: Conditional spread for storeName
-          // Only includes storeName property if credentials.storeName exists
-          ...(credentials.storeName && { storeName: credentials.storeName })
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -94,16 +93,100 @@ class AuthService {
         throw error;
       }
 
-      // Store token and user data
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
+      // ✅ ENHANCED: Debug response structure with request context
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Auth service response analysis:', {
+          requestRole: requestBody.role,           // ✅ What we sent
+          responseHasRole: !!data.role,            // ✅ Does response have role?
+          responseRole: data.role,                 // ✅ What role if any
+          responseHasUser: !!data.user,            // ✅ Nested structure?
+          responseUserRole: data.user?.role,       // ✅ Role in user object?
+          responseKeys: Object.keys(data),         // ✅ All response fields
+          tokenLength: data.token?.length,
+          tokenStart: data.token?.substring(0, 20)
+        });
       }
 
-      return data;
+      // ✅ FIXED: Improved response normalization with role preservation
+      let normalizedResponse;
+      
+      if (data.user && typeof data.user === 'object') {
+        // Nested structure: { user: {...}, token: "..." }
+        console.log('📦 Using nested response structure');
+        normalizedResponse = {
+          user: {
+            ...data.user,
+            // ✅ Preserve role from request if not in response
+            role: data.user.role || requestBody.role
+          },
+          token: data.token
+        };
+      } else if (data.email && data.id && data.token) {
+        // ✅ FIXED: Flat structure - extract user data AND preserve role
+        console.log('📦 Using flat response structure - extracting user data');
+        const { token, ...userData } = data;
+        normalizedResponse = {
+          user: {
+            ...userData,
+            // ✅ CRITICAL: Use role from response OR preserve from request
+            role: userData.role || requestBody.role
+          },
+          token: token
+        };
+      } else {
+        // Final fallback
+        console.log('📦 Using fallback response structure');
+        const { token, ...userData } = data;
+        normalizedResponse = {
+          user: {
+            ...(userData.user || userData),
+            // ✅ Always preserve role from request as final fallback
+            role: (userData.user?.role || userData.role || requestBody.role)
+          },
+          token: token || data.token
+        };
+      }
+
+      // ✅ ENHANCED: Detailed post-normalization debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Normalized response with role preservation:', {
+          originalRequestRole: requestBody.role,
+          responseIncludedRole: !!data.role || !!data.user?.role,
+          finalUserRole: normalizedResponse.user?.role,
+          userEmail: normalizedResponse.user?.email,
+          userId: normalizedResponse.user?.id,
+          userStoreName: normalizedResponse.user?.storeName,
+          roleSource: data.role || data.user?.role ? 'response' : 'preserved_from_request'
+        });
+      }
+
+      // Validate final normalized response
+      if (!normalizedResponse.user?.role) {
+        console.error('❌ Critical: No role in final normalized response!', {
+          requestRole: requestBody.role,
+          responseData: data,
+          normalizedResponse
+        });
+        throw new Error('Authentication failed: missing user role');
+      }
+
+      // Store token and user data
+      if (normalizedResponse.token) {
+        localStorage.setItem('token', normalizedResponse.token);
+        console.log('✅ Token stored successfully');
+      }
+      
+      if (normalizedResponse.user) {
+        localStorage.setItem('user', JSON.stringify(normalizedResponse.user));
+        console.log('✅ User data stored successfully:', {
+          role: normalizedResponse.user.role,
+          email: normalizedResponse.user.email,
+          id: normalizedResponse.user.id,
+          roleSource: data.role || data.user?.role ? 'from_response' : 'preserved_from_request'
+        });
+      }
+
+      return normalizedResponse;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -165,7 +248,6 @@ class AuthService {
     }
   }
 
-  // ✅ Add missing methods for token/user management
   setAuthToken(token) {
     if (token) {
       localStorage.setItem('token', token);
@@ -200,9 +282,7 @@ class AuthService {
     this.removeUser();
   }
 
-  // ✅ Add vendor methods
   async registerVendor(userData) {
-    // Validate that storeName is provided for vendors
     if (!userData.storeName) {
       throw new Error('Store name is required for vendor registration');
     }
@@ -211,25 +291,10 @@ class AuthService {
       email: userData.email,
       password: userData.password,
       role: 'vendor',
-      storeName: userData.storeName // ✅ Explicitly include storeName
+      storeName: userData.storeName
     });
   }
 
-  async loginVendor(credentials) {
-    // ✅ Validate that storeName is provided for vendor login
-    if (!credentials.storeName) {
-      throw new Error('Store name is required for vendor login');
-    }
-
-    return this.login({
-      identifier: credentials.identifier || credentials.email,
-      password: credentials.password,
-      role: 'vendor',
-      storeName: credentials.storeName // ✅ Explicitly include storeName
-    });
-  }
-
-  // ✅ Add admin methods
   async adminLogin(credentials) {
     try {
       console.log('🔄 Admin login attempt for:', credentials.email);
@@ -255,7 +320,6 @@ class AuthService {
     }
   }
 
-  // ✅ ADD MISSING createAdmin METHOD
   async createAdmin(adminData) {
     try {
       console.log('🔄 Creating admin:', adminData.email);
@@ -272,7 +336,7 @@ class AuthService {
           firstName: adminData.firstName,
           lastName: adminData.lastName,
           phone: adminData.phone,
-          role: adminData.role || 'admin' // ✅ Default to 'admin' role
+          role: adminData.role || 'admin'
         }),
       });
 
@@ -283,12 +347,6 @@ class AuthService {
         error.status = response.status;
         throw error;
       }
-
-      console.log('✅ Admin created successfully:', {
-        ...data,
-        // Don't log sensitive data
-        admin: data.admin ? { ...data.admin, password: undefined } : undefined
-      });
 
       return data;
     } catch (error) {
@@ -346,30 +404,7 @@ class AuthService {
       throw error;
     }
   }
-
-  // ✅ Add missing admin-specific methods if they don't exist
-  setAdminToken(token) {
-    if (token) {
-      localStorage.setItem('adminToken', token);
-    }
-  }
-
-  getAdminToken() {
-    return localStorage.getItem('adminToken');
-  }
-
-  setAdminUser(user) {
-    if (user) {
-      localStorage.setItem('adminUser', JSON.stringify(user));
-    }
-  }
-
-  getAdminUser() {
-    const user = localStorage.getItem('adminUser');
-    return user ? JSON.parse(user) : null;
-  }
 }
 
-// ✅ FIXED: Assign to variable before exporting
 const authServiceInstance = new AuthService();
 export default authServiceInstance;

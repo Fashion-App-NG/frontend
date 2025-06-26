@@ -11,10 +11,11 @@ export const VendorSidebar = () => {
   const handleDashboard = () => navigate('/vendor/dashboard');
   const handleOrders = () => navigate('/vendor/orders');
   const handleProducts = () => navigate('/vendor/products');
+  const handleUpload = () => navigate('/vendor/upload');
+  const handleBulkUpload = () => navigate('/vendor/bulk-upload');
   const handleSales = () => navigate('/vendor/sales');
   const handleNotifications = () => navigate('/vendor/notifications');
   const handleSettings = () => navigate('/vendor/settings');
-  const handleHome = () => navigate('/');
 
   // React Event Handler: Logout functionality
   const handleLogout = () => {
@@ -25,156 +26,180 @@ export const VendorSidebar = () => {
   // Helper function to check if current path matches
   const isActive = (path) => {
     if (path === '/vendor/dashboard') {
-      return location.pathname === '/vendor/dashboard';
+      return location.pathname === '/vendor/dashboard' || location.pathname === '/vendor';
     }
     return location.pathname.includes(path);
   };
 
   return (
-    <div className="fixed top-0 left-0 w-[254px] h-screen bg-[#f9f9f9] rounded-lg z-10">
-      {/* Logo Section - Clickable to go home */}
-      <div 
-        className="pt-[45px] pl-[21px] pb-[10px] cursor-pointer hover:opacity-80 transition-opacity"
-        onClick={handleHome}
-      >
-        <div className="w-[135px] h-[38px] relative">
-          <div className="absolute w-[9px] h-[29px] bg-black left-[2px] top-[3px] rounded-sm" />
-          <div className="absolute left-0 top-[1px] text-yellow-400 text-xl">⭐</div>
-          <div className="absolute left-[42px] top-0 font-bold text-black text-[16px] leading-[120%]">
-            <div className="whitespace-pre">FASHION  </div>
-            <div>CULTURE</div>
+    <div className="bg-white h-screen w-64 fixed left-0 top-0 shadow-lg overflow-y-auto z-40">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">FC</span>
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">FASHION</h2>
+            <p className="text-xs text-gray-500">CULTURE</p>
           </div>
         </div>
-      </div>
-
-      {/* Collapse Toggle */}
-      <div className="absolute top-[68px] right-[20px] opacity-50">
-        <div className="flex items-center gap-[2px]">
-          <div className="w-2 h-3 border-r-2 border-b-2 border-gray-600 transform rotate-45"></div>
-          <div className="w-2 h-3 border-r-2 border-b-2 border-gray-600 transform rotate-45"></div>
-        </div>
+        <p className="text-xs text-gray-500 mt-2">Vendor Portal</p>
       </div>
 
       {/* Navigation Menu */}
-      <div className="mt-[100px] w-[254px]">
-        {/* Dashboard */}
-        <div 
-          className={`h-[47px] flex items-center px-[24px] gap-[20px] cursor-pointer transition-colors ${
-            isActive('/vendor/dashboard') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleDashboard}
-        >
-          <div className="w-[18px] h-[18px] text-gray-700">🏠</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/dashboard') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Dashboard</span>
+      <nav className="mt-8">
+        <div className="px-4 space-y-2">
+          {/* Dashboard */}
+          <button
+            onClick={handleDashboard}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/dashboard')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/dashboard') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </span>
+            Dashboard
+          </button>
+
+          {/* Orders */}
+          <button
+            onClick={handleOrders}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/orders')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/orders') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </span>
+            Orders
+          </button>
+
+          {/* My Products */}
+          <button
+            onClick={handleProducts}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/products')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/products') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </span>
+            My Products
+          </button>
+
+          {/* Add Product */}
+          <button
+            onClick={handleUpload}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/upload')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/upload') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </span>
+            Add Product
+          </button>
+
+          {/* Bulk Upload */}
+          <button
+            onClick={handleBulkUpload}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/bulk-upload')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/bulk-upload') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </span>
+            Bulk Upload
+          </button>
+
+          {/* Sales */}
+          <button
+            onClick={handleSales}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/sales')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/sales') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </span>
+            Sales
+          </button>
+
+          {/* Notifications */}
+          <button
+            onClick={handleNotifications}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/notifications')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/notifications') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM12 8a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </span>
+            Notifications
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={handleSettings}
+            className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/vendor/settings')
+                ? 'bg-blue-100 text-blue-600'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <span className={`mr-3 ${isActive('/vendor/settings') ? 'text-blue-600' : 'text-gray-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </span>
+            Settings
+          </button>
         </div>
+      </nav>
 
-        {/* Orders */}
-        <div 
-          className={`h-[56px] flex items-center px-[19px] gap-[14px] cursor-pointer transition-colors ${
-            isActive('/vendor/orders') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleOrders}
-        >
-          <div className="w-[28px] h-[28px] text-gray-700">📦</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/orders') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Orders</span>
-        </div>
-
-        {/* Products */}
-        <div 
-          className={`h-[47px] flex items-center px-[21px] gap-[22px] cursor-pointer transition-colors ${
-            isActive('/vendor/products') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleProducts}
-        >
-          <div className="w-[20px] h-[18px] text-gray-700">📋</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/products') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Products</span>
-        </div>
-
-        {/* Sales */}
-        <div 
-          className={`h-[47px] flex items-center px-[22px] gap-[21px] cursor-pointer transition-colors ${
-            isActive('/vendor/sales') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleSales}
-        >
-          <div className="w-[20px] h-[18px] text-gray-700">💰</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/sales') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Sales</span>
-        </div>
-
-        {/* Notifications */}
-        <div 
-          className={`h-[49px] flex items-center px-[24px] gap-[19px] cursor-pointer transition-colors ${
-            isActive('/vendor/notifications') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleNotifications}
-        >
-          <div className="w-[21px] h-[21px] text-gray-700">🔔</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/notifications') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Notifications</span>
-        </div>
-
-        {/* Settings */}
-        <div 
-          className={`h-[50px] flex items-center px-[25px] gap-[17px] cursor-pointer transition-colors ${
-            isActive('/vendor/settings') 
-              ? 'bg-[#cfe1ca] rounded-none' 
-              : 'hover:bg-gray-100'
-          }`}
-          onClick={handleSettings}
-        >
-          <div className="w-[22px] h-[22px] text-gray-700">⚙️</div>
-          <span className={`text-[16px] leading-[120%] ${
-            isActive('/vendor/settings') ? 'text-[#303030] font-medium' : 'text-[#2e2e2e]'
-          }`}>Settings</span>
-        </div>
-      </div>
-
-      {/* Divider Lines */}
-      <div className="absolute top-[550px] left-[1px] w-[252px] h-[1px] border-t border-[rgba(207,207,207,0.36)]" />
-      <div className="absolute top-[650px] left-[1px] w-[252px] h-[1px] border-t border-[rgba(207,207,207,0.36)]" />
-      <div className="absolute top-[800px] left-[1px] w-[252px] h-[1px] border-t border-[rgba(207,207,207,0.36)]" />
-
-      {/* Bottom Section */}
-      <div className="absolute bottom-[100px] left-0 w-full">
-        {/* Dark Mode Toggle */}
-        <div className="flex items-center justify-between px-[27px] py-[14px]">
-          <div className="flex items-center gap-[20px]">
-            <div className="w-[20px] h-[20px] text-gray-700">🌙</div>
-            <span className="text-[#2e2e2e] text-[16px] leading-[120%]">Dark Mode</span>
-          </div>
-          <div className="w-[30px] h-[17px] relative">
-            <div className="absolute inset-0 bg-[#e4e7ec] rounded-full" />
-            <div className="absolute left-[1px] top-[1px] w-[16.2px] h-[14.9px] bg-white rounded-full" />
-          </div>
-        </div>
-
-        {/* Logout */}
-        <div 
-          className="flex items-center px-[33px] py-[14px] gap-[16px] cursor-pointer hover:bg-gray-100 transition-colors"
+      {/* User Info & Logout */}
+      <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200 bg-white">
+        <button
           onClick={handleLogout}
+          className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center"
         >
-          <div className="w-[24px] h-[24px] text-gray-700">🚪</div>
-          <span className="text-[#2e2e2e] text-[16px] leading-[120%]">Logout</span>
-        </div>
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign out
+        </button>
       </div>
     </div>
   );

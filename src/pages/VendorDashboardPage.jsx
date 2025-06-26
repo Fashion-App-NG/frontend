@@ -1,6 +1,5 @@
 import { Navigate } from 'react-router-dom';
 import VendorDashboardContent from '../components/Vendor/VendorDashboardContent';
-import VendorSidebar from '../components/Vendor/VendorSidebar';
 import { useAuth } from '../contexts/AuthContext';
 
 // React Component: Vendor-specific dashboard page with role-based access
@@ -22,15 +21,8 @@ export const VendorDashboardPage = () => {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#d8dfe9] flex">
-      {/* React Component Composition: Sidebar + Main Content */}
-      <VendorSidebar />
-      <div className="flex-1 ml-[254px]">
-        <VendorDashboardContent />
-      </div>
-    </div>
-  );
+  // ✅ FIXED: Return content only, let VendorLayout handle sidebar
+  return <VendorDashboardContent />;
 };
 
 export default VendorDashboardPage;

@@ -1,5 +1,4 @@
 import { Navigate } from 'react-router-dom';
-import VendorSidebar from '../components/Vendor/VendorSidebar';
 import { useAuth } from '../contexts/AuthContext';
 
 export const VendorNotificationsPage = () => {
@@ -20,7 +19,6 @@ export const VendorNotificationsPage = () => {
 
   return (
     <div className="min-h-screen bg-[#d8dfe9] flex">
-      <VendorSidebar />
       <div className="flex-1 ml-[254px] p-6">
         <div className="bg-white rounded-[10px] p-8 text-center">
           <div className="text-6xl mb-4">🔔</div>

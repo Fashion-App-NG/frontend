@@ -1,6 +1,5 @@
 import { Navigate } from 'react-router-dom';
 import VendorProductUploadContent from '../components/Vendor/VendorProductUploadContent';
-import VendorSidebar from '../components/Vendor/VendorSidebar';
 import { useAuth } from '../contexts/AuthContext';
 
 export const VendorProductUploadPage = () => {
@@ -21,17 +20,7 @@ export const VendorProductUploadPage = () => {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#d8dfe9] flex">
-      {/* Sidebar */}
-      <VendorSidebar />
-      
-      {/* Main Content */}
-      <div className="flex-1 ml-[254px]">
-        <VendorProductUploadContent />
-      </div>
-    </div>
-  );
+  return <VendorProductUploadContent />;
 };
 
 export default VendorProductUploadPage;

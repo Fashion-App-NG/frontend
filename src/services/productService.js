@@ -9,12 +9,33 @@ class ProductService {
     }
   }
 
+  // ✅ FIXED: Use consistent token key and add debugging
   getAuthHeaders() {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('vendorToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+    const token = localStorage.getItem('token'); // ✅ Use same key as vendorService
+    
+    // ✅ ALWAYS LOG FOR DEBUGGING 401 ISSUES
+    console.log('🔑 ProductService getAuthHeaders called:', {
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+      tokenStart: token?.substring(0, 30) || 'none',
+      source: 'localStorage.getItem("token")'
+    });
+
+    const headers = {
+      'Content-Type': 'application/json'
     };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 ProductService Authorization header added:', {
+        headerPresent: !!headers['Authorization'],
+        headerLength: headers['Authorization']?.length || 0
+      });
+    } else {
+      console.error('❌ ProductService: No token available - Authorization header NOT added');
+    }
+
+    return headers;
   }
 
   async testConnection() {
@@ -77,14 +98,14 @@ class ProductService {
 
       const data = await response.json();
       
-      // ✅ FIX: Ensure products have proper IDs
+      // ✅ FIXED: Normalize product status and ensure proper IDs
       if (data.products && Array.isArray(data.products)) {
         data.products = data.products.map((product, index) => ({
           ...product,
-          // Ensure each product has an ID
           id: product.id || product._id || product.productId || `product-${index}`,
-          // Ensure display field exists
-          display: product.display !== false
+          display: product.display !== false,
+          // ✅ Add normalized status
+          status: this.normalizeProductStatus(product)
         })).filter(product => product.display !== false);
       }
 
@@ -104,38 +125,87 @@ class ProductService {
 
   async getVendorProducts(vendorId) {
     try {
-      console.log('🔄 Fetching vendor products for:', vendorId);
+      // ✅ ALWAYS LOG REQUEST START
+      console.log('🔄 ProductService getVendorProducts starting:', {
+        vendorId,
+        url: `${this.baseURL}/product/vendor/${vendorId}`,
+        timestamp: new Date().toISOString()
+      });
+
+      const headers = this.getAuthHeaders();
       
+      // ✅ ALWAYS LOG FINAL HEADERS BEFORE REQUEST
+      console.log('📨 ProductService Final request headers:', {
+        headers: JSON.stringify(headers, null, 2),
+        hasAuthHeader: !!headers.Authorization,
+        authHeaderStart: headers.Authorization?.substring(0, 20) || 'none'
+      });
+
+      console.log('🌐 ProductService Making fetch request...');
+
       const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
         method: 'GET',
-        headers: this.getAuthHeaders(),
+        headers,
         signal: AbortSignal.timeout(30000)
       });
       
+      // ✅ ALWAYS LOG RESPONSE
+      console.log('📡 ProductService Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
       if (!response.ok) {
+        console.error('❌ ProductService HTTP Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
+
+        if (response.status === 401) {
+          console.error('🔒 ProductService 401 Authentication Error:', {
+            tokenWasProvided: !!localStorage.getItem('token'),
+            headerWasSet: !!headers.Authorization,
+            allStorageKeys: Object.keys(localStorage)
+          });
+          
+          localStorage.removeItem('token');
+          throw new Error('Authentication failed. Please log in again.');
+        }
+
         if (response.status === 404) {
           console.log('📭 No products found for vendor:', vendorId);
           return { products: [], message: 'No products found' };
         }
         throw new Error(`HTTP ${response.status}: Failed to fetch vendor products`);
       }
-      
+
       const data = await response.json();
       
-      // ✅ Ensure vendor products have proper IDs
+      // ✅ FIXED: Normalize vendor product status too
       if (data.products && Array.isArray(data.products)) {
-        data.products = data.products.map((product, index) => ({
+        data.products = data.products.map(product => ({
           ...product,
-          id: product.id || product._id || product.productId || `vendor-product-${index}`
+          status: this.normalizeProductStatus(product)
         }));
       }
       
-      console.log('✅ Vendor products fetched:', data.products?.length || 0);
+      console.log('✅ ProductService Success response:', {
+        hasProducts: !!data.products,
+        productCount: data.products?.length || 0
+      });
+
       return data;
-      
     } catch (error) {
-      console.error('❌ Error fetching vendor products:', error);
-      return { products: [], error: error.message };
+      console.error('❌ ProductService getVendorProducts error:', {
+        message: error.message,
+        name: error.name,
+        vendorId
+      });
+      
+      throw error;
     }
   }
 
@@ -290,6 +360,31 @@ class ProductService {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
     }).format(price);
+  }
+
+  // ✅ NEW: Normalize product status across different API responses
+  normalizeProductStatus(product) {
+    // Check various status indicators
+    if (product.status === 'available' || 
+        product.status === 'in_stock' || 
+        product.status === 'In Stock') {
+      return 'In Stock';
+    }
+    
+    if (product.display === false || 
+        product.status === 'unavailable' || 
+        product.status === 'out_of_stock' ||
+        product.status === 'Out of Stock') {
+      return 'Out of Stock';
+    }
+    
+    // Check quantity as fallback
+    if (product.quantity && parseInt(product.quantity) > 0) {
+      return 'In Stock';
+    }
+    
+    // Default to available unless explicitly marked otherwise
+    return 'In Stock';
   }
 }
 

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
 
 class VendorService {
   constructor() {
@@ -9,165 +9,154 @@ class VendorService {
     }
   }
 
-  getAuthHeaders() {
-    // ✅ FIX: Check multiple token sources
-    const token = localStorage.getItem('token') || 
-                  localStorage.getItem('vendorToken') || 
-                  localStorage.getItem('authToken');
+  // ✅ CRITICAL: Always log token state (not gated) for debugging 401 issues
+  getAuthToken() {
+    const token = localStorage.getItem('token');
     
-    if (!token) {
-      console.warn('⚠️ No auth token found for vendor service');
-    }
+    // ✅ ALWAYS LOG FOR 401 DEBUGGING
+    console.log('🔑 VendorService getAuthToken called:', {
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+      tokenStart: token?.substring(0, 30) || 'none',
+      source: 'localStorage.getItem("token")'
+    });
     
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    };
+    return token;
   }
 
-  // ✅ FIX: Enhanced vendor products method
+  getAuthHeaders() {
+    const token = this.getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      // ✅ ALWAYS LOG HEADER CONSTRUCTION
+      console.log('🔑 Authorization header added:', {
+        headerPresent: !!headers['Authorization'],
+        headerLength: headers['Authorization']?.length || 0
+      });
+    } else {
+      // ✅ ALWAYS LOG MISSING TOKEN
+      console.error('❌ No token available - Authorization header NOT added');
+    }
+    
+    return headers;
+  }
+
   async getVendorProducts(vendorId) {
     try {
-      console.log('🔄 Fetching vendor products for:', vendorId);
-      console.log('🌐 Using endpoint:', `${this.baseURL}/product/vendor/${vendorId}`);
-      
-      const headers = this.getAuthHeaders();
-      console.log('🔑 Auth headers:', { 
-        hasAuth: !!headers.Authorization, 
-        contentType: headers['Content-Type'] 
+      if (!vendorId) {
+        throw new Error('Vendor ID is required');
+      }
+
+      // ✅ ALWAYS LOG REQUEST START
+      console.log('🔄 getVendorProducts starting:', {
+        vendorId,
+        url: `${this.baseURL}/product/vendor/${vendorId}`,
+        timestamp: new Date().toISOString()
       });
+
+      const token = this.getAuthToken();
+      // ✅ ALWAYS LOG TOKEN CHECK
+      console.log('🔑 Token check in getVendorProducts:', {
+        hasToken: !!token,
+        tokenLength: token?.length || 0
+      });
+
+      const headers = this.getAuthHeaders();
       
+      // ✅ ALWAYS LOG FINAL HEADERS
+      console.log('📨 Final request headers:', {
+        headers: JSON.stringify(headers, null, 2),
+        hasAuthHeader: !!headers.Authorization,
+        authHeaderStart: headers.Authorization?.substring(0, 20) || 'none'
+      });
+
+      console.log('🌐 Making fetch request...');
+
       const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
         method: 'GET',
-        headers: headers,
-        signal: AbortSignal.timeout(30000)
+        headers
+      });
+
+      // ✅ ALWAYS LOG RESPONSE
+      console.log('📡 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
+      if (!response.ok) {
+        console.error('❌ HTTP Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
+
+        if (response.status === 401) {
+          console.error('🔒 401 Authentication Error - checking token state:', {
+            tokenWasProvided: !!token,
+            headerWasSet: !!headers.Authorization,
+            tokenStillInStorage: !!localStorage.getItem('token')
+          });
+          
+          localStorage.removeItem('token');
+          throw new Error('Authentication failed. Please log in again.');
+        }
+        
+        throw new Error(`HTTP ${response.status}: Failed to fetch vendor products`);
+      }
+
+      const data = await response.json();
+      
+      console.log('✅ Success response:', {
+        hasProducts: !!data.products,
+        productCount: data.products?.length || 0
+      });
+
+      return data;
+    } catch (error) {
+      console.error('❌ getVendorProducts error:', {
+        message: error.message,
+        name: error.name,
+        vendorId
       });
       
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries([...response.headers.entries()]));
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error Response:', errorText);
-        
-        if (response.status === 404) {
-          console.log('📭 No products found for vendor:', vendorId);
-          return { 
-            success: true,
-            products: [], 
-            count: 0,
-            vendorId: vendorId,
-            message: 'No products found for this vendor' 
-          };
-        }
-        
-        if (response.status === 401 || response.status === 403) {
-          console.error('🔒 Authentication failed for vendor products');
-          throw new Error('Authentication required. Please log in again.');
-        }
-        
-        let errorMessage = `HTTP ${response.status}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const data = await response.json();
-      console.log('📦 Raw vendor products response:', data);
-      
-      // ✅ Handle the API response format based on documentation
-      let processedData = {
-        success: data.success || true,
-        message: data.message || 'Vendor products fetched successfully',
-        count: data.count || 0,
-        vendorId: data.vendorId || vendorId,
-        products: []
-      };
-      
-      // ✅ Ensure vendor products have proper IDs and structure
-      if (data.products && Array.isArray(data.products)) {
-        processedData.products = data.products.map((product, index) => ({
-          ...product,
-          id: product.id || product._id || product.productId || `vendor-product-${vendorId}-${index}`,
-          // Ensure price field consistency
-          pricePerYard: product.pricePerYard || product.price || 0,
-          // Ensure display field (only show products with display: true)
-          display: product.display !== false
-        })).filter(product => product.display !== false);
-        
-        processedData.count = processedData.products.length;
-      } else {
-        console.warn('⚠️ Unexpected vendor products response structure:', data);
-      }
-      
-      console.log('✅ Vendor products processed:', processedData.products.length);
-      return processedData;
-      
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.error('⏱️ Vendor products request timed out');
-        return { 
-          success: false,
-          products: [], 
-          count: 0,
-          vendorId: vendorId,
-          error: 'Request timed out. Please try again.',
-          retry: true
-        };
-      }
-      
-      console.error('❌ Error fetching vendor products:', error);
-      return { 
-        success: false,
-        products: [], 
-        count: 0,
-        vendorId: vendorId,
-        error: error.message || 'Failed to load vendor products',
-        retry: true
-      };
+      throw error;
     }
   }
 
-  // ✅ UPDATED: Create product with proper multipart/form-data handling
   async createProduct(productData) {
     try {
-      console.log('📤 Creating product with data:', productData);
-      
-      // Ensure vendor ID is included
-      const currentUser = this.getCurrentUser();
-      if (!productData.vendorId && currentUser?.id) {
-        productData.vendorId = currentUser.id;
-        console.log('✅ Added vendor ID from current user:', currentUser.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 Creating product:', productData.name);
       }
 
-      // ✅ Check if we have actual image files or just preview URLs
       const hasImageFiles = productData.images && 
         productData.images.some(img => img instanceof File || (img.file instanceof File));
 
       let response;
 
       if (hasImageFiles) {
-        // ✅ Use multipart/form-data for image uploads
+        // Multipart form data for images
         const formData = new FormData();
-
+        
         // Add text fields
         formData.append('name', productData.name);
         formData.append('pricePerYard', productData.pricePerYard.toString());
         formData.append('quantity', productData.quantity.toString());
-        formData.append('materialType', productData.materialType.toLowerCase());
+        formData.append('materialType', productData.materialType);
         formData.append('vendorId', productData.vendorId);
         formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
         formData.append('description', productData.description || '');
         formData.append('pattern', productData.pattern || 'solid');
         formData.append('status', productData.status === true ? 'available' : 'unavailable');
 
-        // ✅ Add image files with correct field name
-        productData.images.forEach((imageItem, index) => {
+        // Add image files
+        productData.images.forEach((imageItem) => {
           if (imageItem.file instanceof File) {
             formData.append('images', imageItem.file);
           } else if (imageItem instanceof File) {
@@ -175,28 +164,24 @@ class VendorService {
           }
         });
 
-        console.log('🌐 Using multipart/form-data endpoint:', `${this.baseURL}/product`);
-        
-        // ✅ Different headers for multipart (no Content-Type header - let browser set it)
-        const headers = {};
         const token = this.getAuthToken();
+        const headers = {};
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
         response = await fetch(`${this.baseURL}/product`, {
           method: 'POST',
-          headers: headers, // No Content-Type for multipart
+          headers,
           body: formData
         });
-
       } else {
-        // ✅ Use JSON for products without image files
+        // JSON data for products without images
         const jsonData = {
           name: productData.name,
           pricePerYard: productData.pricePerYard,
           quantity: productData.quantity,
-          materialType: productData.materialType.toLowerCase(),
+          materialType: productData.materialType,
           vendorId: productData.vendorId,
           idNumber: productData.idNumber || `PRD-${Date.now()}`,
           description: productData.description || '',
@@ -205,115 +190,63 @@ class VendorService {
           images: productData.images || []
         };
 
-        console.log('🌐 Using JSON endpoint:', `${this.baseURL}/product`);
-        console.log('📦 JSON product data:', jsonData);
-        
         response = await fetch(`${this.baseURL}/product`, {
           method: 'POST',
-          headers: this.getHeaders(), // Standard JSON headers
+          headers: this.getAuthHeaders(),
           body: JSON.stringify(jsonData)
         });
       }
 
-      const result = await this.handleResponse(response);
-      console.log('✅ Product created successfully:', result);
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Create product error:', error);
-      throw error;
-    }
-  }
-
-  // ✅ Helper method to get headers without Content-Type (for multipart)
-  getHeadersWithoutContentType() {
-    const headers = {};
-    const token = this.getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-  }
-
-  // Update product - fix the endpoint and data format
-  async updateProduct(productId, updateData) {
-    try {
-      console.log('📝 Updating product:', productId, 'with data:', updateData);
-      
-      // ✅ Ensure we have a valid product ID
-      if (!productId || productId === 'undefined') {
-        throw new Error('Invalid product ID provided');
-      }
-      
-      // Clean the update data - remove any undefined fields
-      const cleanUpdateData = {};
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] !== undefined && updateData[key] !== '') {
-          cleanUpdateData[key] = updateData[key];
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          throw new Error('Authentication failed. Please log in again.');
         }
-      });
-      
-      console.log('🌐 Using endpoint:', `${this.baseURL}/product/${productId}`);
-      console.log('📦 Clean update data:', cleanUpdateData);
-      
-      const response = await fetch(`${this.baseURL}/product/${productId}`, {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify(cleanUpdateData)
-      });
+        
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
 
-      const result = await this.handleResponse(response);
-      console.log('✅ Product updated successfully:', result);
+      const result = await response.json();
       
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Product created successfully:', result.product?.name || 'Unknown');
+      }
+
       return result;
     } catch (error) {
-      console.error('❌ Update product error:', error);
+      console.error('❌ Error creating product:', error.message);
       throw error;
     }
   }
 
-  // Hide product (soft delete)
-  async hideProduct(productId) {
-    try {
-      console.log('🙈 Hiding product:', productId);
-      console.log('🌐 Using endpoint:', `${this.baseURL}/product/${productId}/hide`);
-      
-      const response = await fetch(`${this.baseURL}/product/${productId}/hide`, {
-        method: 'PUT',
-        headers: this.getHeaders()
-      });
-
-      const result = await this.handleResponse(response);
-      console.log('✅ Product hidden successfully:', result);
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Hide product error:', error);
-      throw error;
-    }
-  }
-
-  // Test connection
   async testConnection() {
     try {
-      console.log('🔍 Testing API connection to:', `${this.baseURL}/product`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Testing API connection to:', `${this.baseURL}/product`);
+      }
+      
       const response = await fetch(`${this.baseURL}/product`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
       
-      console.log('📡 Test response status:', response.status);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Test response status:', response.status);
+      }
+      
       return response.ok;
     } catch (error) {
-      console.error('❌ API connection test failed:', error);
+      console.error('❌ API connection test failed:', error.message);
       return false;
     }
   }
 
-  // ✅ NEW: Bulk product creation with CSV support
   async createBulkProducts(productsData, options = {}) {
     try {
-      console.log('📤 Creating bulk products:', productsData.length, 'products');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 Creating bulk products:', productsData.length, 'products');
+      }
       
       if (productsData.length > 100) {
         throw new Error('Bulk upload limited to 100 products at once');
@@ -384,7 +317,7 @@ class VendorService {
 
         response = await fetch(`${this.baseURL}/product`, {
           method: 'POST',
-          headers: this.getHeaders(),
+          headers: this.getAuthHeaders(),
           body: JSON.stringify(jsonData)
         });
       }
@@ -394,7 +327,7 @@ class VendorService {
       return result;
       
     } catch (error) {
-      console.error('❌ Bulk create products error:', error);
+      console.error('❌ Bulk create products error:', error.message);
       throw error;
     }
   }
