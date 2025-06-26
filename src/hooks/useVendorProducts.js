@@ -59,8 +59,28 @@ export const useVendorProducts = () => {
       // Fallback to localStorage if API fails
       try {
         const localProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-        if (localProducts.length > 0) {
-          setProducts(localProducts);
+        const validateProduct = (product) => ({
+          id: product.id || null,
+          name: product.name || 'Unknown Product',
+          description: product.description || 'No description available',
+          image: product.image || '/api/placeholder/86/66',
+          quantity: product.quantity || 0,
+          date: product.date || 'Unknown',
+          uploadDate: product.uploadDate || new Date().toISOString(),
+          price: product.price || 0,
+          status: product.status || 'Out Of Stock',
+          statusColor: product.statusColor || '#cd0000',
+          materialType: product.materialType || null,
+          pattern: product.pattern || null,
+          idNumber: product.idNumber || null,
+          display: product.display || false,
+          isApiProduct: product.isApiProduct || false,
+        });
+        const sanitizedProducts = Array.isArray(localProducts)
+          ? localProducts.map(validateProduct)
+          : [];
+        if (sanitizedProducts.length > 0) {
+          setProducts(sanitizedProducts);
           console.log('📦 Loaded products from localStorage as fallback');
         } else {
           setProducts([]);
