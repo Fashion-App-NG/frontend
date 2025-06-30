@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import VendorService from '../../services/vendorService';
-import { handleError } from '../../utils/errorHandler';
+import vendorService from '../../services/vendorService';
 
 export const VendorProductUploadContent = () => {
   const { user } = useAuth();
@@ -158,60 +157,102 @@ export const VendorProductUploadContent = () => {
       alert('Please enter a price');
       return;
     }
-    if (!formData.materialType) {
-      alert('Please select a material type');
+    if (formData.images.length === 0) {
+      alert('Please upload at least one image');
       return;
     }
 
-    // ✅ Validate user ID is available
-    if (!user?.id) {
-      alert('User authentication required. Please log in again.');
-      return;
-    }
+    setIsUploading(true);
 
     try {
-      setIsUploading(true);
-
-      // ✅ Prepare API payload matching the specification
+      // ✅ Prepare data for unified API (unchanged)
       const productData = {
         name: formData.productName.trim(),
         pricePerYard: parseFloat(formData.pricePerYard),
-        quantity: parseInt(formData.quantity),
-        materialType: formData.materialType, // Keep original case, service will handle
-        vendorId: user.id, // ✅ Explicitly include vendorId as per API spec
+        quantity: parseInt(formData.quantity) || 1,
+        materialType: formData.materialType,
+        pattern: formData.pattern || 'Solid',
         idNumber: formData.idNumber.trim() || `PRD-${Date.now()}`,
-        description: formData.description.trim() || 'High-quality fabric',
-        pattern: formData.pattern || 'solid',
-        status: formData.status, // Service will map to 'available'/'unavailable'
-        images: formData.images // ✅ Pass full image objects with File instances
+        description: formData.description.trim() || 'Custom fabric',
+        status: formData.status,
+        images: formData.images, // Keep original File objects
+        vendorId: user?.id
       };
 
-      console.log('📤 Sending product data:', {
-        ...productData,
-        images: productData.images.map(img => ({
-          name: img.name,
-          size: img.size,
-          hasFile: !!(img.file instanceof File)
-        }))
+      console.log('🚀 Sending single product with automatic fallback:', {
+        name: productData.name,
+        imageCount: productData.images.length,
+        vendorId: productData.vendorId
       });
 
-      // Create product via API
-      const response = await VendorService.createProduct(productData);
+      // ✅ Use enhanced unified API with automatic fallback
+      const result = await vendorService.createSingleProduct(productData);
+      
+      console.log('✅ Product created successfully:', result);
 
-      if (response.message || response.product) {
-        // Success - navigate to products list
-        navigate('/vendor/products', { 
-          state: { 
-            message: `Product "${productData.name}" has been created successfully!`,
-            type: 'success',
+      // Navigate to product listing
+      navigate('/vendor/products', {
+        state: {
+          message: 'Product uploaded successfully with images!',
+          type: 'success',
+          productAdded: true
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Upload failed after all attempts:', error);
+      
+      // ✅ Enhanced error messaging
+      let errorMessage = error.message;
+      if (error.message.includes('PayloadTooLarge')) {
+        errorMessage = 'Images are too large even for multipart upload. Please reduce image file sizes and try again.';
+      }
+      
+      // ✅ Fallback to localStorage for demo if all API attempts fail
+      const fallbackProduct = {
+        id: `#${Math.floor(Math.random() * 100000)}`,
+        name: formData.productName,
+        description: formData.description || 'Custom fabric',
+        image: formData.images[0]?.preview || '/api/placeholder/86/66',
+        images: formData.images.map(img => ({
+          id: img.id,
+          preview: img.preview,
+          name: img.name,
+          size: img.size
+        })),
+        imageCount: formData.images.length,
+        quantity: parseInt(formData.quantity) || 1,
+        date: new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        }),
+        uploadDate: new Date().toISOString(),
+        price: parseFloat(formData.pricePerYard) || 0,
+        status: formData.status ? 'In Stock' : 'Out Of Stock',
+        statusColor: formData.status ? '#28b446' : '#cd0000',
+        materialType: formData.materialType,
+        pattern: formData.pattern,
+        idNumber: formData.idNumber,
+        isLocalProduct: true,
+        backendError: true
+      };
+
+      try {
+        const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
+        existingProducts.unshift(fallbackProduct);
+        localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
+        
+        navigate('/vendor/products', {
+          state: {
+            message: `API upload failed: ${errorMessage}. Product saved locally as demo.`,
+            type: 'warning',
             productAdded: true
           }
         });
+      } catch (storageError) {
+        alert(`Upload failed: ${errorMessage}\nLocal storage also failed: ${storageError.message}`);
       }
-    } catch (error) {
-      console.error('Failed to create product:', error);
-      const errorInfo = handleError(error, { context: 'createProduct' });
-      alert(`Error: ${errorInfo.message}`);
     } finally {
       setIsUploading(false);
     }

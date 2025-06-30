@@ -1,10 +1,9 @@
 // src/components/Vendor/VendorHybridBulkUpload.jsx - Updated component
 import Papa from 'papaparse';
-import { useCallback, useState, useRef } from 'react'; // ✅ Add useRef import
+import { useCallback, useRef, useState } from 'react'; // ✅ Add useRef import
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
-import { handleError } from '../../utils/errorHandler';
 
 export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
@@ -252,93 +251,120 @@ export const VendorHybridBulkUpload = () => {
     
     try {
       setStep('uploading');
-      setUploadProgress({ current: 0, total: products.length, message: 'Preparing upload...' });
+      setUploadProgress({ current: 0, total: 1, message: 'Preparing bulk upload...' });
 
-      const results = [];
-      const errors = [];
+      // ✅ Prepare bulk data for unified API
+      const bulkProductsData = products.map((product, index) => ({
+        name: product.name.trim(),
+        pricePerYard: parseFloat(product.pricePerYard),
+        quantity: parseInt(product.quantity),
+        materialType: product.materialType,
+        vendorId: user?.id,
+        idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${index}`,
+        description: product.description?.trim() || 'Bulk uploaded product',
+        pattern: product.pattern || 'Solid',
+        status: product.status,
+        images: product.images || [] // All matched images included
+      }));
 
-      // ✅ NEW: Upload each product individually using single product endpoint
-      for (let i = 0; i < products.length; i++) {
-        const product = products[i];
-        
-        setUploadProgress({ 
-          current: i + 1, 
-          total: products.length, 
-          message: `Uploading product ${i + 1}: ${product.name}...` 
-        });
-
-        try {
-          // Prepare single product data
-          const productData = {
-            name: product.name.trim(),
-            pricePerYard: parseFloat(product.pricePerYard),
-            quantity: parseInt(product.quantity),
-            materialType: product.materialType,
-            vendorId: user?.id,
-            idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${i}`,
-            description: product.description?.trim() || 'Bulk uploaded product',
-            pattern: product.pattern || 'solid',
-            status: product.status,
-            images: product.images || [] // Include images
-          };
-
-          // ✅ Call single product creation endpoint
-          const response = await VendorService.createProduct(productData);
-          
-          results.push({
-            index: i,
-            name: product.name,
-            success: true,
-            response: response
-          });
-
-        } catch (error) {
-          console.error(`❌ Failed to upload product ${i + 1}:`, error);
-          errors.push({
-            index: i,
-            name: product.name,
-            error: error.message
-          });
-        }
-      }
-
-      setUploadProgress({ 
-        current: products.length, 
-        total: products.length, 
-        message: 'Upload complete!' 
+      console.log('🚀 Sending bulk data to unified API:', {
+        productCount: bulkProductsData.length,
+        totalImages: bulkProductsData.reduce((sum, p) => sum + (p.images?.length || 0), 0),
+        productsWithImages: bulkProductsData.filter(p => p.images?.length > 0).length
       });
 
-      // Handle results
-      const successCount = results.length;
-      const errorCount = errors.length;
+      setUploadProgress({ current: 0, total: 1, message: 'Uploading all products...' });
 
-      if (successCount > 0) {
-        let message = `Successfully uploaded ${successCount} products!`;
-        if (errorCount > 0) {
-          message += `\n${errorCount} products failed to upload.`;
-          console.log('❌ Failed uploads:', errors);
-        }
+      // ✅ Use unified API for bulk upload
+      const result = await VendorService.createBulkProducts(bulkProductsData);
+      
+      setUploadProgress({ current: 1, total: 1, message: 'Upload complete!' });
 
-        // Navigate to products list with success message
+      // Handle response
+      if (result.errorCount && result.errorCount > 0) {
+        // Partial success
         navigate('/vendor/products', { 
           state: { 
-            message: message,
-            type: successCount === products.length ? 'success' : 'warning',
+            message: `Bulk upload completed: ${result.createdCount} successful, ${result.errorCount} failed.`,
+            type: 'warning',
             bulkUpload: true,
-            uploadResults: { successCount, errorCount, errors }
+            uploadResults: result
           }
         });
       } else {
-        // All failed
-        alert(`All ${errorCount} products failed to upload. Please check the errors and try again.`);
-        console.log('❌ All uploads failed:', errors);
-        setStep('review');
+        // Full success
+        navigate('/vendor/products', { 
+          state: { 
+            message: `Successfully uploaded ${result.count || bulkProductsData.length} products via bulk upload!`,
+            type: 'success',
+            bulkUpload: true,
+            uploadResults: result
+          }
+        });
       }
 
     } catch (error) {
-      console.error('Bulk upload process failed:', error);
-      const errorInfo = handleError(error, { context: 'bulkUpload' });
-      alert(`Upload process failed: ${errorInfo.message}`);
+      console.error('❌ Bulk upload failed:', error);
+      
+      // ✅ Fallback to individual uploads if unified API fails
+      await handleFallbackIndividualUpload();
+    }
+  };
+
+  // ✅ Fallback method for when unified API fails
+  const handleFallbackIndividualUpload = async () => {
+    console.log('🔄 Falling back to individual uploads...');
+    
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      
+      setUploadProgress({ 
+        current: i + 1, 
+        total: products.length, 
+        message: `Uploading product ${i + 1}: ${product.name}...` 
+      });
+
+      try {
+        const productData = {
+          name: product.name.trim(),
+          pricePerYard: parseFloat(product.pricePerYard),
+          quantity: parseInt(product.quantity),
+          materialType: product.materialType,
+          vendorId: user?.id,
+          idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${i}`,
+          description: product.description?.trim() || 'Bulk uploaded product',
+          pattern: product.pattern || 'Solid',
+          status: product.status,
+          images: product.images || []
+        };
+
+        const response = await VendorService.createSingleProduct(productData);
+        results.push({ index: i, name: product.name, success: true });
+
+      } catch (error) {
+        console.error(`❌ Failed to upload product ${i + 1}:`, error);
+        errors.push({ index: i, name: product.name, error: error.message });
+      }
+    }
+
+    // Handle mixed results
+    const successCount = results.length;
+    const errorCount = errors.length;
+
+    if (successCount > 0) {
+      navigate('/vendor/products', { 
+        state: { 
+          message: `Bulk upload completed: ${successCount} successful, ${errorCount} failed.`,
+          type: successCount === products.length ? 'success' : 'warning',
+          bulkUpload: true,
+          uploadResults: { successCount, errorCount, errors }
+        }
+      });
+    } else {
+      alert('All products failed to upload. Please check the errors and try again.');
       setStep('review');
     }
   };

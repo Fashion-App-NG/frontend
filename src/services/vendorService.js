@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 class VendorService {
   constructor() {
@@ -129,95 +129,284 @@ class VendorService {
     }
   }
 
+  // ✅ Convert File objects to base64 with tag support
+  async convertFileToBase64(file, tag = 'main', originalFilename = null) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve({
+          data: reader.result, // This includes data:image/jpeg;base64,
+          filename: originalFilename || file.name,
+          tag: tag
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ✅ MAIN: Enhanced unified method with automatic fallback
   async createProduct(productData) {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 Creating product:', productData.name);
-      }
-
-      const hasImageFiles = productData.images && 
-        productData.images.some(img => img instanceof File || (img.file instanceof File));
-
-      let response;
-
-      if (hasImageFiles) {
-        // Multipart form data for images
-        const formData = new FormData();
+      // ✅ First attempt: Try unified JSON API
+      return await this.createProductJSON(productData);
+    } catch (error) {
+      console.warn('⚠️ JSON API failed, attempting multipart fallback:', error.message);
+      
+      // ✅ MORE RELIABLE: Always try multipart as fallback for any JSON failure
+      try {
+        console.log('🔄 Switching to multipart form-data fallback');
+        return await this.createProductMultipart(productData);
+      } catch (multipartError) {
+        console.error('❌ Both JSON and multipart methods failed');
+        console.error('JSON error:', error.message);
+        console.error('Multipart error:', multipartError.message);
         
-        // Add text fields
-        formData.append('name', productData.name);
-        formData.append('pricePerYard', productData.pricePerYard.toString());
-        formData.append('quantity', productData.quantity.toString());
-        formData.append('materialType', productData.materialType);
-        formData.append('vendorId', productData.vendorId);
-        formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
-        formData.append('description', productData.description || '');
-        formData.append('pattern', productData.pattern || 'solid');
-        formData.append('status', productData.status === true ? 'available' : 'unavailable');
-
-        // Add image files
-        productData.images.forEach((imageItem) => {
-          if (imageItem.file instanceof File) {
-            formData.append('images', imageItem.file);
-          } else if (imageItem instanceof File) {
-            formData.append('images', imageItem);
-          }
-        });
-
-        const token = this.getAuthToken();
-        const headers = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        response = await fetch(`${this.baseURL}/product`, {
-          method: 'POST',
-          headers,
-          body: formData
-        });
-      } else {
-        // JSON data for products without images
-        const jsonData = {
-          name: productData.name,
-          pricePerYard: productData.pricePerYard,
-          quantity: productData.quantity,
-          materialType: productData.materialType,
-          vendorId: productData.vendorId,
-          idNumber: productData.idNumber || `PRD-${Date.now()}`,
-          description: productData.description || '',
-          pattern: productData.pattern || 'solid',
-          status: productData.status === true ? 'available' : 'unavailable',
-          images: productData.images || []
-        };
-
-        response = await fetch(`${this.baseURL}/product`, {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(jsonData)
-        });
+        // Throw the original JSON error as it's likely more informative
+        throw error;
       }
+    }
+  }
+
+  // ✅ JSON method (primary)
+  async createProductJSON(productData) {
+    try {
+      // Determine if this is single product or bulk
+      const isArray = Array.isArray(productData);
+      const productsArray = isArray ? productData : [productData];
+      
+      console.log(`🔄 Creating ${productsArray.length} product(s) via unified JSON API`);
+
+      // ✅ Process all products and convert images to base64
+      const processedProducts = await Promise.all(
+        productsArray.map(async (product, index) => {
+          const processedProduct = {
+            name: product.name,
+            pricePerYard: product.pricePerYard.toString(),
+            quantity: product.quantity.toString(),
+            materialType: product.materialType,
+            vendorId: product.vendorId,
+            idNumber: product.idNumber || `PRD-${Date.now()}-${index}`,
+            description: product.description || 'Product description',
+            pattern: product.pattern || 'Solid',
+            status: product.status === true || product.status === 'available' ? 'ACTIVE' : 'INACTIVE',
+            images: []
+          };
+
+          // ✅ Convert images to base64 format
+          if (product.images && product.images.length > 0) {
+            const imagePromises = product.images.map(async (imageItem, imgIndex) => {
+              let file = null;
+              let tag = 'main';
+              let filename = null;
+
+              // Handle different image formats
+              if (imageItem.file instanceof File) {
+                file = imageItem.file;
+                filename = imageItem.name || file.name;
+                tag = imgIndex === 0 ? 'main' : 'detail';
+              } else if (imageItem instanceof File) {
+                file = imageItem;
+                filename = file.name;
+                tag = imgIndex === 0 ? 'main' : 'detail';
+              }
+
+              if (file) {
+                return await this.convertFileToBase64(file, tag, filename);
+              }
+
+              return null;
+            });
+
+            const convertedImages = await Promise.all(imagePromises);
+            processedProduct.images = convertedImages.filter(img => img !== null);
+          }
+
+          return processedProduct;
+        })
+      );
+
+      // ✅ Prepare request body with products array
+      const requestBody = {
+        products: processedProducts
+      };
+
+      // ✅ Estimate payload size and warn if large
+      const payloadString = JSON.stringify(requestBody);
+      const payloadSizeKB = Math.round(payloadString.length / 1024);
+      
+      console.log('📤 Sending JSON request:', {
+        productCount: processedProducts.length,
+        endpoint: `${this.baseURL}/product`,
+        hasImages: processedProducts.some(p => p.images.length > 0),
+        totalImages: processedProducts.reduce((sum, p) => sum + p.images.length, 0),
+        payloadSizeKB: payloadSizeKB
+      });
+
+      // ✅ Warn if payload is large
+      if (payloadSizeKB > 1024) {
+        console.warn(`⚠️ Large JSON payload: ${payloadSizeKB}KB - will fallback to multipart if this fails`);
+      }
+
+      // ✅ Send JSON request with base64 images
+      const response = await fetch(`${this.baseURL}/product`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        },
+        body: payloadString
+      });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          throw new Error('Authentication failed. Please log in again.');
-        }
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        // ✅ Log detailed error info for debugging
+        console.error('❌ JSON API request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: errorData.message,
+          payloadSizeKB: payloadSizeKB
+        });
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product(s) via JSON API`);
       }
 
-      const result = await response.json();
+      const data = await response.json();
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Product created successfully:', result.product?.name || 'Unknown');
-      }
+      console.log('✅ JSON product creation successful:', {
+        message: data.message,
+        count: data.count || 1,
+        createdCount: data.createdCount,
+        errorCount: data.errorCount
+      });
 
-      return result;
+      return data;
     } catch (error) {
-      console.error('❌ Error creating product:', error.message);
+      console.error('❌ JSON product creation failed:', error);
       throw error;
     }
+  }
+
+  // ✅ Multipart fallback method (fixed to not use indexed field names)
+  async createProductMultipart(productData) {
+    try {
+      const isArray = Array.isArray(productData);
+      const productsArray = isArray ? productData : [productData];
+      
+      console.log(`🔄 Creating ${productsArray.length} product(s) via multipart form-data fallback`);
+
+      // ✅ IMPORTANT: For now, only support single product in multipart
+      // Backend might not support bulk multipart with the current specification
+      if (productsArray.length > 1) {
+        console.warn('⚠️ Multipart fallback: Processing products individually');
+        
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < productsArray.length; i++) {
+          try {
+            const singleResult = await this.createProductMultipart(productsArray[i]);
+            results.push(singleResult);
+          } catch (error) {
+            errors.push({ index: i, error: error.message });
+          }
+        }
+        
+        if (results.length === 0) {
+          throw new Error(`All ${productsArray.length} products failed in multipart fallback`);
+        }
+        
+        return {
+          message: `Multipart fallback completed: ${results.length} successful, ${errors.length} failed`,
+          count: results.length,
+          createdCount: results.length,
+          errorCount: errors.length,
+          products: results.map(r => r.product).filter(Boolean),
+          errors: errors
+        };
+      }
+
+      // ✅ Single product multipart processing
+      const product = productsArray[0];
+      const formData = new FormData();
+
+      // ✅ Add product fields (not indexed since it's single product)
+      formData.append('name', product.name);
+      formData.append('pricePerYard', product.pricePerYard.toString());
+      formData.append('quantity', product.quantity.toString());
+      formData.append('materialType', product.materialType);
+      formData.append('vendorId', product.vendorId);
+      formData.append('idNumber', product.idNumber || `PRD-${Date.now()}`);
+      formData.append('description', product.description || 'Product description');
+      formData.append('pattern', product.pattern || 'Solid');
+      formData.append('status', product.status === true || product.status === 'available' ? 'ACTIVE' : 'INACTIVE');
+
+      // ✅ Add image files
+      let imageCount = 0;
+      if (product.images && product.images.length > 0) {
+        product.images.forEach(imageItem => {
+          let file = null;
+          
+          if (imageItem.file instanceof File) {
+            file = imageItem.file;
+          } else if (imageItem instanceof File) {
+            file = imageItem;
+          }
+          
+          if (file) {
+            formData.append('images', file);
+            imageCount++;
+          }
+        });
+      }
+
+      console.log('📤 Sending multipart request:', {
+        endpoint: `${this.baseURL}/product`,
+        totalImages: imageCount,
+        formDataEntries: Array.from(formData.entries()).length
+      });
+
+      // ✅ Send multipart/form-data request
+      const response = await fetch(`${this.baseURL}/product`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`
+          // ✅ Don't set Content-Type - let browser set multipart boundary
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product via multipart`);
+      }
+
+      const data = await response.json();
+      
+      console.log('✅ Multipart product creation successful:', {
+        message: data.message,
+        product: data.product?.name || 'Unknown'
+      });
+
+      return data;
+    } catch (error) {
+      console.error('❌ Multipart product creation failed:', error);
+      throw error;
+    }
+  }
+
+  // ✅ NEW: Dedicated single product creation wrapper
+  async createSingleProduct(productData) {
+    return this.createProduct(productData);
+  }
+
+  // ✅ NEW: Dedicated bulk product creation wrapper
+  async createBulkProducts(productsArray) {
+    if (!Array.isArray(productsArray)) {
+      throw new Error('Bulk products must be provided as an array');
+    }
+    return this.createProduct(productsArray);
   }
 
   async testConnection() {
@@ -239,96 +428,6 @@ class VendorService {
     } catch (error) {
       console.error('❌ API connection test failed:', error.message);
       return false;
-    }
-  }
-
-  async createBulkProducts(productsData, options = {}) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 Creating bulk products:', productsData.length, 'products');
-      }
-      
-      if (productsData.length > 100) {
-        throw new Error('Bulk upload limited to 100 products at once');
-      }
-
-      // Check if any products have image files
-      const hasImageFiles = productsData.some(product => 
-        product.images && product.images.some(img => img.file instanceof File)
-      );
-
-      let response;
-
-      if (hasImageFiles) {
-        // Use multipart/form-data for products with images
-        const formData = new FormData();
-
-        // Add products array as JSON
-        const productsJson = productsData.map((product, index) => ({
-          name: product.name || product.productName,
-          pricePerYard: parseFloat(product.pricePerYard),
-          quantity: parseInt(product.quantity),
-          materialType: product.materialType.toLowerCase(),
-          vendorId: product.vendorId || this.getCurrentUser()?.id,
-          idNumber: product.idNumber || `PRD-${Date.now()}-${index}`,
-          description: product.description || 'Bulk uploaded product',
-          pattern: product.pattern || 'solid',
-          status: product.status === true || product.status === 'available' ? 'available' : 'unavailable'
-        }));
-
-        formData.append('products', JSON.stringify(productsJson));
-
-        // Add images with product association
-        productsData.forEach((product, productIndex) => {
-          if (product.images && product.images.length > 0) {
-            product.images.forEach((imageItem, imageIndex) => {
-              if (imageItem.file instanceof File) {
-                formData.append(`images[${productIndex}][${imageIndex}]`, imageItem.file);
-              }
-            });
-          }
-        });
-
-        const headers = {};
-        const token = this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        response = await fetch(`${this.baseURL}/product`, {
-          method: 'POST',
-          headers: headers,
-          body: formData
-        });
-
-      } else {
-        // Use JSON for products without images
-        const jsonData = productsData.map((product, index) => ({
-          name: product.name || product.productName,
-          pricePerYard: parseFloat(product.pricePerYard),
-          quantity: parseInt(product.quantity),
-          materialType: product.materialType.toLowerCase(),
-          vendorId: product.vendorId || this.getCurrentUser()?.id,
-          idNumber: product.idNumber || `PRD-${Date.now()}-${index}`,
-          description: product.description || 'Bulk uploaded product',
-          pattern: product.pattern || 'solid',
-          status: product.status === true || product.status === 'available' ? 'available' : 'unavailable'
-        }));
-
-        response = await fetch(`${this.baseURL}/product`, {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(jsonData)
-        });
-      }
-
-      const result = await this.handleResponse(response);
-      console.log('✅ Bulk products created:', result);
-      return result;
-      
-    } catch (error) {
-      console.error('❌ Bulk create products error:', error.message);
-      throw error;
     }
   }
 

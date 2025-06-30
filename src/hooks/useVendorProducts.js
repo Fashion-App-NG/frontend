@@ -5,7 +5,7 @@ import VendorService from '../services/vendorService';
 export const useVendorProducts = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Transform API product to component format
@@ -39,7 +39,7 @@ export const useVendorProducts = () => {
     }
 
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       
       const response = await VendorService.getVendorProducts(user.id);
@@ -90,45 +90,57 @@ export const useVendorProducts = () => {
         setProducts([]);
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [user?.id, transformApiProduct]);
 
   // Create product
   const createProduct = useCallback(async (productData) => {
     try {
-      if (!user?.id) {
-        throw new Error('User ID is required');
-      }
-
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
-
-      // Transform and validate product data
-      const transformedData = VendorService.transformProductData(productData, user.id);
-      VendorService.validateProductData(transformedData);
-
-      // Create product via API
-      const response = await VendorService.createProduct(transformedData);
       
-      if (response.message) {
-        // Refresh products list
-        await loadProducts();
-        return response;
-      }
+      // ✅ Use unified API
+      const response = await VendorService.createSingleProduct(productData);
+      
+      // Refresh products list
+      await loadProducts();
+      
+      return response;
     } catch (error) {
       console.error('Failed to create product:', error);
       setError(error.message);
       throw error;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [user?.id, loadProducts]);
+  }, [loadProducts]);
+
+  // ✅ Add bulk creation method
+  const createBulkProducts = useCallback(async (productsArray) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await VendorService.createBulkProducts(productsArray);
+      
+      // Refresh products list
+      await loadProducts();
+      
+      return response;
+    } catch (error) {
+      console.error('Failed to create bulk products:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadProducts]);
 
   // Update product
   const updateProduct = useCallback(async (productId, updateData) => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
 
       const response = await VendorService.updateProduct(productId, updateData);
@@ -143,14 +155,14 @@ export const useVendorProducts = () => {
       setError(error.message);
       throw error;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [loadProducts]);
 
   // Hide product (soft delete)
   const hideProduct = useCallback(async (productId) => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
 
       const response = await VendorService.hideProduct(productId);
@@ -165,7 +177,7 @@ export const useVendorProducts = () => {
       setError(error.message);
       throw error;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [loadProducts]);
 
@@ -182,6 +194,7 @@ export const useVendorProducts = () => {
     error,
     loadProducts,
     createProduct,
+    createBulkProducts,
     updateProduct,
     hideProduct,
     setError: (errorMessage) => setError(errorMessage)
@@ -197,7 +210,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
     description: '',
     materialType: ''
   });
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Material type options
@@ -264,7 +277,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
     }
 
     try {
-      setLoading(true);
+      setIsLoading(true);
       
       const updateData = {
         name: formData.name.trim(),
@@ -282,12 +295,12 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
       console.error('Error saving product:', error);
       setErrors({ general: error.message || 'Failed to save product' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    if (!loading) {
+    if (!isLoading) {
       setErrors({});
       onClose();
     }
@@ -306,7 +319,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
             </h2>
             <button
               onClick={handleClose}
-              disabled={loading}
+              disabled={isLoading}
               className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,7 +347,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              disabled={loading}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -356,7 +369,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
               step="0.01"
               value={formData.pricePerYard}
               onChange={(e) => handleInputChange('pricePerYard', e.target.value)}
-              disabled={loading}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                 errors.pricePerYard ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -377,7 +390,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
               min="0"
               value={formData.quantity}
               onChange={(e) => handleInputChange('quantity', e.target.value)}
-              disabled={loading}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                 errors.quantity ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -396,7 +409,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
             <select
               value={formData.materialType}
               onChange={(e) => handleInputChange('materialType', e.target.value)}
-              disabled={loading}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                 errors.materialType ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -421,7 +434,7 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              disabled={loading}
+              disabled={isLoading}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder="Optional product description"
@@ -433,20 +446,20 @@ const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
         <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
           <button
             onClick={handleClose}
-            disabled={loading}
+            disabled={isLoading}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            disabled={loading}
+            disabled={isLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
-            {loading && (
+            {isLoading && (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             )}
-            {loading ? 'Saving...' : 'Save Changes'}
+            {isLoading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
