@@ -313,7 +313,9 @@ export const VendorHybridBulkUpload = () => {
 
   // ✅ Fallback method for when unified API fails
   const handleFallbackIndividualUpload = async () => {
-    console.log('🔄 Falling back to individual uploads...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Falling back to individual uploads...');
+    }
     
     const results = [];
     const errors = [];
@@ -341,11 +343,24 @@ export const VendorHybridBulkUpload = () => {
           images: product.images || []
         };
 
+        // ✅ FIX: Use the response or remove variable assignment
         const response = await VendorService.createSingleProduct(productData);
-        results.push({ index: i, name: product.name, success: true });
+        
+        results.push({ 
+          index: i, 
+          name: product.name, 
+          success: true,
+          productId: response.product?.id || response.product?._id // ✅ Use response data
+        });
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ Product ${i + 1} uploaded successfully:`, response.message);
+        }
 
       } catch (error) {
-        console.error(`❌ Failed to upload product ${i + 1}:`, error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`❌ Failed to upload product ${i + 1}:`, error);
+        }
         errors.push({ index: i, name: product.name, error: error.message });
       }
     }
@@ -360,7 +375,12 @@ export const VendorHybridBulkUpload = () => {
           message: `Bulk upload completed: ${successCount} successful, ${errorCount} failed.`,
           type: successCount === products.length ? 'success' : 'warning',
           bulkUpload: true,
-          uploadResults: { successCount, errorCount, errors }
+          uploadResults: { 
+            successCount, 
+            errorCount, 
+            errors,
+            successfulProducts: results // ✅ Include successful results
+          }
         }
       });
     } else {
