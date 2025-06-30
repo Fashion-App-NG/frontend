@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
-import { SocialLogin } from './SocialLogin';
+import SocialLogin from './SocialLogin';
 
 export const VendorRegisterForm = () => {
   const navigate = useNavigate();
@@ -171,7 +171,7 @@ export const VendorRegisterForm = () => {
         disabled={isLoading}
       />
 
-      {/* Terms and Conditions */}
+      {/* Terms and Conditions with clickable links */}
       <div className="flex items-center gap-[5px] text-xs text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-2.5 max-md:ml-0.5">
         <input
           type="checkbox"
@@ -181,9 +181,46 @@ export const VendorRegisterForm = () => {
           className="border w-[17px] h-[17px] rounded-sm border-[rgba(46,46,46,1)] border-solid disabled:opacity-50"
         />
         <label className="self-stretch my-auto">
-          I agree to the <span className="underline">Terms of Service</span> and{' '}
-          <span className="underline">Privacy Policy</span>
+          I agree to the{' '}
+          <button
+            type="button"
+            onClick={() => window.open('/terms-of-service', '_blank')}
+            className="underline text-blue-600 hover:text-blue-800"
+          >
+            Terms of Service
+          </button>
+          {' '}and{' '}
+          <button
+            type="button"
+            onClick={() => window.open('/privacy-policy', '_blank')}
+            className="underline text-blue-600 hover:text-blue-800"
+          >
+            Privacy Policy
+          </button>
         </label>
+      </div>
+
+      <div className="text-xs text-[rgba(128,128,128,1)] font-normal leading-[1.2] mt-[19px]">
+        By creating an account, you agree to our{' '}
+        {/* ✅ Fix: Use semantic anchor tags for better accessibility */}
+        <a 
+          href="/terms-of-service" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[rgba(46,46,46,1)] font-bold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Terms of Service
+        </a>{' '}
+        and{' '}
+        <a 
+          href="/privacy-policy" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[rgba(46,46,46,1)] font-bold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Privacy Policy
+        </a>
+        .
       </div>
 
       {/* Submit Button */}

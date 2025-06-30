@@ -1,11 +1,18 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { ShopperDashboard } from '../components/Auth-Designer/Dashboard/ShopperDashboard';
+import ShopperDashboard from '../components/Auth-Designer/Dashboard/ShopperDashboard'; // ✅ Use default import
 import { useAuth } from '../contexts/AuthContext';
 
 // React Component: Shopper dashboard page wrapper using existing ShopperDashboard
 export const ShopperDashboardPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth(); // ✅ Add user back
   const location = useLocation();
+  
+  console.log('🔍 ShopperDashboard Debug:', {
+    isAuthenticated,
+    pathname: location.pathname,
+    search: location.search,
+    state: location.state
+  });
   
   // ✅ LEARNING: Multiple ways to detect guest mode for reliability
   const isGuest = Boolean(
@@ -50,7 +57,7 @@ export const ShopperDashboardPage = () => {
   }
 
   console.log('🎯 Rendering authenticated SHOPPER dashboard');
-  return <ShopperDashboard isGuest={false} />;
+  return <ShopperDashboard isGuest={!user} />;
 };
 
 export default ShopperDashboardPage;

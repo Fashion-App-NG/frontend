@@ -1,107 +1,97 @@
-import React from 'react';
-import { StarIcon, HeartIcon } from 'lucide-react';
 import { useCart } from '../../../../contexts/CartContext';
 
 export const PopularFabricsSection = () => {
   const { addToCart } = useCart();
 
-  const fabricItems = [
+  // ✅ FIXED: 4 fabrics to match DiscoverSection exactly
+  const fabrics = [
     {
       id: 1,
-      name: "Adire Fabric",
-      price: "100,000",
+      name: "Guinea Fabric",
+      price: "80,000",
+      rating: "4.9",
+      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-1.png",
+    },
+    {
+      id: 2,
+      name: "Ankara Fabric", 
+      price: "75,000",
+      rating: "4.7",
+      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group.png",
+    },
+    {
+      id: 3,
+      name: "Adire Fabric", 
+      price: "65,000",
       rating: "4.8",
       image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-4.png",
     },
     {
-      id: 2,
-      name: "Adire Fabric",
-      price: "100,000",
-      rating: "4.8",
-      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-5.png",
-    },
-    {
-      id: 3,
-      name: "Adire Fabric",
-      price: "100,000",
-      rating: "4.8",
-      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-6.png",
-    },
-    {
       id: 4,
-      name: "Adire Fabric",
-      price: "100,000",
-      rating: "4.8",
-      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-7.png",
-    },
+      name: "Kente Fabric", 
+      price: "95,000",
+      rating: "4.9",
+      image: "https://c.animaapp.com/mbr2jpx2DSKBSz/img/mask-group-5.png",
+    }
   ];
 
-  const handleAddToCart = (item) => {
+  const handleAddToCart = (fabric) => {
     addToCart({
-      id: item.id,
-      name: item.name,
-      price: parseFloat(item.price.replace(',', '')),
-      image: item.image,
+      id: fabric.id,
+      name: fabric.name,
+      price: parseFloat(fabric.price.replace(',', '')),
+      image: fabric.image,
       quantity: 1
     });
   };
 
   return (
     <section className="w-full">
+      {/* ✅ FIXED: Use Popular Fabrics font style for heading */}
       <div className="mb-6">
         <h2 className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-2xl">
           Popular Fabrics
         </h2>
       </div>
-      
-      <div className="flex gap-7 overflow-x-auto">
-        {fabricItems.map((item) => (
+
+      {/* ✅ FIXED: 4-column grid to match DiscoverSection exactly */}
+      <div className="grid grid-cols-4 gap-6">
+        {fabrics.map((fabric) => (
           <div
-            key={item.id}
-            className="w-[239px] h-[297px] relative border-none bg-white rounded-lg shadow-sm flex-shrink-0"
+            key={fabric.id}
+            className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200"
           >
-            <div
-              className="w-full h-[200px] bg-cover bg-center relative rounded-t-lg"
-              style={{ backgroundImage: `url(${item.image})` }}
-            >
-              <button className="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
-                <HeartIcon className="w-4 h-4 text-gray-700" />
-              </button>
+            {/* ✅ FIXED: Exact image container sizing */}
+            <div className="aspect-square overflow-hidden">
+              <img
+                src={fabric.image}
+                alt={fabric.name}
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            <div className="p-3 flex flex-col justify-between h-[97px]">
-              <div>
-                <div className="font-bold font-['Urbanist',Helvetica] text-[#2d2d2d] text-[15px] leading-[15px] mb-2">
-                  {item.name}
-                </div>
-                
-                <div className="flex items-center mb-2">
-                  <img
-                    className="w-4 h-4"
-                    alt="Currency naira NGN"
-                    src="https://c.animaapp.com/mbr2jpx2DSKBSz/img/currency-naira--ngn-.svg"
-                  />
-                  <span className="ml-1 font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-base leading-[16px]">
-                    {item.price}
+            {/* ✅ FIXED: Exact card content height and Popular Fabrics font styling */}
+            <div className="p-4">
+              <h3 className="font-['Urbanist',Helvetica] font-semibold text-[#2d2d2d] text-lg mb-2">
+                {fabric.name}
+              </h3>
+              
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-xl">
+                  ₦{fabric.price}
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-yellow-400">⭐</span>
+                  <span className="font-['Urbanist',Helvetica] font-medium text-[#6b7280] text-sm">
+                    {fabric.rating}
                   </span>
-                  <span className="ml-2 font-['Urbanist',Helvetica] font-medium text-xs leading-3 text-black">
-                    Per Yard
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end">
-                  <div className="flex items-center">
-                    <StarIcon className="w-[11px] h-[9px] text-yellow-500 fill-yellow-500" />
-                    <span className="ml-1 font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-sm leading-[14px]">
-                      {item.rating}
-                    </span>
-                  </div>
                 </div>
               </div>
 
+              {/* ✅ FIXED: Exact button styling to match DiscoverSection */}
               <button
-                onClick={() => handleAddToCart(item)}
-                className="w-full h-[43px] mt-2 rounded-md bg-[#d8dfe9] hover:bg-[#c8d0da] font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-base transition-colors"
+                onClick={() => handleAddToCart(fabric)}
+                className="w-full bg-[#2d2d2d] text-white py-2.5 rounded-lg font-['Urbanist',Helvetica] font-medium text-sm hover:bg-[#1f1f1f] transition-colors duration-200"
               >
                 Add to Cart
               </button>

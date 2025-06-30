@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
-import { PasswordInput } from './PasswordInput';
-import { SocialLogin } from './SocialLogin';
+import SocialLogin from './SocialLogin';
 
 export const VendorLoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser, setIsAuthenticated } = useAuth();
+  const { login } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Check if there's a success message from OTP verification
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
-      // Clear the message after showing it
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
@@ -32,61 +29,159 @@ export const VendorLoginForm = () => {
     const formData = new FormData(e.target);
     const data = {
       email: formData.get('email'),
-      storeName: formData.get('storeName'),
       password: formData.get('password')
     };
 
-    // Client-side validation
-    if (!data.email || !data.storeName || !data.password) {
-      setError('Please fill in all required fields');
+    // ✅ Enhanced validation with debug info (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 VendorLoginForm validation:', {
+        email: data.email ? 'Present' : 'Missing',
+        password: data.password ? 'Present' : 'Missing'
+      });
+    }
+
+    if (!data.email || !data.password) {
+      const missingFields = [];
+      if (!data.email) missingFields.push('email');
+      if (!data.password) missingFields.push('password');
+      
+      setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await authService.loginVendor({
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 VendorLoginForm: Attempting vendor login');
+      }
+
+      const response = await authService.login({
         identifier: data.email,
         password: data.password,
-        role: "vendor",
-        storeName: data.storeName
+        role: 'vendor'
       });
 
-      console.log('✅ Vendor login successful:', response);
-
-      // Store authentication data
-      if (response.token) {
-        authService.setAuthToken(response.token);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Vendor login API response:', {
+          hasToken: !!response.token,
+          hasUser: !!response.user,
+          userRole: response.user?.role,
+          userEmail: response.user?.email,
+          userId: response.user?.id,
+          userStoreName: response.user?.storeName,
+          fullUserObject: response.user,
+          // ✅ ENHANCED: Debug the actual response structure
+          rawResponse: response,
+          responseKeys: Object.keys(response),
+          responseType: typeof response,
+          directRole: response.role,
+          directEmail: response.email,
+          directId: response.id,
+          directStoreName: response.storeName
+        });
       }
 
-      if (response.user) {
-        authService.setUser(response.user);
-        setUser(response.user);
+      // ✅ FIXED: Handle both nested and flat response structures
+      const userData = response.user || response;
+      const token = response.token;
+
+      if (!userData || !token) {
+        console.error('❌ Invalid response structure:', response);
+        setError('Invalid response from server. Please try again.');
+        return;
       }
 
-      setIsAuthenticated(true);
+      if (!userData.id || !userData.email) {
+        console.error('❌ User missing required fields:', userData);
+        setError('Invalid user data received. Please contact support.');
+        return;
+      }
 
-      // ✅ React Router: Navigate to VENDOR dashboard specifically
-      navigate('/vendor/dashboard', { 
-        state: { 
-          message: `Welcome back, ${response.user?.storeName || data.storeName}!` 
+      // ✅ ENHANCED: Role validation debug with fallback context
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Role validation debug:', {
+          userDataRole: userData.role,
+          userDataEmail: userData.email,
+          userId: userData.id,
+          userDataType: typeof userData.role,
+          roleCheck: userData.role !== 'vendor',
+          roleComparison: `"${userData.role}" !== "vendor"`,
+          roleLength: userData.role?.length,
+          expectedRole: 'vendor',
+          expectedLength: 'vendor'.length,
+          allUserDataKeys: Object.keys(userData),
+          // ✅ ADD: Context about where role came from
+          originalRequestRole: 'vendor',
+          rolePresentInResponse: 'role' in (response.user || response)
+        });
+      }
+
+      if (userData.role !== 'vendor') {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Account validation failed:', {
+            actualRole: userData.role,
+            expectedRole: 'vendor',
+            email: userData.email,
+            id: userData.id,
+            roleType: typeof userData.role,
+            fullUserData: userData,
+            rawResponse: response,
+            rawResponseRole: response.role,
+            rawResponseEmail: response.email,
+            rawResponseId: response.id,
+            // ✅ ENHANCED: Show what we sent vs what we got
+            sentRole: 'vendor',
+            receivedRole: userData.role,
+            rolePreservedFromRequest: !response.role && !response.user?.role
+          });
         }
-      });
+        setError('This account is not registered as a vendor. Please check your credentials or register as a vendor.');
+        return;
+      }
+
+      // ✅ FIXED: Clean up storeName if it's the string "undefined"
+      const userWithCleanData = {
+        ...userData,
+        storeName: userData.storeName === 'undefined' ? null : userData.storeName
+      };
+
+      const loginSuccess = login(userWithCleanData, token);
+      
+      if (loginSuccess) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ VendorLoginForm: Login successful, navigating to dashboard');
+        }
+        navigate('/vendor/dashboard', { 
+          state: { 
+            message: `Welcome back, ${userWithCleanData?.storeName || userWithCleanData?.email || 'Vendor'}!` 
+          }
+        });
+      } else {
+        console.error('❌ VendorLoginForm: AuthContext login returned false');
+        setError('Failed to authenticate user. Please try again.');
+      }
 
     } catch (error) {
-      console.error('❌ Vendor login failed:', error);
-
-      // Handle new error codes
-      if (error.status === 401) {
-        if (error.message.includes('storeName')) {
-          setError('Incorrect store name. Please check your store name and try again.');
-        } else {
-          setError('Invalid credentials. Please check your email and password.');
-        }
-      } else if (error.status === 403) {
-        setError('Please verify your email address before logging in.');
-      } else {
-        setError(error.message || 'Login failed. Please try again.');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Vendor login failed:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          status: error.status,
+          stack: error.stack
+        });
       }
+
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (error.status === 403) {
+        errorMessage = 'Please verify your email address before logging in.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -94,6 +189,17 @@ export const VendorLoginForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
+      {/* ✅ Enhanced debug display for development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-2 bg-blue-100 text-xs text-blue-800 rounded">
+          <div>Debug Info:</div>
+          <div>Error: {error || 'none'}</div>
+          <div>Loading: {isLoading.toString()}</div>
+          <div>Environment: {process.env.NODE_ENV}</div>
+          <div>API URL: {process.env.REACT_APP_API_BASE_URL}</div>
+        </div>
+      )}
+
       {/* Vendor Onboarding Indicator */}
       <div className="flex items-center gap-2 mb-4">
         <div className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -106,91 +212,77 @@ export const VendorLoginForm = () => {
         <h1 className="text-black text-[32px] font-bold">
           Sign In to Vendor Portal
         </h1>
-        <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
+        <h2 className="text-[rgba(46,46,46,0.6)] text-[15px] mt-2">
           Welcome back to your business dashboard!
-        </p>
-      </div>
+        </h2>
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4">
-          {successMessage}
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {/* Form Fields */}
+        <div className="mt-8 space-y-6">
+          {/* Email Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="vendor@example.com"
+            />
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </button>
         </div>
-      )}
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
-          {error}
+        {/* Links */}
+        <div className="mt-6 text-center text-sm">
+          <Link to="/forgot-password" className="text-blue-600 hover:text-blue-700">
+            Forgot Password?
+          </Link>
         </div>
-      )}
 
-      {/* Store Name Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
-        Store Name
-      </label>
-      <input
-        type="text"
-        name="storeName"
-        placeholder="Enter Store name"
-        required
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      />
-
-      {/* Email Address Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Email Address
-      </label>
-      <input
-        type="email"
-        name="email"
-        placeholder="Enter your email"
-        required
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      />
-
-      {/* Password Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Password
-      </label>
-      <PasswordInput 
-        name="password"
-        placeholder="Enter Password" 
-        disabled={isLoading}
-      />
-
-      <div className="flex justify-end mt-2">
-        <button 
-          type="button" 
-          disabled={isLoading}
-          className="text-[rgba(46,46,46,1)] text-sm font-normal underline hover:no-underline disabled:opacity-50"
-        >
-          Forgot Password
-        </button>
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isLoading ? 'Signing in...' : 'Sign in'}
-      </button>
-
-      {/* Navigation Link */}
-      <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
-        <span className="self-stretch my-auto">New here?</span>
-        <button 
-          type="button"
-          onClick={() => navigate('/register/vendor')}  // ✅ Routes to vendor registration
-          disabled={isLoading}
-          className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
-        >
-          Sign up
-        </button>
+        <div className="mt-4 text-center text-sm text-gray-600">
+          New vendor?{' '}
+          <Link to="/register/vendor" className="text-blue-600 hover:text-blue-700">
+            Sign up here
+          </Link>
+        </div>
       </div>
 
       <SocialLogin isLogin={true} />

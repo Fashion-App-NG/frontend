@@ -1,5 +1,5 @@
 // Base API URL - uses environment variables with fallback
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Debug logging in development
 if (process.env.NODE_ENV === 'development') {
@@ -9,7 +9,6 @@ if (process.env.NODE_ENV === 'development') {
 
 // Authentication service functions
 class AuthService {
-  // ✅ Simplified userId extraction from JWT
   extractUserIdFromToken(token) {
     try {
       if (!token) return null;
@@ -22,7 +21,6 @@ class AuthService {
       const decodedPayload = atob(paddedPayload);
       const parsed = JSON.parse(decodedPayload);
 
-      // Extract userId based on common JWT patterns
       return parsed.userId || parsed.id || parsed.sub || null;
     } catch (error) {
       console.error('Failed to extract userId from token:', error);
@@ -32,16 +30,17 @@ class AuthService {
 
   async register(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Registering user:', userData.email, 'as', userData.role);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: userData.email,
           password: userData.password,
           role: userData.role || 'shopper',
-          // ✅ Include storeName if present (for vendors)
           ...(userData.storeName && { storeName: userData.storeName })
         }),
       });
@@ -54,7 +53,6 @@ class AuthService {
         throw error;
       }
 
-      // Extract userId from the JWT token
       const userId = data.token ? this.extractUserIdFromToken(data.token) : null;
 
       return {
@@ -64,34 +62,32 @@ class AuthService {
         originalResponse: data
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Registration error:', error);
+      }
       throw error;
     }
   }
 
   async login(credentials) {
     try {
-      // 🎓 Advanced React Pattern: Conditional Spread Operator
-      // This is a more concise way to conditionally include properties
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Attempting login for:', credentials.identifier, 'as', credentials.role);
+      }
+      
       const requestBody = {
         identifier: credentials.identifier || credentials.email,
         password: credentials.password,
-        role: credentials.role || 'shopper',
-        // 🚨 TEMPORARY: Conditional spread for storeName
-        // Only includes storeName property if credentials.storeName exists
-        ...(credentials.storeName && { storeName: credentials.storeName })
+        role: credentials.role || 'shopper'
       };
 
-      console.log('🔐 Login request payload:', {
-        ...requestBody,
-        password: '***'
-      });
+      if (credentials.role === 'vendor' && credentials.storeName) {
+        requestBody.storeName = credentials.storeName;
+      }
 
-      const response = await fetch(`${API_BASE_URL}/auth/login`, { // ✅ Remove /api prefix
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
@@ -103,29 +99,114 @@ class AuthService {
         throw error;
       }
 
-      // Store token and user data
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
+      // ✅ ENHANCED: Debug response structure with request context
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Auth service response analysis:', {
+          requestRole: requestBody.role,           // ✅ What we sent
+          responseHasRole: !!data.role,            // ✅ Does response have role?
+          responseRole: data.role,                 // ✅ What role if any
+          responseHasUser: !!data.user,            // ✅ Nested structure?
+          responseUserRole: data.user?.role,       // ✅ Role in user object?
+          responseKeys: Object.keys(data),         // ✅ All response fields
+          tokenLength: data.token?.length,
+          tokenStart: data.token?.substring(0, 20)
+        });
       }
 
-      return data;
+      // ✅ FIXED: Improved response normalization with role preservation
+      let normalizedResponse;
+      
+      if (data.user && typeof data.user === 'object') {
+        // Nested structure: { user: {...}, token: "..." }
+        console.log('📦 Using nested response structure');
+        normalizedResponse = {
+          user: {
+            ...data.user,
+            // ✅ Preserve role from request if not in response
+            role: data.user.role || requestBody.role
+          },
+          token: data.token
+        };
+      } else if (data.email && data.id && data.token) {
+        // ✅ FIXED: Flat structure - extract user data AND preserve role
+        console.log('📦 Using flat response structure - extracting user data');
+        const { token, ...userData } = data;
+        normalizedResponse = {
+          user: {
+            ...userData,
+            // ✅ CRITICAL: Use role from response OR preserve from request
+            role: userData.role || requestBody.role
+          },
+          token: token
+        };
+      } else {
+        // Final fallback
+        console.log('📦 Using fallback response structure');
+        const { token, ...userData } = data;
+        normalizedResponse = {
+          user: {
+            ...(userData.user || userData),
+            // ✅ Always preserve role from request as final fallback
+            role: (userData.user?.role || userData.role || requestBody.role)
+          },
+          token: token || data.token
+        };
+      }
+
+      // ✅ ENHANCED: Detailed post-normalization debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Normalized response with role preservation:', {
+          originalRequestRole: requestBody.role,
+          responseIncludedRole: !!data.role || !!data.user?.role,
+          finalUserRole: normalizedResponse.user?.role,
+          userEmail: normalizedResponse.user?.email,
+          userId: normalizedResponse.user?.id,
+          userStoreName: normalizedResponse.user?.storeName,
+          roleSource: data.role || data.user?.role ? 'response' : 'preserved_from_request'
+        });
+      }
+
+      // Validate final normalized response
+      if (!normalizedResponse.user?.role) {
+        console.error('❌ Critical: No role in final normalized response!', {
+          requestRole: requestBody.role,
+          responseData: data,
+          normalizedResponse
+        });
+        throw new Error('Authentication failed: missing user role');
+      }
+
+      // Store token and user data
+      if (normalizedResponse.token) {
+        localStorage.setItem('token', normalizedResponse.token);
+        console.log('✅ Token stored successfully');
+      }
+      
+      if (normalizedResponse.user) {
+        localStorage.setItem('user', JSON.stringify(normalizedResponse.user));
+        console.log('✅ User data stored successfully:', {
+          id: normalizedResponse.user.id,
+          role: normalizedResponse.user.role,
+          email: normalizedResponse.user.email
+        });
+      }
+
+      return normalizedResponse;
     } catch (error) {
-      console.error('Login error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Login error:', error);
+      }
       throw error;
     }
   }
 
   async verifyOTP(otpData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, { // ✅ Remove /api prefix
+      console.log('🔄 Verifying OTP for user:', otpData.userId);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: otpData.userId,
           code: otpData.code,
@@ -147,34 +228,33 @@ class AuthService {
     }
   }
 
-  async resendOTP(email) {
+  async resendOTP(requestData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, { // ✅ Remove /api prefix
+      console.log('🔄 Resending OTP to:', requestData.email || requestData.phone);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email,
+          email: requestData.email,
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Failed to resend OTP');
+        const error = new Error(responseData.message || 'Failed to resend OTP');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Resend OTP error:', error);
       throw error;
     }
   }
 
-  // ✅ Add missing methods for token/user management
   setAuthToken(token) {
     if (token) {
       localStorage.setItem('token', token);
@@ -209,9 +289,7 @@ class AuthService {
     this.removeUser();
   }
 
-  // ✅ Add vendor methods
   async registerVendor(userData) {
-    // Validate that storeName is provided for vendors
     if (!userData.storeName) {
       throw new Error('Store name is required for vendor registration');
     }
@@ -220,32 +298,17 @@ class AuthService {
       email: userData.email,
       password: userData.password,
       role: 'vendor',
-      storeName: userData.storeName // ✅ Explicitly include storeName
+      storeName: userData.storeName
     });
   }
 
-  async loginVendor(credentials) {
-    // ✅ Validate that storeName is provided for vendor login
-    if (!credentials.storeName) {
-      throw new Error('Store name is required for vendor login');
-    }
-
-    return this.login({
-      identifier: credentials.identifier || credentials.email,
-      password: credentials.password,
-      role: 'vendor',
-      storeName: credentials.storeName // ✅ Explicitly include storeName
-    });
-  }
-
-  // ✅ Add admin methods
   async adminLogin(credentials) {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/login`, { // ✅ Remove /api prefix
+      console.log('🔄 Admin login attempt for:', credentials.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
 
@@ -264,25 +327,15 @@ class AuthService {
     }
   }
 
-  // ✅ ADD MISSING createAdmin METHOD
   async createAdmin(adminData) {
     try {
-      console.log('🔐 Creating admin with data:', {
-        ...adminData,
-        password: '***'
-      });
-
-      // Get current auth token for authorization
-      const token = this.getAuthToken();
-      if (!token) {
-        throw new Error('Authentication required. Please login again.');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/admin`, {
+      console.log('🔄 Creating admin:', adminData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/admin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ✅ Include JWT token for auth
+          'Authorization': `Bearer ${this.getAuthToken()}`
         },
         body: JSON.stringify({
           email: adminData.email,
@@ -290,7 +343,7 @@ class AuthService {
           firstName: adminData.firstName,
           lastName: adminData.lastName,
           phone: adminData.phone,
-          role: adminData.role || 'admin' // ✅ Default to 'admin' role
+          role: adminData.role || 'admin'
         }),
       });
 
@@ -302,12 +355,6 @@ class AuthService {
         throw error;
       }
 
-      console.log('✅ Admin created successfully:', {
-        ...data,
-        // Don't log sensitive data
-        admin: data.admin ? { ...data.admin, password: undefined } : undefined
-      });
-
       return data;
     } catch (error) {
       console.error('❌ Create admin error:', error);
@@ -315,25 +362,25 @@ class AuthService {
     }
   }
 
-  async forgotPassword(email) {
+  async forgotPassword(requestData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, { // ✅ Remove /api prefix
+      console.log('🔄 Forgot password request for:', requestData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Forgot password failed');
+        const error = new Error(responseData.message || 'Forgot password failed');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Forgot password error:', error);
       throw error;
@@ -342,52 +389,29 @@ class AuthService {
 
   async resetPassword(resetData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, { // ✅ Remove /api prefix
+      console.log('🔄 Resetting password for:', resetData.email);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(resetData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resetData)
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        const error = new Error(data.message || 'Password reset failed');
+        const error = new Error(responseData.message || 'Password reset failed');
         error.status = response.status;
         throw error;
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;
     }
   }
-
-  // ✅ Add missing admin-specific methods if they don't exist
-  setAdminToken(token) {
-    if (token) {
-      localStorage.setItem('adminToken', token);
-    }
-  }
-
-  getAdminToken() {
-    return localStorage.getItem('adminToken');
-  }
-
-  setAdminUser(user) {
-    if (user) {
-      localStorage.setItem('adminUser', JSON.stringify(user));
-    }
-  }
-
-  getAdminUser() {
-    const user = localStorage.getItem('adminUser');
-    return user ? JSON.parse(user) : null;
-  }
 }
 
-// ✅ FIXED: Assign to variable before exporting
 const authServiceInstance = new AuthService();
 export default authServiceInstance;

@@ -1,5 +1,5 @@
-import React from 'react';
-import { UserTypeSelection } from '../components/Auth/UserTypeSelection';
+// ✅ FIXED: Correct import path
+import { UserTypeSelection } from '../components/Auth-Designer/UserTypeSelection';
 
 const UserTypeSelectionPage = () => {
   return (

@@ -1,27 +1,18 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import authService from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext'; // ✅ Add this import
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth(); // ✅ Get user from AuthContext instead of location.state
   const message = location.state?.message;
-  const user = location.state?.user;
 
   // ✅ LEARNING: Proper admin logout with cleanup
   const handleAdminLogout = async () => {
     try {
-      // Clear all admin-related data
-      authService.removeAuthToken();
-      authService.removeUser();
+      // Use the logout function from AuthContext
+      logout();
       
-      // Clear admin-specific data if methods exist
-      if (authService.setAdminToken) {
-        localStorage.removeItem('adminToken');
-      }
-      if (authService.setAdminUser) {
-        localStorage.removeItem('adminUser');
-      }
-
       // Navigate to home with logout message
       navigate('/', { 
         state: { 
@@ -34,6 +25,15 @@ export const AdminDashboard = () => {
       // Still navigate even if cleanup fails
       navigate('/');
     }
+  };
+
+  // ✅ Add console log to debug user role
+  console.log('🔍 Admin Dashboard - Current user:', user);
+  console.log('🔍 Admin Dashboard - User role:', user?.role);
+
+  // ✅ Fix: Standardize user name field access
+  const getUserDisplayName = (user) => {
+    return user?.name ?? user?.firstName ?? user?.email ?? 'Admin User';
   };
 
   return (
@@ -60,7 +60,7 @@ export const AdminDashboard = () => {
             {/* User Info & Logout */}
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600">
-                <span>Welcome, {user?.firstName || user?.email || 'Admin'}</span>
+                <span>Welcome, {getUserDisplayName(user)}</span>
                 {user?.role && (
                   <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
                     user.role === 'superadmin' 
@@ -98,7 +98,7 @@ export const AdminDashboard = () => {
             className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
             </svg>
             Dashboard
           </button>
@@ -123,6 +123,7 @@ export const AdminDashboard = () => {
             Order Management
           </button>
           
+          {/* ✅ Only show Create Admin for superadmins */}
           {user?.role === 'superadmin' && (
             <button
               onClick={() => navigate('/admin/create-admin')}
@@ -140,7 +141,7 @@ export const AdminDashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.firstName || user?.email || 'Admin'}!
+              Welcome back, {getUserDisplayName(user)}!
             </h1>
             <p className="text-gray-600 mt-1">
               {user?.role === 'superadmin' 
@@ -210,16 +211,16 @@ export const AdminDashboard = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-gray-600 text-sm mb-4">Platform statistics and reports</p>
+            <p className="text-gray-600 text-sm mb-4">View system analytics and reports</p>
             <button className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition-colors">
               View Analytics
             </button>
           </div>
 
-          {/* System Settings Card */}
+          {/* Settings Card */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">System Settings</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Settings</h3>
               <div className="bg-purple-100 p-2 rounded-full">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -305,7 +306,7 @@ export const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Active Orders</p>
-                <p className="text-2xl font-bold text-gray-900">56</p>
+                <p className="text-2xl font-bold text-gray-900">89</p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,11 +320,11 @@ export const AdminDashboard = () => {
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">$12,345</p>
+                <p className="text-sm font-medium text-gray-500">Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">₦2.4M</p>
               </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>

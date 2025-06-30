@@ -4,16 +4,14 @@ import {
   HeartIcon,
   LayoutDashboardIcon,
   LogOutIcon,
-  MoonIcon,
   SettingsIcon,
   ShoppingBagIcon
 } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 
 export const SidebarSection = ({ isGuest = false }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { logout, isAuthenticated } = useAuth();
 
   // ✅ LEARNING: Smart dashboard navigation based on auth state
@@ -29,9 +27,9 @@ export const SidebarSection = ({ isGuest = false }) => {
     // Special handling for dashboard
     if (path === '/dashboard') {
       handleDashboardClick();
-      return;
+    } else {
+      navigate(path);
     }
-    navigate(path);
   };
 
   // ✅ FIXED: Add missing handleLogout function
@@ -66,47 +64,52 @@ export const SidebarSection = ({ isGuest = false }) => {
   ];
 
   return (
-    <aside className="flex flex-col w-full h-screen bg-[#f9f9f9] rounded-lg">
-      {/* Logo - Clickable to home */}
-      <div className="px-[21px] pt-[45px] pb-[10px]">
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-        >
+    <div className="w-full h-full bg-white shadow-lg border-r border-gray-200 flex flex-col">
+      {/* Logo Section */}
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center gap-3">
           <img
             src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
             alt="Fashion App Logo"
-            className="w-[38px] h-[31px] object-contain"
+            className="w-[38px] h-[31px] object-contain cursor-pointer"
+            onClick={() => navigate('/')}
           />
-          <div className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px]">
+          <div 
+            className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px] cursor-pointer"
+            onClick={() => navigate('/')}
+          >
             <div className="whitespace-pre-wrap">FASHION  </div>
             <div>CULTURE</div>
           </div>
-        </button>
+        </div>
       </div>
 
-      {/* Navigation items with updated handler */}
-      <nav className="flex-1 px-4 py-6">
-        <ul className="space-y-2">
-          {navigationItems.map((item) => {
-            const shouldShow = !item.requiresAuth || !isGuest;
+      {/* Navigation Items */}
+      <nav className="flex-1 py-4">
+        <ul className="space-y-2 px-4">
+          {navigationItems.map((item, index) => {
+            const isRestricted = item.requiresAuth && isGuest;
             
-            if (!shouldShow) return null;
-
             return (
-              <li key={item.label}>
-                <button 
-                  onClick={() => handleNavigation(item.path)}
-                  className={`flex w-full items-center gap-5 px-[29px] py-3.5 transition-colors ${
-                    location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/browse')
-                      ? 'bg-gray-300 text-[#2d2d2d]' 
-                      : 'hover:bg-gray-200 text-[#2d2d2d]'
+              <li key={index}>
+                <button
+                  onClick={() => !isRestricted && handleNavigation(item.path)}
+                  disabled={isRestricted}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors duration-200 ${
+                    isRestricted
+                      ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
                   {item.icon}
-                  <span className="font-['Urbanist',Helvetica] font-normal text-base">
+                  <span className="font-['Urbanist',Helvetica] font-medium">
                     {item.label}
                   </span>
+                  {isRestricted && (
+                    <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      Sign up
+                    </span>
+                  )}
                 </button>
               </li>
             );
@@ -114,40 +117,28 @@ export const SidebarSection = ({ isGuest = false }) => {
         </ul>
       </nav>
 
-      {/* Bottom Section */}
-      <div className="mt-auto">
-        <div className="h-px bg-gray-300 my-4" />
-
-        {/* Dark Mode Toggle - Only for authenticated users */}
-        {!isGuest && (
-          <div className="flex items-center justify-between px-8 py-4">
-            <div className="flex items-center gap-5">
-              <MoonIcon className="w-5 h-5" />
-              <span className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-base">
-                Dark Mode
-              </span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
+      {/* Bottom section - Logout or Sign Up */}
+      <div className="p-4 border-t border-gray-100">
+        {isGuest ? (
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-[#0ea5e9] text-white py-3 rounded-lg font-['Urbanist',Helvetica] font-medium hover:bg-[#0284c7] transition-colors duration-200"
+          >
+            Sign Up Now
+          </button>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors duration-200"
+          >
+            <LogOutIcon className="w-5 h-5" />
+            <span className="font-['Urbanist',Helvetica] font-medium">
+              Logout
+            </span>
+          </button>
         )}
-
-        <div className="h-px bg-gray-300 my-4" />
-
-        {/* Logout/Back Button */}
-        <button 
-          onClick={isGuest ? () => navigate('/') : handleLogout}
-          className="flex w-full items-center gap-4 px-[33px] py-3.5 hover:bg-gray-200 transition-colors"
-        >
-          <LogOutIcon className="w-6 h-6" />
-          <span className="font-['Urbanist',Helvetica] font-normal text-[#2d2d2d] text-base">
-            {isGuest ? 'Back to Home' : 'Logout'}
-          </span>
-        </button>
       </div>
-    </aside>
+    </div>
   );
 };
 

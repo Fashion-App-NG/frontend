@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "lucide-react": "^0.263.1",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
@@ -12,6 +13,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/papaparse": "^5.3.14",
     "autoprefixer": "^10.4.7",
     "postcss": "^8.4.14",
     "react-scripts": "5.0.1",
@@ -33,8 +35,8 @@
     "dev:ai": "npm run switch:ai && npm start",
     "dev:designer": "npm run switch:designer && npm start",
     "check:ui": "node scripts/check-ui.js",
-    "git:add-core": "git add package.json src/App.jsx public/ *.config.js netlify.toml .gitignore",
-    "git:add-shared": "git add src/services/ src/contexts/ src/utils/ src/hooks/ src/components/Common/ src/components/Vendor/",
+    "git:add-core": "git add package.json package-lock.json src/App.jsx public/ *.config.js netlify.toml .gitignore .env.example",
+    "git:add-shared": "git add src/services/ src/contexts/ src/utils/ src/hooks/ src/components/Common/ src/components/Vendor/ src/components/Layout/ src/components/Product/",
     "git:add-docs": "git add README.md docs/",
     "git:add-all-shared": "npm run git:add-core && npm run git:add-shared && npm run git:add-docs",
     "git:add-ai": "git add src/components/Auth-AI/ src/pages/",
@@ -57,10 +59,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "description": "## Overview React-based frontend for the Fashion Shopping Platform MVP, covering: - Shopper flows (Auth, Search, Cart/Checkout, Order Tracking) - Vendor flows (Vendor Onboarding, Inventory Management) - Admin flows (User Management, Revenue Reporting)",
-  "main": "index.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  }
 }
