@@ -3,24 +3,25 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 class VendorService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('🔧 Vendor Service Base URL:', this.baseURL);
     }
   }
 
-  // ✅ CRITICAL: Always log token state (not gated) for debugging 401 issues
+  // ✅ Gate authentication debugging to development
   getAuthToken() {
     const token = localStorage.getItem('token');
-    
-    // ✅ ALWAYS LOG FOR 401 DEBUGGING
-    console.log('🔑 VendorService getAuthToken called:', {
-      hasToken: !!token,
-      tokenLength: token?.length || 0,
-      tokenStart: token?.substring(0, 30) || 'none',
-      source: 'localStorage.getItem("token")'
-    });
-    
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔑 VendorService getAuthToken called:', {
+        hasToken: !!token,
+        tokenLength: token?.length || 0,
+        tokenStart: token?.substring(0, 30) || 'none',
+        source: 'localStorage.getItem("token")'
+      });
+    }
+
     return token;
   }
 
@@ -29,19 +30,20 @@ class VendorService {
     const headers = {
       'Content-Type': 'application/json'
     };
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      // ✅ ALWAYS LOG HEADER CONSTRUCTION
-      console.log('🔑 Authorization header added:', {
-        headerPresent: !!headers['Authorization'],
-        headerLength: headers['Authorization']?.length || 0
-      });
-    } else {
-      // ✅ ALWAYS LOG MISSING TOKEN
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔑 Authorization header added:', {
+          headerPresent: !!headers['Authorization'],
+          headerLength: headers['Authorization']?.length || 0
+        });
+      }
+    } else if (process.env.NODE_ENV === 'development') {
       console.error('❌ No token available - Authorization header NOT added');
     }
-    
+
     return headers;
   }
 
@@ -51,80 +53,93 @@ class VendorService {
         throw new Error('Vendor ID is required');
       }
 
-      // ✅ ALWAYS LOG REQUEST START
-      console.log('🔄 getVendorProducts starting:', {
-        vendorId,
-        url: `${this.baseURL}/product/vendor/${vendorId}`,
-        timestamp: new Date().toISOString()
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 getVendorProducts starting:', {
+          vendorId,
+          url: `${this.baseURL}/product/vendor/${vendorId}`,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       const token = this.getAuthToken();
-      // ✅ ALWAYS LOG TOKEN CHECK
-      console.log('🔑 Token check in getVendorProducts:', {
-        hasToken: !!token,
-        tokenLength: token?.length || 0
-      });
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔑 Token check in getVendorProducts:', {
+          hasToken: !!token,
+          tokenLength: token?.length || 0
+        });
+      }
 
       const headers = this.getAuthHeaders();
-      
-      // ✅ ALWAYS LOG FINAL HEADERS
-      console.log('📨 Final request headers:', {
-        headers: JSON.stringify(headers, null, 2),
-        hasAuthHeader: !!headers.Authorization,
-        authHeaderStart: headers.Authorization?.substring(0, 20) || 'none'
-      });
 
-      console.log('🌐 Making fetch request...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📨 Final request headers:', {
+          headers: JSON.stringify(headers, null, 2),
+          hasAuthHeader: !!headers.Authorization,
+          authHeaderStart: headers.Authorization?.substring(0, 20) || 'none'
+        });
+
+        console.log('🌐 Making fetch request...');
+      }
 
       const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
         method: 'GET',
         headers
       });
 
-      // ✅ ALWAYS LOG RESPONSE
-      console.log('📡 Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        url: response.url
-      });
-
-      if (!response.ok) {
-        console.error('❌ HTTP Error Response:', {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Response received:', {
           status: response.status,
           statusText: response.statusText,
+          ok: response.ok,
           url: response.url
         });
+      }
+
+      if (!response.ok) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ HTTP Error Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url
+          });
+        }
 
         if (response.status === 401) {
-          console.error('🔒 401 Authentication Error - checking token state:', {
-            tokenWasProvided: !!token,
-            headerWasSet: !!headers.Authorization,
-            tokenStillInStorage: !!localStorage.getItem('token')
-          });
-          
+          if (process.env.NODE_ENV === 'development') {
+            console.error('🔒 401 Authentication Error - checking token state:', {
+              tokenWasProvided: !!token,
+              headerWasSet: !!headers.Authorization,
+              tokenStillInStorage: !!localStorage.getItem('token')
+            });
+          }
+
           localStorage.removeItem('token');
           throw new Error('Authentication failed. Please log in again.');
         }
-        
+
         throw new Error(`HTTP ${response.status}: Failed to fetch vendor products`);
       }
 
       const data = await response.json();
-      
-      console.log('✅ Success response:', {
-        hasProducts: !!data.products,
-        productCount: data.products?.length || 0
-      });
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Success response:', {
+          hasProducts: !!data.products,
+          productCount: data.products?.length || 0
+        });
+      }
 
       return data;
     } catch (error) {
-      console.error('❌ getVendorProducts error:', {
-        message: error.message,
-        name: error.name,
-        vendorId
-      });
-      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ getVendorProducts error:', {
+          message: error.message,
+          name: error.name,
+          vendorId
+        });
+      }
+
       throw error;
     }
   }
@@ -135,7 +150,7 @@ class VendorService {
       const reader = new FileReader();
       reader.onload = () => {
         resolve({
-          data: reader.result, // This includes data:image/jpeg;base64,
+          data: reader.result,
           filename: originalFilename || file.name,
           tag: tag
         });
@@ -145,37 +160,32 @@ class VendorService {
     });
   }
 
-  // ✅ MAIN: Enhanced unified method with automatic fallback
+  // ✅ Unified product creation method
   async createProduct(productData) {
     try {
-      // ✅ First attempt: Try unified JSON API
-      return await this.createProductJSON(productData);
-    } catch (error) {
-      console.warn('⚠️ JSON API failed, attempting multipart fallback:', error.message);
-      
-      // ✅ MORE RELIABLE: Always try multipart as fallback for any JSON failure
-      try {
+      if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Switching to multipart form-data fallback');
-        return await this.createProductMultipart(productData);
-      } catch (multipartError) {
-        console.error('❌ Both JSON and multipart methods failed');
-        console.error('JSON error:', error.message);
-        console.error('Multipart error:', multipartError.message);
-        
-        // Throw the original JSON error as it's likely more informative
-        throw error;
       }
+      return await this.createProductMultipart(productData);
+    } catch (multipartError) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Multipart method failed');
+        console.error('Multipart error:', multipartError.message);
+      }
+
+      throw multipartError;
     }
   }
 
   // ✅ JSON method (primary)
   async createProductJSON(productData) {
     try {
-      // Determine if this is single product or bulk
       const isArray = Array.isArray(productData);
       const productsArray = isArray ? productData : [productData];
-      
-      console.log(`🔄 Creating ${productsArray.length} product(s) via unified JSON API`);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Creating ${productsArray.length} product(s) via unified JSON API`);
+      }
 
       // ✅ Process all products and convert images to base64
       const processedProducts = await Promise.all(
@@ -200,7 +210,6 @@ class VendorService {
               let tag = 'main';
               let filename = null;
 
-              // Handle different image formats
               if (imageItem.file instanceof File) {
                 file = imageItem.file;
                 filename = imageItem.name || file.name;
@@ -226,29 +235,27 @@ class VendorService {
         })
       );
 
-      // ✅ Prepare request body with products array
       const requestBody = {
         products: processedProducts
       };
 
-      // ✅ Estimate payload size and warn if large
       const payloadString = JSON.stringify(requestBody);
       const payloadSizeKB = Math.round(payloadString.length / 1024);
-      
-      console.log('📤 Sending JSON request:', {
-        productCount: processedProducts.length,
-        endpoint: `${this.baseURL}/product`,
-        hasImages: processedProducts.some(p => p.images.length > 0),
-        totalImages: processedProducts.reduce((sum, p) => sum + p.images.length, 0),
-        payloadSizeKB: payloadSizeKB
-      });
 
-      // ✅ Warn if payload is large
-      if (payloadSizeKB > 1024) {
-        console.warn(`⚠️ Large JSON payload: ${payloadSizeKB}KB - will fallback to multipart if this fails`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 Sending JSON request:', {
+          productCount: processedProducts.length,
+          endpoint: `${this.baseURL}/product`,
+          hasImages: processedProducts.some(p => p.images.length > 0),
+          totalImages: processedProducts.reduce((sum, p) => sum + p.images.length, 0),
+          payloadSizeKB: payloadSizeKB
+        });
+
+        if (payloadSizeKB > 1024) {
+          console.warn(`⚠️ Large JSON payload: ${payloadSizeKB}KB - will fallback to multipart if this fails`);
+        }
       }
 
-      // ✅ Send JSON request with base64 images
       const response = await fetch(`${this.baseURL}/product`, {
         method: 'POST',
         headers: {
@@ -260,50 +267,57 @@ class VendorService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        
-        // ✅ Log detailed error info for debugging
-        console.error('❌ JSON API request failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorMessage: errorData.message,
-          payloadSizeKB: payloadSizeKB
-        });
-        
+
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ JSON API request failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorMessage: errorData.message,
+            payloadSizeKB: payloadSizeKB
+          });
+        }
+
         throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product(s) via JSON API`);
       }
 
       const data = await response.json();
-      
-      console.log('✅ JSON product creation successful:', {
-        message: data.message,
-        count: data.count || 1,
-        createdCount: data.createdCount,
-        errorCount: data.errorCount
-      });
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ JSON product creation successful:', {
+          message: data.message,
+          count: data.count || 1,
+          createdCount: data.createdCount,
+          errorCount: data.errorCount
+        });
+      }
 
       return data;
     } catch (error) {
-      console.error('❌ JSON product creation failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ JSON product creation failed:', error);
+      }
       throw error;
     }
   }
 
-  // ✅ Multipart fallback method (fixed to not use indexed field names)
+  // ✅ Multipart fallback method
   async createProductMultipart(productData) {
     try {
       const isArray = Array.isArray(productData);
       const productsArray = isArray ? productData : [productData];
-      
-      console.log(`🔄 Creating ${productsArray.length} product(s) via multipart form-data fallback`);
 
-      // ✅ IMPORTANT: For now, only support single product in multipart
-      // Backend might not support bulk multipart with the current specification
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Creating ${productsArray.length} product(s) via multipart form-data fallback`);
+      }
+
       if (productsArray.length > 1) {
-        console.warn('⚠️ Multipart fallback: Processing products individually');
-        
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Multipart fallback: Processing products individually');
+        }
+
         const results = [];
         const errors = [];
-        
+
         for (let i = 0; i < productsArray.length; i++) {
           try {
             const singleResult = await this.createProductMultipart(productsArray[i]);
@@ -312,11 +326,11 @@ class VendorService {
             errors.push({ index: i, error: error.message });
           }
         }
-        
+
         if (results.length === 0) {
           throw new Error(`All ${productsArray.length} products failed in multipart fallback`);
         }
-        
+
         return {
           message: `Multipart fallback completed: ${results.length} successful, ${errors.length} failed`,
           count: results.length,
@@ -327,7 +341,6 @@ class VendorService {
         };
       }
 
-      // ✅ Single product multipart processing
       const product = productsArray[0];
       const formData = new FormData();
 
@@ -347,13 +360,13 @@ class VendorService {
       if (product.images && product.images.length > 0) {
         product.images.forEach(imageItem => {
           let file = null;
-          
+
           if (imageItem.file instanceof File) {
             file = imageItem.file;
           } else if (imageItem instanceof File) {
             file = imageItem;
           }
-          
+
           if (file) {
             formData.append('images', file);
             imageCount++;
@@ -361,18 +374,18 @@ class VendorService {
         });
       }
 
-      console.log('📤 Sending multipart request:', {
-        endpoint: `${this.baseURL}/product`,
-        totalImages: imageCount,
-        formDataEntries: Array.from(formData.entries()).length
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 Sending multipart request:', {
+          endpoint: `${this.baseURL}/product`,
+          totalImages: imageCount,
+          formDataEntries: Array.from(formData.entries()).length
+        });
+      }
 
-      // ✅ Send multipart/form-data request
       const response = await fetch(`${this.baseURL}/product`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.getAuthToken()}`
-          // ✅ Don't set Content-Type - let browser set multipart boundary
         },
         body: formData
       });
@@ -383,25 +396,28 @@ class VendorService {
       }
 
       const data = await response.json();
-      
-      console.log('✅ Multipart product creation successful:', {
-        message: data.message,
-        product: data.product?.name || 'Unknown'
-      });
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Multipart product creation successful:', {
+          message: data.message,
+          product: data.product?.name || 'Unknown'
+        });
+      }
 
       return data;
     } catch (error) {
-      console.error('❌ Multipart product creation failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Multipart product creation failed:', error);
+      }
       throw error;
     }
   }
 
-  // ✅ NEW: Dedicated single product creation wrapper
+  // ✅ Wrapper methods
   async createSingleProduct(productData) {
     return this.createProduct(productData);
   }
 
-  // ✅ NEW: Dedicated bulk product creation wrapper
   async createBulkProducts(productsArray) {
     if (!Array.isArray(productsArray)) {
       throw new Error('Bulk products must be provided as an array');
@@ -414,18 +430,19 @@ class VendorService {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Testing API connection to:', `${this.baseURL}/product`);
       }
-      
+
       const response = await fetch(`${this.baseURL}/product`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('📡 Test response status:', response.status);
       }
-      
+
       return response.ok;
     } catch (error) {
+      // ✅ Keep error logging for production debugging
       console.error('❌ API connection test failed:', error.message);
       return false;
     }
@@ -434,10 +451,10 @@ class VendorService {
   // ✅ NEW: Generate CSV template for download
   generateCSVTemplate() {
     const headers = [
-      'name', 'pricePerYard', 'quantity', 'materialType', 'pattern', 
+      'name', 'pricePerYard', 'quantity', 'materialType', 'pattern',
       'description', 'idNumber', 'status', 'image1', 'image2', 'image3', 'image4'
     ];
-    
+
     const sampleData = [
       {
         name: 'Premium Cotton Fabric',
@@ -468,7 +485,7 @@ class VendorService {
         image4: ''
       }
     ];
-    
+
     // Convert to CSV string
     const csvContent = [
       headers.join(','),
@@ -481,7 +498,7 @@ class VendorService {
         return value;
       }).join(','))
     ].join('\n');
-    
+
     return csvContent;
   }
 
@@ -489,7 +506,7 @@ class VendorService {
   validateCSVData(csvData) {
     const errors = [];
     const warnings = [];
-    
+
     if (!Array.isArray(csvData) || csvData.length === 0) {
       errors.push('CSV must contain at least one product');
       return { errors, warnings };
@@ -497,43 +514,43 @@ class VendorService {
 
     csvData.forEach((product, index) => {
       const rowNum = index + 2; // +2 because of header row and 0-based index
-      
+
       // Required field validation
       if (!product.name?.trim()) {
         errors.push(`Row ${rowNum}: Product name is required`);
       }
-      
+
       if (!product.pricePerYard || isNaN(parseFloat(product.pricePerYard))) {
         errors.push(`Row ${rowNum}: Valid price per yard is required`);
       } else if (parseFloat(product.pricePerYard) <= 0) {
         errors.push(`Row ${rowNum}: Price must be greater than 0`);
       }
-      
+
       if (!product.quantity || isNaN(parseInt(product.quantity))) {
         errors.push(`Row ${rowNum}: Valid quantity is required`);
       } else if (parseInt(product.quantity) < 0) {
         errors.push(`Row ${rowNum}: Quantity cannot be negative`);
       }
-      
+
       if (!product.materialType?.trim()) {
         errors.push(`Row ${rowNum}: Material type is required`);
       }
-      
+
       // Validate material type against allowed values
       const validMaterials = ['cotton', 'linen', 'silk', 'lace', 'wool', 'polyester', 'chiffon', 'satin'];
       if (product.materialType && !validMaterials.includes(product.materialType.toLowerCase())) {
         warnings.push(`Row ${rowNum}: Material type "${product.materialType}" may not be recognized. Valid options: ${validMaterials.join(', ')}`);
       }
-      
+
       // Image warnings
       const imageNames = [product.image1, product.image2, product.image3, product.image4].filter(Boolean);
       if (imageNames.length === 0) {
         warnings.push(`Row ${rowNum}: No images specified for "${product.name}"`);
       }
-      
+
       // Duplicate ID check
       if (product.idNumber) {
-        const duplicateIndex = csvData.findIndex((other, otherIndex) => 
+        const duplicateIndex = csvData.findIndex((other, otherIndex) =>
           otherIndex !== index && other.idNumber === product.idNumber
         );
         if (duplicateIndex !== -1) {
@@ -541,7 +558,7 @@ class VendorService {
         }
       }
     });
-    
+
     return { errors, warnings };
   }
 

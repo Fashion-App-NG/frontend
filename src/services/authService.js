@@ -30,7 +30,9 @@ class AuthService {
 
   async register(userData) {
     try {
-      console.log('🔄 Registering user:', userData.email, 'as', userData.role);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Registering user:', userData.email, 'as', userData.role);
+      }
       
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
@@ -60,14 +62,18 @@ class AuthService {
         originalResponse: data
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Registration error:', error);
+      }
       throw error;
     }
   }
 
   async login(credentials) {
     try {
-      console.log('🔄 Attempting login for:', credentials.identifier, 'as', credentials.role);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Attempting login for:', credentials.identifier, 'as', credentials.role);
+      }
       
       const requestBody = {
         identifier: credentials.identifier || credentials.email,
@@ -179,16 +185,17 @@ class AuthService {
       if (normalizedResponse.user) {
         localStorage.setItem('user', JSON.stringify(normalizedResponse.user));
         console.log('✅ User data stored successfully:', {
-          role: normalizedResponse.user.role,
-          email: normalizedResponse.user.email,
           id: normalizedResponse.user.id,
-          roleSource: data.role || data.user?.role ? 'from_response' : 'preserved_from_request'
+          role: normalizedResponse.user.role,
+          email: normalizedResponse.user.email
         });
       }
 
       return normalizedResponse;
     } catch (error) {
-      console.error('Login error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Login error:', error);
+      }
       throw error;
     }
   }
