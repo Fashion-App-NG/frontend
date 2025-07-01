@@ -8,25 +8,14 @@ export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // ✅ Gate debug logging to development only
   const isDev = process.env.NODE_ENV === 'development';
   
-  if (isDev) {
-    console.log('🔍 VendorHybridBulkUpload - Auth state:', {
-      user: user,
-      isVendor: user?.role === 'vendor',
-      userId: user?.id,
-      vendorToken: !!localStorage.getItem('vendorToken'),
-      authToken: !!localStorage.getItem('authToken')
-    });
-  }
-
-  const [step, setStep] = useState('method'); // 'method', 'csv', 'form', 'images', 'review', 'uploading'
+  const [step, setStep] = useState('method');
   const [products, setProducts] = useState([]);
   const [csvFile, setCsvFile] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
-  const [validationWarnings, setValidationWarnings] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, message: '' });
+  const [imageMatchingResults, setImageMatchingResults] = useState([]);
   
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
@@ -110,7 +99,7 @@ export const VendorHybridBulkUpload = () => {
   };
 
   // ✅ Enhanced product validation
-  const validateProduct = (product) => {
+  const validateProduct = useCallback((product) => {
     if (isDev) {
       console.log('🔍 VALIDATION STAGE 1 - validateProduct called:', {
         productName: product.name,
@@ -167,7 +156,7 @@ export const VendorHybridBulkUpload = () => {
       errors,
       cleanedProduct
     };
-  };
+  }, [isDev]);
 
   // Create empty product structure (✅ Removed ID field)
   const createEmptyProduct = () => ({
@@ -323,7 +312,7 @@ export const VendorHybridBulkUpload = () => {
         setValidationErrors([`CSV parsing error: ${error.message}`]);
       }
     });
-  }, [isDev]);
+  }, [isDev, validateProduct]);
 
   // ✅ Enhanced manual form updates with validation
   const updateProduct = (productId, field, value) => {
@@ -384,7 +373,7 @@ export const VendorHybridBulkUpload = () => {
     setProducts(prev => prev.filter(p => p.tempId !== productId));
   };
 
-  // ✅ Enhanced image upload handling (for individual products in manual mode)
+  // ✅ Enhanced image upload handling
   const handleImageUpload = async (productId, files) => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
@@ -481,6 +470,16 @@ export const VendorHybridBulkUpload = () => {
     }
   };
 
+  // ✅ Helper function to determine match type
+  const getMatchType = (csvName, fileName) => {
+    if (csvName === fileName) return 'exact';
+    if (csvName.toLowerCase() === fileName.toLowerCase()) return 'case-insensitive';
+    if (fileName.includes(csvName) || csvName.includes(fileName.replace(/\.[^/.]+$/, ''))) return 'partial';
+    if (csvName.replace(/_/g, '-') === fileName.replace(/\.[^/.]+$/, '') || 
+        csvName.replace(/-/g, '_') === fileName.replace(/\.[^/.]+$/, '')) return 'separator-variation';
+    return 'extension-added';
+  };
+
   // ✅ Enhanced bulk image upload with matching verification step
   const handleBulkImageUpload = async (files) => {
     const fileArray = Array.from(files);
@@ -526,16 +525,16 @@ export const VendorHybridBulkUpload = () => {
       };
       
       if (product.csvImages) {
-        product.csvImages.forEach((imageName, imgIndex) => {
+        product.csvImages.forEach((imageName) => {
           // Try multiple matching strategies
           let matchedFile = 
-            imageMap[imageName] ||                    // Exact match
-            imageMap[imageName.toLowerCase()] ||      // Case insensitive
-            imageMap[`${imageName}.jpg`] ||          // Try with .jpg
-            imageMap[`${imageName}.png`] ||          // Try with .png
-            imageMap[`${imageName}.jpeg`] ||         // Try with .jpeg
-            imageMap[imageName.replace(/_/g, '-')] || // Replace underscores with dashes
-            imageMap[imageName.replace(/-/g, '_')];   // Replace dashes with underscores
+            imageMap[imageName] ||
+            imageMap[imageName.toLowerCase()] ||
+            imageMap[`${imageName}.jpg`] ||
+            imageMap[`${imageName}.png`] ||
+            imageMap[`${imageName}.jpeg`] ||
+            imageMap[imageName.replace(/_/g, '-')] ||
+            imageMap[imageName.replace(/-/g, '_')];
         
           if (matchedFile) {
             const matchedImage = {
@@ -591,28 +590,6 @@ export const VendorHybridBulkUpload = () => {
     setStep('image-verification');
   };
 
-  // ✅ Helper function to determine match type
-  const getMatchType = (csvName, fileName) => {
-    if (csvName === fileName) return 'exact';
-    if (csvName.toLowerCase() === fileName.toLowerCase()) return 'case-insensitive';
-    if (fileName.includes(csvName) || csvName.includes(fileName.replace(/\.[^/.]+$/, ''))) return 'partial';
-    if (csvName.replace(/_/g, '-') === fileName.replace(/\.[^/.]+$/, '') || 
-        csvName.replace(/-/g, '_') === fileName.replace(/\.[^/.]+$/, '')) return 'separator-variation';
-    return 'extension-added';
-  };
-
-  // ✅ Add imageMatchingResults state at the top of component
-  const [imageMatchingResults, setImageMatchingResults] = useState([]);
-
-  // ✅ Add new step in the main render
-  {step === 'image-verification' && (
-    <ImageVerificationStep 
-      matchingResults={imageMatchingResults}
-      onConfirm={() => setStep('review')}
-      onBack={() => setStep('images')}
-    />
-  )}
-
   // ✅ Enhanced final validation before upload
   const validateAllProducts = () => {
     if (isDev) {
@@ -653,34 +630,16 @@ export const VendorHybridBulkUpload = () => {
     return { isValid: errors.length === 0, errors, validatedProducts };
   };
 
-  // ✅ Enhanced bulk upload with proper image handling and detailed logging
-  const handleBulkUpload = async () => {
-    if (isDev) {
-      console.log('🚀 Starting bulk upload process...');
-      console.log('📊 User context:', {
-        userId: user?.id,
-        userRole: user?.role,
-        isVendor: user?.role === 'vendor',
-        authTokenExists: !!localStorage.getItem('authToken'),
-        vendorTokenExists: !!localStorage.getItem('vendorToken')
-      });
-    }
-
-    // Final validation with relaxed requirements
+  // ✅ Enhanced bulk upload method
+  const handleFinalUpload = async () => {
     const validation = validateAllProducts();
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       return;
     }
 
-    // ✅ Check for products without images and show warning
     const productsWithoutImages = validation.validatedProducts.filter(p => !p.images || p.images.length === 0);
     
-    if (productsWithoutImages.length > 0 && isDev) {
-      console.warn('⚠️ Products without images:', productsWithoutImages.map(p => p.name));
-    }
-
-    // ✅ Show image warning dialog
     if (productsWithoutImages.length > 0) {
       const productNames = productsWithoutImages.map(p => p.name).join(', ');
       const proceedWithoutImages = window.confirm(
@@ -688,327 +647,61 @@ export const VendorHybridBulkUpload = () => {
       );
       
       if (!proceedWithoutImages) {
-        if (isDev) {
-          console.log('🔄 User chose to go back and add images');
-        }
-        return; // User wants to add images
+        return;
       }
     }
 
     try {
       setStep('uploading');
-      setUploadProgress({ current: 0, total: validation.validatedProducts.length, message: 'Starting upload...' });
+      setUploadProgress({ current: 0, total: 1, message: 'Preparing unified upload...' });
 
-      const results = [];
+      const bulkProductsData = validation.validatedProducts.map((product, index) => ({
+        name: product.name.trim(),
+        pricePerYard: parseFloat(product.pricePerYard),
+        quantity: parseInt(product.quantity),
+        materialType: product.materialType,
+        vendorId: user?.id,
+        idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${index}`,
+        description: product.description?.trim() || 'Bulk uploaded product',
+        pattern: product.pattern || 'Solid',
+        status: product.status,
+        images: product.images || []
+      }));
+
+      console.log('🚀 Sending bulk data to unified API:', {
+        productCount: bulkProductsData.length,
+        totalImages: bulkProductsData.reduce((sum, p) => sum + (p.images?.length || 0), 0),
+        productsWithImages: bulkProductsData.filter(p => p.images?.length > 0).length
+      });
+
+      setUploadProgress({ current: 0, total: 1, message: 'Uploading all products...' });
+
+      const result = await VendorService.createBulkProducts(bulkProductsData);
       
-      // Process products one by one to avoid payload size issues
-      for (let i = 0; i < validation.validatedProducts.length; i++) {
-        const product = validation.validatedProducts[i];
-        
-        setUploadProgress({
-          current: i + 1,
-          total: validation.validatedProducts.length,
-          message: `Uploading "${product.name}"...`
+      setUploadProgress({ current: 1, total: 1, message: 'Upload complete!' });
+
+      if (result.errorCount && result.errorCount > 0) {
+        navigate('/vendor/products', { 
+          state: { 
+            message: `Bulk upload completed: ${result.createdCount} successful, ${result.errorCount} failed.`,
+            type: 'warning',
+            bulkUpload: true,
+            uploadResults: result
+          }
         });
-
-        if (isDev) {
-          console.log(`📦 Processing product ${i + 1}/${validation.validatedProducts.length}:`, {
-            name: product.name,
-            price: product.pricePerYard,
-            quantity: product.quantity,
-            materialType: product.materialType,
-            pattern: product.pattern,
-            imageCount: product.images?.length || 0,
-            hasImages: !!(product.images && product.images.length > 0),
-            imageDetails: product.images?.map(img => ({
-              name: img.name,
-              size: img.size,
-              type: img.type,
-              hasFile: img.file instanceof File
-            })) || []
-          });
-        }
-
-        try {
-          // ✅ Create FormData properly for each product with ALL required fields
-          const formData = new FormData();
-          
-          // ✅ Add ONLY required fields (name, price, quantity)
-          formData.append('name', product.name);
-          formData.append('pricePerYard', product.pricePerYard.toString());
-          formData.append('quantity', product.quantity.toString());
-          
-          // ✅ Add optional fields with defaults
-          formData.append('materialType', product.materialType || '');
-          formData.append('pattern', product.pattern || 'Solid');
-          formData.append('description', product.description || '');
-          
-          // ✅ FIX: Set status to 'available' by default, especially for blank CSV values
-          let status = 'available'; // Default
-          if (product.status === false || product.status === 'false' || product.status === 'unavailable' || product.status === 'INACTIVE') {
-            status = 'unavailable';
-          }
-          formData.append('status', status);
-          
-          // ✅ Add missing required backend fields
-          formData.append('vendorId', user?.id || '');
-          formData.append('idNumber', `PRD-${Date.now()}-${i}`);
-
-          // ✅ CRITICAL FIX: Enhanced image handling with proper validation
-          let actualImageCount = 0;
-          let imageErrors = [];
-          
-          if (product.images && product.images.length > 0) {
-            if (isDev) {
-              console.log(`📷 Processing ${product.images.length} images for product "${product.name}"`);
-            }
-            
-            for (let imageIndex = 0; imageIndex < product.images.length; imageIndex++) {
-              const image = product.images[imageIndex];
-              
-              if (isDev) {
-                console.log(`📷 Examining image ${imageIndex + 1}:`, {
-                  hasImage: !!image,
-                  hasFile: !!(image?.file),
-                  isFile: image?.file instanceof File,
-                  fileName: image?.name || 'unknown',
-                  fileSize: image?.size || 'unknown',
-                  fileType: image?.type || 'unknown'
-                });
-              }
-              
-              // ✅ Multiple validation checks for image file
-              if (image && image.file) {
-                if (image.file instanceof File) {
-                  if (image.file.size > 0) {
-                    // ✅ Validate file type
-                    if (image.file.type.startsWith('image/')) {
-                      formData.append('images', image.file);
-                      actualImageCount++;
-                      
-                      if (isDev) {
-                        console.log(`✅ Successfully added image ${imageIndex + 1}:`, {
-                          name: image.file.name,
-                          size: `${(image.file.size / 1024 / 1024).toFixed(2)}MB`,
-                          type: image.file.type
-                        });
-                      }
-                    } else {
-                      imageErrors.push(`Image ${imageIndex + 1}: Invalid file type (${image.file.type})`);
-                      if (isDev) {
-                        console.warn(`⚠️ Skipped image ${imageIndex + 1}: Invalid file type ${image.file.type}`);
-                      }
-                    }
-                  } else {
-                    imageErrors.push(`Image ${imageIndex + 1}: File is empty (0 bytes)`);
-                    if (isDev) {
-                      console.warn(`⚠️ Skipped image ${imageIndex + 1}: Empty file`);
-                    }
-                  }
-                } else {
-                  imageErrors.push(`Image ${imageIndex + 1}: Not a valid File object`);
-                  if (isDev) {
-                    console.warn(`⚠️ Skipped image ${imageIndex + 1}: Not a File object`, typeof image.file);
-                  }
-                }
-              } else {
-                imageErrors.push(`Image ${imageIndex + 1}: Missing file data`);
-                if (isDev) {
-                  console.warn(`⚠️ Skipped image ${imageIndex + 1}: No file data`);
-                }
-              }
-            }
-          } else {
-            if (isDev) {
-              console.log(`📷 No images provided for product "${product.name}"`);
-            }
-          }
-
-          // ✅ Enhanced FormData debugging with image verification
-          if (isDev) {
-            console.log('📋 Complete FormData contents for product:', product.name);
-            console.log('📊 FormData summary:', {
-              totalEntries: Array.from(formData.entries()).length,
-              expectedImages: product.images?.length || 0,
-              actualImageFiles: actualImageCount,
-              imageErrors: imageErrors,
-              estimatedSize: `${(actualImageCount * 2).toFixed(1)}MB (estimated)`
-            });
-            
-            // ✅ Log all FormData entries to verify images are included
-            const entries = Array.from(formData.entries());
-            const imageEntries = entries.filter(([key]) => key === 'images');
-            const dataEntries = entries.filter(([key]) => key !== 'images');
-            
-            console.log('📝 Data entries:');
-            dataEntries.forEach(([key, value]) => {
-              console.log(`  ${key}: "${value}"`);
-            });
-            
-            console.log(`📎 Image entries (${imageEntries.length}):`);
-            imageEntries.forEach(([key, value], index) => {
-              if (value instanceof File) {
-                console.log(`  ${key}[${index}]: ${value.name} (${(value.size / 1024 / 1024).toFixed(2)}MB, ${value.type})`);
-              } else {
-                console.error(`  ${key}[${index}]: NOT A FILE!`, typeof value, value);
-              }
-            });
-            
-            // ✅ Critical check: Verify images are actually in FormData
-            if (product.images?.length > 0 && actualImageCount === 0) {
-              console.error('🚨 CRITICAL: Product has images but NONE were added to FormData!', {
-                productName: product.name,
-                expectedImages: product.images.length,
-                actualImages: actualImageCount,
-                imageErrors: imageErrors
-              });
-            }
-            
-            console.log('🌐 Making API request to VendorService.createProduct...');
-          }
-
-          // ✅ Show image errors if any (but continue with upload)
-          if (imageErrors.length > 0) {
-            console.warn(`⚠️ Image processing errors for "${product.name}":`, imageErrors);
-          }
-
-          // ✅ Enhanced API call with timeout and better error handling
-          const startTime = Date.now();
-          const response = await Promise.race([
-            VendorService.createProduct(formData),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000)
-            )
-          ]);
-          const endTime = Date.now();
-          
-          if (isDev) {
-            console.log(`⏱️ API call completed in ${endTime - startTime}ms for product "${product.name}"`);
-            console.log('📤 API Response:', {
-              success: response.success,
-              hasProduct: !!(response.product),
-              productId: response.product?.id || response.product?._id,
-              message: response.message,
-              error: response.error
-            });
-          }
-          
-          if (response.success || response.product) {
-            results.push({ 
-              success: true, 
-              product: response.product, 
-              productName: product.name,
-              imageCount: actualImageCount,
-              imageErrors: imageErrors
-            });
-            if (isDev) {
-              console.log(`✅ Product "${product.name}" uploaded successfully with ${actualImageCount} images`);
-            }
-          } else {
-            const errorMsg = response.error || response.message || 'Upload failed - no error message';
-            results.push({ success: false, error: errorMsg, productName: product.name });
-            if (isDev) {
-              console.error(`❌ Product "${product.name}" upload failed:`, errorMsg);
-            }
-          }
-        } catch (productError) {
-          if (isDev) {
-            console.error(`💥 Exception during product "${product.name}" upload:`, {
-              error: productError.message,
-              stack: productError.stack,
-              name: productError.name,
-              productData: {
-                name: product.name,
-                price: product.pricePerYard,
-                imageCount: product.images?.length || 0
-              }
-            });
-          }
-          
-          results.push({ 
-            success: false, 
-            error: productError.message || 'Upload exception occurred', 
-            productName: product.name 
-          });
-        }
-
-        // ✅ Progressive delay to prevent overwhelming server
-        if (i < validation.validatedProducts.length - 1) {
-          const delay = Math.min(300 + (i * 100), 2000); // Increasing delay up to 2 seconds
-          if (isDev) {
-            console.log(`⏳ Waiting ${delay}ms before next upload...`);
-          }
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-
-      // ✅ Enhanced results processing with image statistics
-      const successful = results.filter(r => r.success);
-      const failed = results.filter(r => !r.success);
-      const totalImages = successful.reduce((sum, r) => sum + (r.imageCount || 0), 0);
-
-      if (isDev) {
-        console.log('📊 Final upload results:', {
-          total: results.length,
-          successful: successful.length,
-          failed: failed.length,
-          totalImages: totalImages,
-          successRate: `${((successful.length / results.length) * 100).toFixed(1)}%`,
-          failedProducts: failed.map(f => ({ name: f.productName, error: f.error })),
-          imageStatistics: successful.map(r => ({ name: r.productName, images: r.imageCount || 0 }))
-        });
-      }
-
-      // ✅ Enhanced user feedback with image statistics and view mode preservation
-      if (failed.length === 0) {
-        const message = `🎉 All ${successful.length} products uploaded successfully with ${totalImages} total images!`;
-        if (isDev) {
-          console.log('🎯 Complete success:', message);
-        }
-        alert(message);
-        // ✅ Navigate with view mode preference (list by default for vendors)
-        navigate('/vendor/products?view=list&sort=date&order=desc');
-      } else if (successful.length === 0) {
-        const errorDetails = failed.map(f => `${f.productName}: ${f.error}`).join('\n');
-        const errorMessage = `❌ All products failed to upload:\n\n${errorDetails}`;
-        
-        if (isDev) {
-          console.error('🚫 Complete failure:', errorMessage);
-        }
-        
-        setValidationErrors([
-          'All products failed to upload. Details:',
-          ...failed.map(f => `${f.productName}: ${f.error}`)
-        ]);
-        setStep('review');
       } else {
-        const failedNames = failed.map(f => f.productName).join(', ');
-        const message = `⚠️ Partial success: ${successful.length} uploaded (${totalImages} images), ${failed.length} failed.\n\nFailed products: ${failedNames}`;
-        
-        if (isDev) {
-          console.warn('⚠️ Partial success:', {
-            message,
-            failedDetails: failed.map(f => ({ name: f.productName, error: f.error }))
-          });
-        }
-        
-        alert(message);
-        // ✅ Navigate with view mode preference
-        navigate('/vendor/products?view=list&sort=date&order=desc');
+        navigate('/vendor/products', { 
+          state: { 
+            message: `Successfully uploaded ${result.count || bulkProductsData.length} products via bulk upload!`,
+            type: 'success',
+            bulkUpload: true,
+            uploadResults: result
+          }
+        });
       }
 
     } catch (error) {
-      if (isDev) {
-        console.error('💥 Bulk upload catastrophic failure:', {
-          error: error.message,
-          stack: error.stack,
-          name: error.name,
-          userContext: {
-            userId: user?.id,
-            role: user?.role
-          }
-        });
-      }
+      console.error('❌ Bulk upload failed:', error);
       
       setValidationErrors([
         'Upload failed with error:',
@@ -1019,7 +712,7 @@ export const VendorHybridBulkUpload = () => {
     }
   };
 
-  // ✅ Ensure the step sequence is correct
+  // ✅ Main component render
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
       {/* Header */}
@@ -1093,7 +786,7 @@ export const VendorHybridBulkUpload = () => {
         {step === 'review' && (
           <ReviewStep 
             products={products}
-            onUpload={handleBulkUpload}
+            onUpload={handleFinalUpload}
             onBack={() => setStep('form')}
           />
         )}
@@ -1221,9 +914,9 @@ const CSVUploadStep = ({ onFileUpload, validationErrors, onBack }) => {
   );
 };
 
-// ✅ Enhanced Product Form Step with flexible material/pattern inputs
+// ✅ Enhanced Product Form Step with null safety
 const ProductFormStep = ({ 
-  products, 
+  products = [], // ✅ Default to empty array to prevent undefined error
   materialTypes, 
   patterns, 
   onUpdate, 
@@ -1231,8 +924,7 @@ const ProductFormStep = ({
   onRemove, 
   onImageUpload,
   onNext, 
-  onBack,
-  validationWarnings 
+  onBack
 }) => (
   <div className="max-w-6xl mx-auto">
     <div className="flex justify-between items-center mb-6">
@@ -1245,18 +937,6 @@ const ProductFormStep = ({
         + Add Product
       </button>
     </div>
-    
-    {/* Validation Warnings */}
-    {validationWarnings.length > 0 && (
-      <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h4 className="font-semibold text-yellow-800 mb-2">Warnings:</h4>
-        <ul className="text-sm text-yellow-700 space-y-1">
-          {validationWarnings.map((warning, index) => (
-            <li key={index}>• {warning}</li>
-          ))}
-        </ul>
-      </div>
-    )}
     
     {/* Products List */}
     <div className="space-y-6">
@@ -1843,7 +1523,7 @@ const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
                               </span>
                             </>
                           )}
-                        </div>
+                                               </div>
                         <div className="text-gray-500 text-xs">
                           {(match.fileSize / 1024 / 1024).toFixed(2)}MB
                         </div>
@@ -1854,7 +1534,7 @@ const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
               )}
               
               {/* Missing images */}
-              {result.missingImages.length > 0 && (
+              {result.missingImages.length >  0 && (
                 <div>
                   <h5 className="text-sm font-medium text-red-700 mb-2">❌ Missing Images:</h5>
                   <div className="space-y-1">
