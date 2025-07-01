@@ -52,4 +52,57 @@ describe('getProductStatus', () => {
       display: false 
     })).toBe(true); // status takes precedence
   });
+
+  // ✅ ADD: Test for status precedence issue
+  test('should prioritize explicit INACTIVE status over display true', () => {
+    const product = {
+      status: 'INACTIVE',
+      display: true
+    };
+    expect(getProductStatus(product)).toBe(false); // status takes precedence
+  });
+
+  test('should prioritize explicit inactive status over display true', () => {
+    const product = {
+      status: 'inactive',
+      display: true
+    };
+    expect(getProductStatus(product)).toBe(false);
+  });
+
+  test('should prioritize explicit false status over display true', () => {
+    const product = {
+      status: false,
+      display: true
+    };
+    expect(getProductStatus(product)).toBe(false);
+  });
+
+  test('should use display field when status is undefined', () => {
+    const product = {
+      display: true
+    };
+    expect(getProductStatus(product)).toBe(true);
+  });
+
+  test('should handle complex priority scenarios', () => {
+    // INACTIVE status should always win
+    expect(getProductStatus({ 
+      status: 'INACTIVE', 
+      display: true, 
+      active: true, 
+      available: true 
+    })).toBe(false);
+    
+    // ACTIVE status should win over display when both present
+    expect(getProductStatus({ 
+      status: 'ACTIVE', 
+      display: false 
+    })).toBe(true);
+    
+    // display should only be used as fallback
+    expect(getProductStatus({ 
+      display: true 
+    })).toBe(true);
+  });
 });

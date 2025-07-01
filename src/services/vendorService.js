@@ -338,6 +338,7 @@ class VendorService {
           }
         }
 
+        // ✅ ADD: Check if all products failed before returning success
         if (results.length === 0) {
           throw new Error(`All ${productsArray.length} products failed in multipart fallback`);
         }
@@ -365,13 +366,16 @@ class VendorService {
   async processSingleProduct(productData) {
     const formData = new FormData();
     
-    // Add product fields
+    // Add product fields with fallbacks
     formData.append('name', productData.name);
     formData.append('pricePerYard', productData.pricePerYard.toString());
     formData.append('quantity', productData.quantity.toString());
     formData.append('materialType', productData.materialType);
     formData.append('vendorId', productData.vendorId);
-    formData.append('idNumber', productData.idNumber);
+    
+    // ✅ ADD: Fallback for missing idNumber
+    formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
+    
     formData.append('description', productData.description);
     formData.append('pattern', productData.pattern);
     formData.append('status', productData.status);

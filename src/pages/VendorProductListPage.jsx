@@ -7,34 +7,32 @@ import productService from '../services/productService';
 
 // ✅ Enhanced helper function to determine product status
 const getProductStatus = (product) => {
-  // Check multiple possible status fields and values from database
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🔍 Checking status for ${product.name}:`, {
-      status: product.status,
-      display: product.display,
-      isActive: product.isActive,
-      active: product.active,
-      available: product.available
-    });
+  // ✅ PRIORITY 1: Check explicit inactive statuses first
+  if (
+    product.status === 'INACTIVE' ||
+    product.status === 'inactive' ||
+    product.status === false ||
+    product.status === 'unavailable' ||
+    product.display === false
+  ) {
+    return false;
   }
-
-  // Try different status field combinations based on database schema
-  return (
+  
+  // ✅ PRIORITY 2: Check explicit active statuses
+  if (
     product.status === 'ACTIVE' ||
     product.status === 'active' ||
     product.status === true ||
     product.status === 'available' ||
-    product.display === true ||
-    product.display === 'true' ||
     product.isActive === true ||
     product.active === true ||
-    product.available === true ||
-    (product.status !== 'INACTIVE' && 
-     product.status !== 'inactive' && 
-     product.status !== false && 
-     product.status !== 'unavailable' &&
-     product.display !== false)
-  );
+    product.available === true
+  ) {
+    return true;
+  }
+  
+  // ✅ PRIORITY 3: Fall back to display field only if status is undefined/null
+  return product.display === true || product.display === 'true';
 };
 
 // ✅ Enhanced helper function to get product image - MATCH ProductCard logic
