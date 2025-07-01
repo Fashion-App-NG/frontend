@@ -372,19 +372,21 @@ class VendorService {
     formData.append('quantity', productData.quantity.toString());
     formData.append('materialType', productData.materialType);
     formData.append('vendorId', productData.vendorId);
-    
-    // ✅ ADD: Fallback for missing idNumber
     formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
-    
     formData.append('description', productData.description);
     formData.append('pattern', productData.pattern);
     formData.append('status', productData.status);
 
-    // Add images if present
+    // ✅ FIX: Handle both image formats
     if (productData.images && productData.images.length > 0) {
       productData.images.forEach((imageItem, index) => {
+        // Handle File objects wrapped in objects (e.g., {file: File, name: 'image.jpg'})
         if (imageItem.file instanceof File) {
           formData.append('images', imageItem.file);
+        }
+        // ✅ RESTORE: Handle bare File objects in array
+        else if (imageItem instanceof File) {
+          formData.append('images', imageItem);
         }
       });
     }

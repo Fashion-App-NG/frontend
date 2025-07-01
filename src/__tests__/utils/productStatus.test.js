@@ -42,6 +42,7 @@ describe('getProductStatus', () => {
   });
 
   test('should handle complex field combinations', () => {
+    // ✅ COMPREHENSIVE: Cover all precedence scenarios in one test
     expect(getProductStatus({ 
       status: 'INACTIVE', 
       display: true 
@@ -51,38 +52,20 @@ describe('getProductStatus', () => {
       status: 'ACTIVE', 
       display: false 
     })).toBe(true); // status takes precedence
-  });
 
-  // ✅ ADD: Test for status precedence issue
-  test('should prioritize explicit INACTIVE status over display true', () => {
-    const product = {
-      status: 'INACTIVE',
-      display: true
-    };
-    expect(getProductStatus(product)).toBe(false); // status takes precedence
-  });
+    expect(getProductStatus({ 
+      status: 'inactive', 
+      display: true 
+    })).toBe(false); // lowercase inactive
 
-  test('should prioritize explicit inactive status over display true', () => {
-    const product = {
-      status: 'inactive',
-      display: true
-    };
-    expect(getProductStatus(product)).toBe(false);
-  });
+    expect(getProductStatus({ 
+      status: false, 
+      display: true 
+    })).toBe(false); // boolean false status
 
-  test('should prioritize explicit false status over display true', () => {
-    const product = {
-      status: false,
-      display: true
-    };
-    expect(getProductStatus(product)).toBe(false);
-  });
-
-  test('should use display field when status is undefined', () => {
-    const product = {
-      display: true
-    };
-    expect(getProductStatus(product)).toBe(true);
+    expect(getProductStatus({ 
+      display: true 
+    })).toBe(true); // fallback to display when no status
   });
 
   test('should handle complex priority scenarios', () => {

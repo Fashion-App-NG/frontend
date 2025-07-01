@@ -114,7 +114,7 @@ const VIEW_MODES = {
 const SORT_OPTIONS = {
   DATE: 'date',
   NAME: 'name',
-  PRICE: 'price',
+  PRICE: 'pricePerYard',  // ✅ Change from 'price' to 'pricePerYard'
   QUANTITY: 'quantity'
 };
 
@@ -461,16 +461,16 @@ export const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Loading State */}
         {loading && (
-          <div className={viewMode === 'grid' 
+          <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
             : "space-y-4 mt-6"
           }>
             {[...Array(8)].map((_, index) => (
-              <div key={index} className={viewMode === 'grid' 
+              <div key={index} className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
                 ? "bg-white rounded-lg shadow-sm border animate-pulse"
                 : "bg-white rounded-lg shadow-sm border p-4 animate-pulse"
               }>
-                <div className={viewMode === 'grid' 
+                <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
                   ? "h-48 bg-gray-200 rounded-lg mb-4"
                   : "flex items-center space-x-4"
                 }>
@@ -506,7 +506,7 @@ export const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Your beautiful Products Grid */}
         {!loading && !error && products.length > 0 && (
-          <div className={viewMode === 'grid' 
+          <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
             : "space-y-4 mt-6"
           }>
