@@ -1019,6 +1019,7 @@ export const VendorHybridBulkUpload = () => {
     }
   };
 
+  // ✅ Ensure the step sequence is correct
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
       {/* Header */}
@@ -1069,7 +1070,6 @@ export const VendorHybridBulkUpload = () => {
             onImageUpload={handleImageUpload}
             onNext={() => products.some(p => p.csvImages?.length > 0) ? setStep('images') : setStep('review')}
             onBack={() => setStep(csvFile ? 'csv' : 'method')}
-            validationWarnings={validationWarnings}
           />
         )}
         
@@ -1079,6 +1079,14 @@ export const VendorHybridBulkUpload = () => {
             onBulkImageUpload={handleBulkImageUpload}
             onSkip={() => setStep('review')}
             onBack={() => setStep('form')}
+          />
+        )}
+
+        {step === 'image-verification' && imageMatchingResults.length > 0 && (
+          <ImageVerificationStep 
+            matchingResults={imageMatchingResults}
+            onConfirm={() => setStep('review')}
+            onBack={() => setStep('images')}
           />
         )}
         

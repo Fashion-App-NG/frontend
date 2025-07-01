@@ -123,9 +123,9 @@ class ProductService {
     }
   }
 
+  // ✅ Enhanced getVendorProducts with response logging
   async getVendorProducts(vendorId) {
     try {
-      // ✅ ALWAYS LOG REQUEST START
       console.log('🔄 ProductService getVendorProducts starting:', {
         vendorId,
         url: `${this.baseURL}/product/vendor/${vendorId}`,
@@ -156,6 +156,18 @@ class ProductService {
         ok: response.ok,
         url: response.url
       });
+
+      // ✅ ENHANCED: Log the actual backend response structure
+      if (process.env.NODE_ENV === 'development') {
+        const responseBody = await response.clone().json().catch(() => null);
+        console.log('🔍 Backend response for vendor products:', {
+          success: responseBody?.success,
+          productsCount: responseBody?.products?.length || 0,
+          sampleProductFields: responseBody?.products?.[0] ? Object.keys(responseBody.products[0]) : [],
+          sampleProduct: responseBody?.products?.[0],
+          rawResponse: responseBody
+        });
+      }
 
       if (!response.ok) {
         console.error('❌ ProductService HTTP Error Response:', {

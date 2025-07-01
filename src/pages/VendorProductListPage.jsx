@@ -5,6 +5,107 @@ import ProductFilters from '../components/Product/ProductFilters';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
 
+// ✅ Enhanced helper function to determine product status
+const getProductStatus = (product) => {
+  // Check multiple possible status fields and values from database
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔍 Checking status for ${product.name}:`, {
+      status: product.status,
+      display: product.display,
+      isActive: product.isActive,
+      active: product.active,
+      available: product.available
+    });
+  }
+
+  // Try different status field combinations based on database schema
+  return (
+    product.status === 'ACTIVE' ||
+    product.status === 'active' ||
+    product.status === true ||
+    product.status === 'available' ||
+    product.display === true ||
+    product.display === 'true' ||
+    product.isActive === true ||
+    product.active === true ||
+    product.available === true ||
+    (product.status !== 'INACTIVE' && 
+     product.status !== 'inactive' && 
+     product.status !== false && 
+     product.status !== 'unavailable' &&
+     product.display !== false)
+  );
+};
+
+// ✅ Enhanced helper function to get product image - MATCH ProductCard logic
+const getProductImage = (product) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🖼️ Getting image for ${product.name}:`, {
+      images: product.images,
+      image: product.image,
+      imageUrl: product.imageUrl,
+      imageUrls: product.imageUrls
+    });
+  }
+
+  // ✅ COPY the exact logic from ProductCard.jsx getImageSrc()
+  
+  // Handle base64 encoded images (from localStorage)
+  if (product.image && product.image.startsWith('data:image/')) {
+    return product.image;
+  }
+  
+  // Handle API image URLs
+  if (product.image && typeof product.image === 'string') {
+    // If it's already a full URL, use it
+    if (product.image.startsWith('http')) {
+      return product.image;
+    }
+    // If it's a relative path, construct full URL
+    if (product.image.startsWith('/')) {
+      return `${process.env.REACT_APP_API_BASE_URL}${product.image}`;
+    }
+    // If it's just a filename, construct full path
+    return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
+  }
+  
+  // Handle image object format from API
+  if (product.image && typeof product.image === 'object' && product.image.url) {
+    return product.image.url;
+  }
+  
+  // Handle images array
+  if (product.images && product.images.length > 0) {
+    const firstImage = product.images[0];
+    if (typeof firstImage === 'string') {
+      if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
+        return firstImage;
+      }
+      return `${process.env.REACT_APP_API_BASE_URL}/uploads/${firstImage}`;
+    }
+    if (typeof firstImage === 'object' && firstImage.url) {
+      return firstImage.url;
+    }
+  }
+  
+  // Handle imageUrls array
+  if (product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+    const firstImage = product.imageUrls[0];
+    if (typeof firstImage === 'string') {
+      if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
+        return firstImage;
+      }
+      return `${process.env.REACT_APP_API_BASE_URL}/uploads/${firstImage}`;
+    }
+  }
+  
+  if (product.imageUrl) {
+    return product.imageUrl;
+  }
+  
+  return null;
+};
+
 const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -69,11 +170,56 @@ const VendorProductListPage = () => {
 
       let vendorProducts = response.products || [];
       
+      // ✅ ENHANCED: Detailed product structure logging
       if (process.env.NODE_ENV === 'development') {
-        console.log('📦 Raw vendor products:', vendorProducts.length);
+        console.log('📦 Raw vendor products count:', vendorProducts.length);
+        
+        if (vendorProducts.length > 0) {
+          const sampleProduct = vendorProducts[0];
+          console.log('🔍 Sample product structure:', {
+            id: sampleProduct.id || sampleProduct._id,
+            name: sampleProduct.name,
+            status: sampleProduct.status,
+            statusType: typeof sampleProduct.status,
+            display: sampleProduct.display,
+            displayType: typeof sampleProduct.display,
+            images: sampleProduct.images,
+            imagesType: typeof sampleProduct.images,
+            imagesLength: sampleProduct.images?.length,
+            imagesSample: sampleProduct.images?.[0],
+            allImageFields: {
+              images: sampleProduct.images,
+              image: sampleProduct.image,
+              imageUrl: sampleProduct.imageUrl,
+              imageUrls: sampleProduct.imageUrls,
+              productImages: sampleProduct.productImages
+            },
+            allStatusFields: {
+              status: sampleProduct.status,
+              display: sampleProduct.display,
+              isActive: sampleProduct.isActive,
+              active: sampleProduct.active,
+              available: sampleProduct.available,
+              visibility: sampleProduct.visibility
+            },
+            fullProduct: sampleProduct
+          });
+          
+          // ✅ Log all products' status and image info
+          console.log('📊 All products status/image summary:');
+          vendorProducts.forEach((product, index) => {
+            console.log(`Product ${index + 1}: ${product.name}`, {
+              status: product.status,
+              display: product.display,
+              hasImages: !!(product.images?.length > 0),
+              imageCount: product.images?.length || 0,
+              firstImage: product.images?.[0]
+            });
+          });
+        }
       }
 
-      // ✅ SORT BY UPLOAD DATE DESCENDING (newest first)
+      // SORT BY UPLOAD DATE DESCENDING (newest first)
       vendorProducts.sort((a, b) => {
         const dateA = new Date(a.createdAt || a.dateCreated || 0);
         const dateB = new Date(b.createdAt || b.dateCreated || 0);
@@ -147,10 +293,10 @@ const VendorProductListPage = () => {
       setTotalCount(vendorProducts.length);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Products loaded and filtered:', {
+        console.log('✅ Products loaded and processed:', {
           total: vendorProducts.length,
-          hasImages: vendorProducts.filter(p => p.images?.length > 0).length,
-          sortedBy: currentFilters.sortBy || 'upload date (newest first)'
+          withImages: vendorProducts.filter(p => p.images?.length > 0).length,
+          activeProducts: vendorProducts.filter(p => getProductStatus(p)).length
         });
       }
       
@@ -439,59 +585,92 @@ const VendorProductListPage = () => {
   );
 };
 
-// ✅ NEW: Product List Item Component for list view
-const ProductListItem = ({ product }) => (
-  <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
-    <div className="flex items-center space-x-4">
-      {/* Product Image */}
-      <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
-        {product.images && product.images.length > 0 ? (
-          <img 
-            src={product.images[0]} 
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-      </div>
+// ✅ UPDATED: ProductListItem with better error handling
+const ProductListItem = ({ product }) => {
+  const [imageError, setImageError] = useState(false);
+  const productImage = getProductImage(product);
+  const isActive = getProductStatus(product);
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`📋 Rendering list item for ${product.name}:`, {
+      hasImage: !!productImage,
+      imageSource: productImage,
+      isActive: isActive,
+      statusCalculation: {
+        originalStatus: product.status,
+        originalDisplay: product.display,
+        calculatedActive: isActive
+      }
+    });
+  }
 
-      {/* Product Details */}
-      <div className="flex-1 min-w-0">
-        <h3 className="text-lg font-semibold text-gray-900 truncate">{product.name}</h3>
-        <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-          <span>₦{product.pricePerYard?.toLocaleString() || product.price?.toLocaleString()}</span>
-          <span>•</span>
-          <span>{product.quantity} yards</span>
-          {product.materialType && (
-            <>
-              <span>•</span>
-              <span>{product.materialType}</span>
-            </>
+  const handleImageError = () => {
+    setImageError(true);
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`❌ Image failed to load for ${product.name}:`, productImage);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-center space-x-4">
+        {/* Enhanced Product Image with same logic as ProductCard */}
+        <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
+          {!imageError && productImage ? (
+            <img 
+              src={productImage}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={handleImageError}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Status & Actions */}
-      <div className="flex items-center space-x-3">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          product.status === 'ACTIVE' || product.status === true || product.status === 'available'
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {product.status === 'ACTIVE' || product.status === true || product.status === 'available' ? 'Active' : 'Inactive'}
-        </span>
-        
-        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-          Edit
-        </button>
+        {/* Product Details */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900 truncate">{product.name}</h3>
+          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+            <span>₦{(product.pricePerYard || product.price)?.toLocaleString()}</span>
+            <span>•</span>
+            <span>{product.quantity} yards</span>
+            {product.materialType && (
+              <>
+                <span>•</span>
+                <span>{product.materialType}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Enhanced Status & Actions */}
+        <div className="flex items-center space-x-3">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            isActive
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+          
+          {process.env.NODE_ENV === 'development' && (
+            <span className="text-xs text-gray-400" title={`Status: ${product.status}, Display: ${product.display}`}>
+              🔍
+            </span>
+          )}
+          
+          <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+            Edit
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default VendorProductListPage;
