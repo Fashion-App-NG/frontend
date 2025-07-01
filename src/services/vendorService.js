@@ -320,7 +320,7 @@ class VendorService {
         }
 
         const results = [];
-        const errors = [];
+        const errors = []; // ✅ ADD: Initialize errors array here
 
         for (let i = 0; i < productsArray.length; i++) {
           try {
@@ -349,7 +349,7 @@ class VendorService {
           createdCount: results.length,
           errorCount: errors.length,
           products: results.map(r => r.product).filter(Boolean),
-          errors: errors
+          errors: errors // ✅ INCLUDE: Return errors array for inspection
         };
       }
 

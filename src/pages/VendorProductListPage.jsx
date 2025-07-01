@@ -106,6 +106,19 @@ const getProductImage = (product) => {
   return null;
 };
 
+// ✅ ADD: Sort options constants to avoid magic strings
+const SORT_OPTIONS = {
+  DATE: 'date',
+  NAME: 'name',
+  PRICE: 'price',
+  QUANTITY: 'quantity'
+};
+
+const SORT_ORDER = {
+  ASC: 'asc',
+  DESC: 'desc'
+};
+
 export const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -128,8 +141,8 @@ export const VendorProductListPage = () => {
     pattern: searchParams.get('pattern') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
-    sortBy: searchParams.get('sortBy') || 'date', // ✅ Default to date sorting
-    sortOrder: searchParams.get('sortOrder') || 'desc' // ✅ Default to newest first
+    sortBy: searchParams.get('sortBy') || SORT_OPTIONS.DATE, // ✅ Use constant
+    sortOrder: searchParams.get('sortOrder') || SORT_ORDER.DESC // ✅ Use constant
   }));
 
   // ENHANCED: Load vendor products using correct endpoint with debug logging
@@ -195,10 +208,11 @@ export const VendorProductListPage = () => {
             fullProduct: sampleProduct
           });
           
-          // ✅ Log all products' status and image info
-          console.log('📊 All products status/image summary:');
-          vendorProducts.forEach((product, index) => {
-            console.log(`Product ${index + 1}: ${product.name}`, {
+          // ✅ FIX: Limit detailed logging to first 5 products to improve performance
+          const sampleSize = 5;
+          console.log('📊 Sample products status/image summary (first 5):');
+          vendorProducts.slice(0, sampleSize).forEach((product, index) => {
+            console.log(`Sample Product ${index + 1}: ${product.name}`, {
               status: product.status,
               display: product.display,
               hasImages: !!(product.images?.length > 0),
@@ -206,6 +220,10 @@ export const VendorProductListPage = () => {
               firstImage: product.images?.[0]
             });
           });
+          
+          if (vendorProducts.length > sampleSize) {
+            console.log(`... and ${vendorProducts.length - sampleSize} more products (details suppressed for performance)`);
+          }
         }
       }
 
