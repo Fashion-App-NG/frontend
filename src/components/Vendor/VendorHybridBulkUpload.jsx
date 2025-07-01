@@ -1,66 +1,248 @@
-// src/components/Vendor/VendorHybridBulkUpload.jsx - Updated component
 import Papa from 'papaparse';
-import { useCallback, useRef, useState } from 'react'; // ✅ Add useRef import
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
 
 export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
-  
-  // ✅ Debug logging
-  console.log('🔍 VendorHybridBulkUpload - Auth state:', {
-    user: user,
-    isVendor: user?.role === 'vendor',
-    userId: user?.id,
-    vendorToken: !!localStorage.getItem('vendorToken'),
-    authToken: !!localStorage.getItem('authToken')
-  });
-
   const navigate = useNavigate();
   
+  // ✅ Gate debug logging to development only
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  if (isDev) {
+    console.log('🔍 VendorHybridBulkUpload - Auth state:', {
+      user: user,
+      isVendor: user?.role === 'vendor',
+      userId: user?.id,
+      vendorToken: !!localStorage.getItem('vendorToken'),
+      authToken: !!localStorage.getItem('authToken')
+    });
+  }
+
   const [step, setStep] = useState('method'); // 'method', 'csv', 'form', 'images', 'review', 'uploading'
   const [products, setProducts] = useState([]);
   const [csvFile, setCsvFile] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
   const [validationWarnings, setValidationWarnings] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, message: '' });
-  // ✅ Remove unused imageFiles state if not being used in the component
-  // const [imageFiles, setImageFiles] = useState({});
   
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
-  // Handle method selection
-  const handleMethodSelect = (method) => {
-    if (method === 'csv') {
-      setStep('csv');
-    } else {
-      // Manual form - start with one empty product
-      setProducts([createEmptyProduct()]);
-      setStep('form');
+  // ✅ Enhanced price validation function
+  const validateAndCleanPrice = (priceStr) => {
+    if (!priceStr || priceStr.toString().trim() === '') return { isValid: false, value: 0, error: 'Price is required' };
+    
+    // Convert to string and clean
+    let cleanPrice = priceStr.toString().trim();
+    
+    // Remove currency symbols (₦, $, €, £, etc.)
+    cleanPrice = cleanPrice.replace(/[₦$€£¥₹₽]/g, '');
+    
+    // Remove commas (thousand separators)
+    cleanPrice = cleanPrice.replace(/,/g, '');
+    
+    // Check if it's a valid number after cleaning
+    const numValue = parseFloat(cleanPrice);
+    
+    if (isNaN(numValue) || numValue <= 0) {
+      return { 
+        isValid: false, 
+        value: 0, 
+        error: 'Price must be a valid positive number' 
+      };
     }
+    
+    return { isValid: true, value: numValue, error: null };
   };
 
-  // Create empty product structure
+  // ✅ Enhanced quantity validation function
+  const validateAndCleanQuantity = (quantityStr) => {
+    if (!quantityStr || quantityStr.toString().trim() === '') return { isValid: false, value: 0, error: 'Quantity is required' };
+    
+    // Convert to string and clean
+    let cleanQuantity = quantityStr.toString().trim();
+    
+    // Remove commas (thousand separators)
+    cleanQuantity = cleanQuantity.replace(/,/g, '');
+    
+    // Check if it's a valid integer
+    const numValue = parseInt(cleanQuantity, 10);
+    
+    if (isNaN(numValue) || numValue <= 0) {
+      return { 
+        isValid: false, 
+        value: 0, 
+        error: 'Quantity must be a valid positive number' 
+      };
+    }
+    
+    return { isValid: true, value: numValue, error: null };
+  };
+
+  // ✅ Enhanced diagnostic logging for image tracking
+  const logImageState = (stage, products, productId = null) => {
+    if (!isDev) return;
+    
+    console.log(`🔍 IMAGE TRACKING - ${stage}:`, {
+      timestamp: new Date().toISOString(),
+      stage,
+      productId,
+      totalProducts: products.length,
+      productsWithImages: products.filter(p => p.images && p.images.length > 0).length,
+      imageBreakdown: products.map(p => ({
+        tempId: p.tempId,
+        name: p.name,
+        imageCount: p.images?.length || 0,
+        hasImagesArray: !!p.images,
+        csvImages: p.csvImages?.length || 0,
+        imageDetails: p.images?.map(img => ({
+          id: img.id,
+          name: img.name,
+          hasFile: img.file instanceof File,
+          fileSize: img.file?.size,
+          hasPreview: !!img.preview
+        })) || []
+      }))
+    });
+  };
+
+  // ✅ Enhanced product validation
+  const validateProduct = (product) => {
+    if (isDev) {
+      console.log('🔍 VALIDATION STAGE 1 - validateProduct called:', {
+        productName: product.name,
+        inputImageCount: product.images?.length || 0,
+        hasImagesArray: !!product.images
+      });
+    }
+    
+    const errors = [];
+    
+    // Name validation
+    if (!product.name || product.name.trim() === '') {
+      errors.push('Product name is required');
+    }
+    
+    // Price validation
+    const priceValidation = validateAndCleanPrice(product.pricePerYard);
+    if (!priceValidation.isValid) {
+      errors.push(`Price: ${priceValidation.error}`);
+    }
+    
+    // Quantity validation
+    const quantityValidation = validateAndCleanQuantity(product.quantity);
+    if (!quantityValidation.isValid) {
+      errors.push(`Quantity: ${quantityValidation.error}`);
+    }
+    
+    // ✅ CRITICAL: Preserve images in cleaned product
+    const cleanedProduct = {
+      ...product,
+      pricePerYard: priceValidation.value,
+      quantity: quantityValidation.value,
+      name: product.name?.trim(),
+      materialType: product.materialType?.trim() || '',
+      pattern: product.pattern || 'solid',
+      description: product.description?.trim() || '',
+      status: product.status !== false,
+      images: product.images || [] // ✅ EXPLICITLY preserve images
+    };
+    
+    if (isDev) {
+      console.log('🔍 VALIDATION STAGE 2 - validateProduct result:', {
+        productName: product.name,
+        isValid: errors.length === 0,
+        errors,
+        inputImageCount: product.images?.length || 0,
+        outputImageCount: cleanedProduct.images?.length || 0,
+        imagesPreserved: (product.images?.length || 0) === (cleanedProduct.images?.length || 0)
+      });
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+      cleanedProduct
+    };
+  };
+
+  // Create empty product structure (✅ Removed ID field)
   const createEmptyProduct = () => ({
-    id: Date.now() + Math.random(),
+    tempId: Date.now() + Math.random(), // Internal ID for React keys
     name: '',
     pricePerYard: '',
     quantity: '1',
     materialType: '',
     pattern: 'solid',
-    idNumber: '',
     description: '',
     status: true,
     images: [],
     errors: []
   });
 
-  // Download CSV template
+  // Handle method selection
+  const handleMethodSelect = (method) => {
+    if (method === 'csv') {
+      setStep('csv');
+    } else {
+      setProducts([createEmptyProduct()]);
+      setStep('form');
+    }
+  };
+
+  // ✅ Updated CSV template without ID field
   const downloadCSVTemplate = () => {
     try {
-      const csvContent = VendorService.generateCSVTemplate();  // No 'new'
+      const headers = [
+        'name',
+        'pricePerYard', 
+        'quantity',
+        'materialType',
+        'pattern',
+        'description',
+        'status',
+        'image1',
+        'image2', 
+        'image3',
+        'image4'
+      ];
+      
+      const sampleData = [
+        [
+          'Premium Cotton Fabric',
+          '1,500.00', // Example with comma
+          '50',
+          'Cotton',
+          'Solid',
+          'High-quality cotton fabric perfect for dresses',
+          'available',
+          'cotton-fabric-1.jpg',
+          'cotton-fabric-2.jpg',
+          '',
+          ''
+        ],
+        [
+          'Silk Floral Print',
+          '₦3,500', // Example with currency symbol
+          '25',
+          'Silk',
+          'Floral',
+          'Beautiful silk with floral patterns',
+          'available',
+          'silk-floral-1.jpg',
+          '',
+          '',
+          ''
+        ]
+      ];
+      
+      const csvContent = [headers, ...sampleData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -72,7 +254,7 @@ export const VendorHybridBulkUpload = () => {
     }
   };
 
-  // Handle CSV upload
+  // ✅ Enhanced CSV upload with better validation
   const handleCSVUpload = useCallback((event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -81,7 +263,9 @@ export const VendorHybridBulkUpload = () => {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        console.log('📊 Parsed CSV data:', results.data);
+        if (isDev) {
+          console.log('📊 Parsed CSV data:', results.data);
+        }
         
         if (results.errors.length > 0) {
           const parseErrors = results.errors.map(err => `Row ${err.row + 1}: ${err.message}`);
@@ -89,46 +273,97 @@ export const VendorHybridBulkUpload = () => {
           return;
         }
 
-        // Validate CSV structure
-        const validation = VendorService.validateCSVData(results.data);  // No 'new'
-        setValidationErrors(validation.errors);
-        setValidationWarnings(validation.warnings);
-
-        if (validation.errors.length === 0) {
-          // Convert CSV data to product format
-          const convertedProducts = results.data.map((row, index) => ({
-            id: Date.now() + index,
+        // Convert CSV data to product format with validation
+        const convertedProducts = [];
+        const errors = [];
+        
+        results.data.forEach((row, index) => {
+          const product = {
+            tempId: Date.now() + index,
             name: row.name || '',
             pricePerYard: row.pricePerYard || '',
             quantity: row.quantity || '1',
             materialType: row.materialType || '',
-            pattern: row.pattern || 'solid',
-            idNumber: row.idNumber || '',
+            pattern: row.pattern || 'Solid',
             description: row.description || '',
-            status: row.status === 'available' || row.status === true,
+            // ✅ FIX: Default to 'available' status, especially for blank values
+            status: row.status === 'unavailable' || row.status === 'false' || row.status === false ? false : true,
             csvImages: [row.image1, row.image2, row.image3, row.image4].filter(Boolean),
             images: [],
             errors: []
-          }));
+          };
+          
+          // Validate each product
+          const validation = validateProduct(product);
+          if (validation.isValid) {
+            convertedProducts.push(validation.cleanedProduct);
+          } else {
+            errors.push(`Row ${index + 2}: ${validation.errors.join(', ')}`);
+          }
+        });
 
-          setProducts(convertedProducts);
-          setCsvFile(file);
-          setStep('form');
+        if (errors.length > 0) {
+          setValidationErrors(errors);
+          return;
+        }
+
+        setProducts(convertedProducts);
+        setCsvFile(file);
+        setValidationErrors([]);
+        setStep('form');
+        
+        if (isDev) {
+          console.log('✅ CSV processed successfully:', {
+            totalProducts: convertedProducts.length,
+            productsWithImages: convertedProducts.filter(p => p.csvImages?.length > 0).length
+          });
         }
       },
       error: (error) => {
         setValidationErrors([`CSV parsing error: ${error.message}`]);
       }
     });
-  }, []);
+  }, [isDev]);
 
-  // Handle manual form updates
+  // ✅ Enhanced manual form updates with validation
   const updateProduct = (productId, field, value) => {
-    setProducts(prev => prev.map(product => 
-      product.id === productId 
-        ? { ...product, [field]: value, errors: [] }
-        : product
-    ));
+    setProducts(prev => {
+      const updated = prev.map(product => {
+        if (product.tempId !== productId) return product;
+        
+        const updatedProduct = { ...product, [field]: value };
+        
+        // Real-time validation for price and quantity
+        if (field === 'pricePerYard') {
+          const priceValidation = validateAndCleanPrice(value);
+          updatedProduct.priceValidationError = priceValidation.error;
+        }
+        
+        if (field === 'quantity') {
+          const quantityValidation = validateAndCleanQuantity(value);
+          updatedProduct.quantityValidationError = quantityValidation.error;
+        }
+        
+        // ✅ Log image field updates specifically
+        if (field === 'images' && isDev) {
+          console.log('🔍 updateProduct - images field updated:', {
+            productId,
+            previousImageCount: product.images?.length || 0,
+            newImageCount: value?.length || 0,
+            imageChange: (value?.length || 0) - (product.images?.length || 0)
+          });
+        }
+        
+        return { ...updatedProduct, errors: [] };
+      });
+      
+      // Log after any product update that might affect images
+      if (field === 'images') {
+        logImageState('AFTER updateProduct (images)', updated, productId);
+      }
+      
+      return updated;
+    });
   };
 
   // Add new product row
@@ -146,245 +381,640 @@ export const VendorHybridBulkUpload = () => {
       alert('At least one product is required');
       return;
     }
-    setProducts(prev => prev.filter(p => p.id !== productId));
+    setProducts(prev => prev.filter(p => p.tempId !== productId));
   };
 
-  // Handle image uploads
+  // ✅ Enhanced image upload handling (for individual products in manual mode)
   const handleImageUpload = async (productId, files) => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
-    if (imageFiles.length === 0) return;
+    if (isDev) {
+      console.log('📷 STAGE 1 - handleImageUpload called:', {
+        productId,
+        totalFiles: fileArray.length,
+        imageFiles: imageFiles.length,
+        fileNames: imageFiles.map(f => f.name),
+        fileSizes: imageFiles.map(f => f.size)
+      });
+    }
+    
+    if (imageFiles.length === 0) {
+      if (isDev) {
+        console.warn('⚠️ STAGE 1 - No valid image files found');
+      }
+      return;
+    }
+
+    // Log BEFORE processing
+    logImageState('BEFORE Individual Image Upload', products, productId);
 
     try {
-      const imagePromises = imageFiles.map(async (file) => ({
-        file: file,
-        preview: URL.createObjectURL(file),
-        id: Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        size: file.size
-      }));
+      const imagePromises = imageFiles.map(async (file) => {
+        const imageObj = {
+          file: file,
+          preview: URL.createObjectURL(file),
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        };
+        
+        if (isDev) {
+          console.log('📷 STAGE 2 - Created image object:', {
+            id: imageObj.id,
+            name: imageObj.name,
+            size: imageObj.size,
+            hasFile: imageObj.file instanceof File,
+            hasPreview: !!imageObj.preview
+          });
+        }
+        
+        return imageObj;
+      });
 
       const newImages = await Promise.all(imagePromises);
       
-      setProducts(prev => prev.map(product =>
-        product.id === productId
-          ? { ...product, images: [...product.images, ...newImages].slice(0, 4) }
-          : product
-      ));
+      if (isDev) {
+        console.log('📷 STAGE 3 - All images processed:', {
+          newImageCount: newImages.length,
+          newImages: newImages.map(img => ({ id: img.id, name: img.name, hasFile: img.file instanceof File }))
+        });
+      }
+      
+      // ✅ CRITICAL: Track state update
+      setProducts(prev => {
+        const updated = prev.map(product => {
+          if (product.tempId === productId) {
+            const updatedProduct = { 
+              ...product, 
+              images: [...(product.images || []), ...newImages].slice(0, 4) 
+            };
+            
+            if (isDev) {
+              console.log('📷 STAGE 4 - Updating product:', {
+                productId,
+                previousImageCount: product.images?.length || 0,
+                newImageCount: newImages.length,
+                finalImageCount: updatedProduct.images.length
+              });
+            }
+            
+            return updatedProduct;
+          }
+          return product;
+        });
+        
+        // Log AFTER state update
+        logImageState('AFTER Individual Image Upload', updated, productId);
+        
+        return updated;
+      });
+      
     } catch (error) {
+      if (isDev) {
+        console.error('💥 STAGE ERROR - Image upload failed:', error);
+      }
       console.error('Error processing images:', error);
       alert('Error processing images. Please try again.');
     }
   };
 
-  // Handle bulk image upload with filename matching
+  // ✅ Enhanced bulk image upload with matching verification step
   const handleBulkImageUpload = async (files) => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
-    console.log('📷 Processing bulk images:', imageFiles.map(f => f.name));
-    
-    // Create image mapping by filename
-    const imageMap = {};
-    imageFiles.forEach(file => {
-      imageMap[file.name] = file;
-    });
-
-    // Match images to products
-    const updatedProducts = products.map(product => {
-      const matchedImages = [];
-      
-      // Check for CSV-specified images
-      if (product.csvImages) {
-        product.csvImages.forEach(imageName => {
-          if (imageMap[imageName]) {
-            matchedImages.push({
-              file: imageMap[imageName],
-              preview: URL.createObjectURL(imageMap[imageName]),
-              id: Math.random().toString(36).substr(2, 9),
-              name: imageName,
-              size: imageMap[imageName].size
-            });
-          }
-        });
-      }
-      
-      return {
-        ...product,
-        images: [...product.images, ...matchedImages].slice(0, 4)
-      };
-    });
-
-    setProducts(updatedProducts);
-    setStep('review');
-  };
-
-  // Validate products before upload
-  const validateProducts = () => {
-    const errors = [];
-    
-    products.forEach((product, index) => {
-      const productErrors = [];
-      
-      if (!product.name?.trim()) productErrors.push('Product name is required');
-      if (!product.pricePerYard || isNaN(parseFloat(product.pricePerYard))) productErrors.push('Valid price is required');
-      if (!product.quantity || isNaN(parseInt(product.quantity))) productErrors.push('Valid quantity is required');
-      if (!product.materialType) productErrors.push('Material type is required');
-      
-      if (productErrors.length > 0) {
-        errors.push(`Product ${index + 1}: ${productErrors.join(', ')}`);
-      }
-    });
-    
-    if (errors.length > 0) {
-      alert(`Please fix the following errors:\n\n${errors.join('\n')}`);
-      return false;
+    if (isDev) {
+      console.log('📷 BULK STAGE 1 - handleBulkImageUpload called:', {
+        totalFiles: fileArray.length,
+        imageFiles: imageFiles.length,
+        fileNames: imageFiles.map(f => f.name)
+      });
     }
     
-    return true;
+    // Log BEFORE processing
+    logImageState('BEFORE Bulk Image Upload', products);
+    
+    // Create image mapping by filename (with and without extensions)
+    const imageMap = {};
+    imageFiles.forEach(file => {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+    
+      // Map both full filename and name without extension
+      imageMap[file.name] = file;
+      imageMap[nameWithoutExt] = file;
+    
+      // Also map common variations
+      imageMap[file.name.toLowerCase()] = file;
+      imageMap[nameWithoutExt.toLowerCase()] = file;
+    });
+
+    // ✅ NEW: Create detailed matching results for verification step
+    const matchingResults = [];
+
+    // Match images to products with detailed tracking
+    const updatedProducts = products.map((product, productIndex) => {
+      const matchedImages = [];
+      const productMatchingResult = {
+        productName: product.name,
+        productIndex: productIndex + 1,
+        csvImages: product.csvImages || [],
+        matches: [],
+        missingImages: []
+      };
+      
+      if (product.csvImages) {
+        product.csvImages.forEach((imageName, imgIndex) => {
+          // Try multiple matching strategies
+          let matchedFile = 
+            imageMap[imageName] ||                    // Exact match
+            imageMap[imageName.toLowerCase()] ||      // Case insensitive
+            imageMap[`${imageName}.jpg`] ||          // Try with .jpg
+            imageMap[`${imageName}.png`] ||          // Try with .png
+            imageMap[`${imageName}.jpeg`] ||         // Try with .jpeg
+            imageMap[imageName.replace(/_/g, '-')] || // Replace underscores with dashes
+            imageMap[imageName.replace(/-/g, '_')];   // Replace dashes with underscores
+        
+          if (matchedFile) {
+            const matchedImage = {
+              file: matchedFile,
+              preview: URL.createObjectURL(matchedFile),
+              id: Math.random().toString(36).substr(2, 9),
+              name: imageName,
+              size: matchedFile.size,
+              type: matchedFile.type
+            };
+            
+            matchedImages.push(matchedImage);
+            
+            // ✅ Track matching details
+            productMatchingResult.matches.push({
+              csvName: imageName,
+              actualFileName: matchedFile.name,
+              isExactMatch: imageName === matchedFile.name,
+              matchType: getMatchType(imageName, matchedFile.name),
+              fileSize: matchedFile.size,
+              fileType: matchedFile.type
+            });
+            
+            if (isDev) {
+              console.log(`✅ BULK STAGE 4 - Successfully matched: ${imageName} -> ${matchedFile.name}`);
+            }
+          } else {
+            // ✅ Track missing images
+            productMatchingResult.missingImages.push(imageName);
+            
+            if (isDev) {
+              console.warn(`⚠️ BULK STAGE 4 - CSV image not found: ${imageName}`);
+            }
+          }
+        });
+      }
+
+      matchingResults.push(productMatchingResult);
+
+      const finalProduct = {
+        ...product,
+        images: [...(product.images || []), ...matchedImages].slice(0, 4)
+      };
+      
+      return finalProduct;
+    });
+
+    // ✅ Store matching results for verification step
+    setImageMatchingResults(matchingResults);
+    setProducts(updatedProducts);
+    
+    // ✅ Go to verification step instead of directly to review
+    setStep('image-verification');
   };
 
-  // Handle final upload
-  const handleFinalUpload = async () => {
-    if (!validateProducts()) return;
+  // ✅ Helper function to determine match type
+  const getMatchType = (csvName, fileName) => {
+    if (csvName === fileName) return 'exact';
+    if (csvName.toLowerCase() === fileName.toLowerCase()) return 'case-insensitive';
+    if (fileName.includes(csvName) || csvName.includes(fileName.replace(/\.[^/.]+$/, ''))) return 'partial';
+    if (csvName.replace(/_/g, '-') === fileName.replace(/\.[^/.]+$/, '') || 
+        csvName.replace(/-/g, '_') === fileName.replace(/\.[^/.]+$/, '')) return 'separator-variation';
+    return 'extension-added';
+  };
+
+  // ✅ Add imageMatchingResults state at the top of component
+  const [imageMatchingResults, setImageMatchingResults] = useState([]);
+
+  // ✅ Add new step in the main render
+  {step === 'image-verification' && (
+    <ImageVerificationStep 
+      matchingResults={imageMatchingResults}
+      onConfirm={() => setStep('review')}
+      onBack={() => setStep('images')}
+    />
+  )}
+
+  // ✅ Enhanced final validation before upload
+  const validateAllProducts = () => {
+    if (isDev) {
+      console.log('🔍 FINAL VALIDATION - validateAllProducts called');
+    }
     
+    // Log BEFORE validation
+    logImageState('BEFORE Final Validation', products);
+    
+    const errors = [];
+    const validatedProducts = [];
+    
+    products.forEach((product, index) => {
+      const validation = validateProduct(product);
+      
+      if (!validation.isValid) {
+        errors.push(`Product ${index + 1}: ${validation.errors.join(', ')}`);
+      } else {
+        validatedProducts.push(validation.cleanedProduct);
+      }
+    });
+    
+    // Log AFTER validation
+    logImageState('AFTER Final Validation', validatedProducts);
+    
+    if (isDev) {
+      console.log('🔍 FINAL VALIDATION - validateAllProducts result:', {
+        totalProducts: products.length,
+        validProducts: validatedProducts.length,
+        errors: errors.length,
+        imageComparison: {
+          beforeValidation: products.reduce((sum, p) => sum + (p.images?.length || 0), 0),
+          afterValidation: validatedProducts.reduce((sum, p) => sum + (p.images?.length || 0), 0)
+        }
+      });
+    }
+    
+    return { isValid: errors.length === 0, errors, validatedProducts };
+  };
+
+  // ✅ Enhanced bulk upload with proper image handling and detailed logging
+  const handleBulkUpload = async () => {
+    if (isDev) {
+      console.log('🚀 Starting bulk upload process...');
+      console.log('📊 User context:', {
+        userId: user?.id,
+        userRole: user?.role,
+        isVendor: user?.role === 'vendor',
+        authTokenExists: !!localStorage.getItem('authToken'),
+        vendorTokenExists: !!localStorage.getItem('vendorToken')
+      });
+    }
+
+    // Final validation with relaxed requirements
+    const validation = validateAllProducts();
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+
+    // ✅ Check for products without images and show warning
+    const productsWithoutImages = validation.validatedProducts.filter(p => !p.images || p.images.length === 0);
+    
+    if (productsWithoutImages.length > 0 && isDev) {
+      console.warn('⚠️ Products without images:', productsWithoutImages.map(p => p.name));
+    }
+
+    // ✅ Show image warning dialog
+    if (productsWithoutImages.length > 0) {
+      const productNames = productsWithoutImages.map(p => p.name).join(', ');
+      const proceedWithoutImages = window.confirm(
+        `⚠️ Image Warning\n\n${productsWithoutImages.length} product(s) have no images:\n${productNames}\n\nDo you want to proceed without images for these products?\n\nClick "OK" to proceed or "Cancel" to go back and add images.`
+      );
+      
+      if (!proceedWithoutImages) {
+        if (isDev) {
+          console.log('🔄 User chose to go back and add images');
+        }
+        return; // User wants to add images
+      }
+    }
+
     try {
       setStep('uploading');
-      setUploadProgress({ current: 0, total: 1, message: 'Preparing bulk upload...' });
+      setUploadProgress({ current: 0, total: validation.validatedProducts.length, message: 'Starting upload...' });
 
-      // ✅ Prepare bulk data for unified API
-      const bulkProductsData = products.map((product, index) => ({
-        name: product.name.trim(),
-        pricePerYard: parseFloat(product.pricePerYard),
-        quantity: parseInt(product.quantity),
-        materialType: product.materialType,
-        vendorId: user?.id,
-        idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${index}`,
-        description: product.description?.trim() || 'Bulk uploaded product',
-        pattern: product.pattern || 'Solid',
-        status: product.status,
-        images: product.images || [] // All matched images included
-      }));
-
-      console.log('🚀 Sending bulk data to unified API:', {
-        productCount: bulkProductsData.length,
-        totalImages: bulkProductsData.reduce((sum, p) => sum + (p.images?.length || 0), 0),
-        productsWithImages: bulkProductsData.filter(p => p.images?.length > 0).length
-      });
-
-      setUploadProgress({ current: 0, total: 1, message: 'Uploading all products...' });
-
-      // ✅ Use unified API for bulk upload
-      const result = await VendorService.createBulkProducts(bulkProductsData);
+      const results = [];
       
-      setUploadProgress({ current: 1, total: 1, message: 'Upload complete!' });
+      // Process products one by one to avoid payload size issues
+      for (let i = 0; i < validation.validatedProducts.length; i++) {
+        const product = validation.validatedProducts[i];
+        
+        setUploadProgress({
+          current: i + 1,
+          total: validation.validatedProducts.length,
+          message: `Uploading "${product.name}"...`
+        });
 
-      // Handle response
-      if (result.errorCount && result.errorCount > 0) {
-        // Partial success
-        navigate('/vendor/products', { 
-          state: { 
-            message: `Bulk upload completed: ${result.createdCount} successful, ${result.errorCount} failed.`,
-            type: 'warning',
-            bulkUpload: true,
-            uploadResults: result
+        if (isDev) {
+          console.log(`📦 Processing product ${i + 1}/${validation.validatedProducts.length}:`, {
+            name: product.name,
+            price: product.pricePerYard,
+            quantity: product.quantity,
+            materialType: product.materialType,
+            pattern: product.pattern,
+            imageCount: product.images?.length || 0,
+            hasImages: !!(product.images && product.images.length > 0),
+            imageDetails: product.images?.map(img => ({
+              name: img.name,
+              size: img.size,
+              type: img.type,
+              hasFile: img.file instanceof File
+            })) || []
+          });
+        }
+
+        try {
+          // ✅ Create FormData properly for each product with ALL required fields
+          const formData = new FormData();
+          
+          // ✅ Add ONLY required fields (name, price, quantity)
+          formData.append('name', product.name);
+          formData.append('pricePerYard', product.pricePerYard.toString());
+          formData.append('quantity', product.quantity.toString());
+          
+          // ✅ Add optional fields with defaults
+          formData.append('materialType', product.materialType || '');
+          formData.append('pattern', product.pattern || 'Solid');
+          formData.append('description', product.description || '');
+          
+          // ✅ FIX: Set status to 'available' by default, especially for blank CSV values
+          let status = 'available'; // Default
+          if (product.status === false || product.status === 'false' || product.status === 'unavailable' || product.status === 'INACTIVE') {
+            status = 'unavailable';
           }
+          formData.append('status', status);
+          
+          // ✅ Add missing required backend fields
+          formData.append('vendorId', user?.id || '');
+          formData.append('idNumber', `PRD-${Date.now()}-${i}`);
+
+          // ✅ CRITICAL FIX: Enhanced image handling with proper validation
+          let actualImageCount = 0;
+          let imageErrors = [];
+          
+          if (product.images && product.images.length > 0) {
+            if (isDev) {
+              console.log(`📷 Processing ${product.images.length} images for product "${product.name}"`);
+            }
+            
+            for (let imageIndex = 0; imageIndex < product.images.length; imageIndex++) {
+              const image = product.images[imageIndex];
+              
+              if (isDev) {
+                console.log(`📷 Examining image ${imageIndex + 1}:`, {
+                  hasImage: !!image,
+                  hasFile: !!(image?.file),
+                  isFile: image?.file instanceof File,
+                  fileName: image?.name || 'unknown',
+                  fileSize: image?.size || 'unknown',
+                  fileType: image?.type || 'unknown'
+                });
+              }
+              
+              // ✅ Multiple validation checks for image file
+              if (image && image.file) {
+                if (image.file instanceof File) {
+                  if (image.file.size > 0) {
+                    // ✅ Validate file type
+                    if (image.file.type.startsWith('image/')) {
+                      formData.append('images', image.file);
+                      actualImageCount++;
+                      
+                      if (isDev) {
+                        console.log(`✅ Successfully added image ${imageIndex + 1}:`, {
+                          name: image.file.name,
+                          size: `${(image.file.size / 1024 / 1024).toFixed(2)}MB`,
+                          type: image.file.type
+                        });
+                      }
+                    } else {
+                      imageErrors.push(`Image ${imageIndex + 1}: Invalid file type (${image.file.type})`);
+                      if (isDev) {
+                        console.warn(`⚠️ Skipped image ${imageIndex + 1}: Invalid file type ${image.file.type}`);
+                      }
+                    }
+                  } else {
+                    imageErrors.push(`Image ${imageIndex + 1}: File is empty (0 bytes)`);
+                    if (isDev) {
+                      console.warn(`⚠️ Skipped image ${imageIndex + 1}: Empty file`);
+                    }
+                  }
+                } else {
+                  imageErrors.push(`Image ${imageIndex + 1}: Not a valid File object`);
+                  if (isDev) {
+                    console.warn(`⚠️ Skipped image ${imageIndex + 1}: Not a File object`, typeof image.file);
+                  }
+                }
+              } else {
+                imageErrors.push(`Image ${imageIndex + 1}: Missing file data`);
+                if (isDev) {
+                  console.warn(`⚠️ Skipped image ${imageIndex + 1}: No file data`);
+                }
+              }
+            }
+          } else {
+            if (isDev) {
+              console.log(`📷 No images provided for product "${product.name}"`);
+            }
+          }
+
+          // ✅ Enhanced FormData debugging with image verification
+          if (isDev) {
+            console.log('📋 Complete FormData contents for product:', product.name);
+            console.log('📊 FormData summary:', {
+              totalEntries: Array.from(formData.entries()).length,
+              expectedImages: product.images?.length || 0,
+              actualImageFiles: actualImageCount,
+              imageErrors: imageErrors,
+              estimatedSize: `${(actualImageCount * 2).toFixed(1)}MB (estimated)`
+            });
+            
+            // ✅ Log all FormData entries to verify images are included
+            const entries = Array.from(formData.entries());
+            const imageEntries = entries.filter(([key]) => key === 'images');
+            const dataEntries = entries.filter(([key]) => key !== 'images');
+            
+            console.log('📝 Data entries:');
+            dataEntries.forEach(([key, value]) => {
+              console.log(`  ${key}: "${value}"`);
+            });
+            
+            console.log(`📎 Image entries (${imageEntries.length}):`);
+            imageEntries.forEach(([key, value], index) => {
+              if (value instanceof File) {
+                console.log(`  ${key}[${index}]: ${value.name} (${(value.size / 1024 / 1024).toFixed(2)}MB, ${value.type})`);
+              } else {
+                console.error(`  ${key}[${index}]: NOT A FILE!`, typeof value, value);
+              }
+            });
+            
+            // ✅ Critical check: Verify images are actually in FormData
+            if (product.images?.length > 0 && actualImageCount === 0) {
+              console.error('🚨 CRITICAL: Product has images but NONE were added to FormData!', {
+                productName: product.name,
+                expectedImages: product.images.length,
+                actualImages: actualImageCount,
+                imageErrors: imageErrors
+              });
+            }
+            
+            console.log('🌐 Making API request to VendorService.createProduct...');
+          }
+
+          // ✅ Show image errors if any (but continue with upload)
+          if (imageErrors.length > 0) {
+            console.warn(`⚠️ Image processing errors for "${product.name}":`, imageErrors);
+          }
+
+          // ✅ Enhanced API call with timeout and better error handling
+          const startTime = Date.now();
+          const response = await Promise.race([
+            VendorService.createProduct(formData),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000)
+            )
+          ]);
+          const endTime = Date.now();
+          
+          if (isDev) {
+            console.log(`⏱️ API call completed in ${endTime - startTime}ms for product "${product.name}"`);
+            console.log('📤 API Response:', {
+              success: response.success,
+              hasProduct: !!(response.product),
+              productId: response.product?.id || response.product?._id,
+              message: response.message,
+              error: response.error
+            });
+          }
+          
+          if (response.success || response.product) {
+            results.push({ 
+              success: true, 
+              product: response.product, 
+              productName: product.name,
+              imageCount: actualImageCount,
+              imageErrors: imageErrors
+            });
+            if (isDev) {
+              console.log(`✅ Product "${product.name}" uploaded successfully with ${actualImageCount} images`);
+            }
+          } else {
+            const errorMsg = response.error || response.message || 'Upload failed - no error message';
+            results.push({ success: false, error: errorMsg, productName: product.name });
+            if (isDev) {
+              console.error(`❌ Product "${product.name}" upload failed:`, errorMsg);
+            }
+          }
+        } catch (productError) {
+          if (isDev) {
+            console.error(`💥 Exception during product "${product.name}" upload:`, {
+              error: productError.message,
+              stack: productError.stack,
+              name: productError.name,
+              productData: {
+                name: product.name,
+                price: product.pricePerYard,
+                imageCount: product.images?.length || 0
+              }
+            });
+          }
+          
+          results.push({ 
+            success: false, 
+            error: productError.message || 'Upload exception occurred', 
+            productName: product.name 
+          });
+        }
+
+        // ✅ Progressive delay to prevent overwhelming server
+        if (i < validation.validatedProducts.length - 1) {
+          const delay = Math.min(300 + (i * 100), 2000); // Increasing delay up to 2 seconds
+          if (isDev) {
+            console.log(`⏳ Waiting ${delay}ms before next upload...`);
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      // ✅ Enhanced results processing with image statistics
+      const successful = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+      const totalImages = successful.reduce((sum, r) => sum + (r.imageCount || 0), 0);
+
+      if (isDev) {
+        console.log('📊 Final upload results:', {
+          total: results.length,
+          successful: successful.length,
+          failed: failed.length,
+          totalImages: totalImages,
+          successRate: `${((successful.length / results.length) * 100).toFixed(1)}%`,
+          failedProducts: failed.map(f => ({ name: f.productName, error: f.error })),
+          imageStatistics: successful.map(r => ({ name: r.productName, images: r.imageCount || 0 }))
         });
+      }
+
+      // ✅ Enhanced user feedback with image statistics and view mode preservation
+      if (failed.length === 0) {
+        const message = `🎉 All ${successful.length} products uploaded successfully with ${totalImages} total images!`;
+        if (isDev) {
+          console.log('🎯 Complete success:', message);
+        }
+        alert(message);
+        // ✅ Navigate with view mode preference (list by default for vendors)
+        navigate('/vendor/products?view=list&sort=date&order=desc');
+      } else if (successful.length === 0) {
+        const errorDetails = failed.map(f => `${f.productName}: ${f.error}`).join('\n');
+        const errorMessage = `❌ All products failed to upload:\n\n${errorDetails}`;
+        
+        if (isDev) {
+          console.error('🚫 Complete failure:', errorMessage);
+        }
+        
+        setValidationErrors([
+          'All products failed to upload. Details:',
+          ...failed.map(f => `${f.productName}: ${f.error}`)
+        ]);
+        setStep('review');
       } else {
-        // Full success
-        navigate('/vendor/products', { 
-          state: { 
-            message: `Successfully uploaded ${result.count || bulkProductsData.length} products via bulk upload!`,
-            type: 'success',
-            bulkUpload: true,
-            uploadResults: result
-          }
-        });
+        const failedNames = failed.map(f => f.productName).join(', ');
+        const message = `⚠️ Partial success: ${successful.length} uploaded (${totalImages} images), ${failed.length} failed.\n\nFailed products: ${failedNames}`;
+        
+        if (isDev) {
+          console.warn('⚠️ Partial success:', {
+            message,
+            failedDetails: failed.map(f => ({ name: f.productName, error: f.error }))
+          });
+        }
+        
+        alert(message);
+        // ✅ Navigate with view mode preference
+        navigate('/vendor/products?view=list&sort=date&order=desc');
       }
 
     } catch (error) {
-      console.error('❌ Bulk upload failed:', error);
-      
-      // ✅ Fallback to individual uploads if unified API fails
-      await handleFallbackIndividualUpload();
-    }
-  };
-
-  // ✅ Fallback method for when unified API fails
-  const handleFallbackIndividualUpload = async () => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Falling back to individual uploads...');
-    }
-    
-    const results = [];
-    const errors = [];
-
-    for (let i = 0; i < products.length; i++) {
-      const product = products[i];
-      
-      setUploadProgress({ 
-        current: i + 1, 
-        total: products.length, 
-        message: `Uploading product ${i + 1}: ${product.name}...` 
-      });
-
-      try {
-        const productData = {
-          name: product.name.trim(),
-          pricePerYard: parseFloat(product.pricePerYard),
-          quantity: parseInt(product.quantity),
-          materialType: product.materialType,
-          vendorId: user?.id,
-          idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${i}`,
-          description: product.description?.trim() || 'Bulk uploaded product',
-          pattern: product.pattern || 'Solid',
-          status: product.status,
-          images: product.images || []
-        };
-
-        // ✅ FIX: Use the response or remove variable assignment
-        const response = await VendorService.createSingleProduct(productData);
-        
-        results.push({ 
-          index: i, 
-          name: product.name, 
-          success: true,
-          productId: response.product?.id || response.product?._id // ✅ Use response data
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Product ${i + 1} uploaded successfully:`, response.message);
-        }
-
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error(`❌ Failed to upload product ${i + 1}:`, error);
-        }
-        errors.push({ index: i, name: product.name, error: error.message });
-      }
-    }
-
-    // Handle mixed results
-    const successCount = results.length;
-    const errorCount = errors.length;
-
-    if (successCount > 0) {
-      navigate('/vendor/products', { 
-        state: { 
-          message: `Bulk upload completed: ${successCount} successful, ${errorCount} failed.`,
-          type: successCount === products.length ? 'success' : 'warning',
-          bulkUpload: true,
-          uploadResults: { 
-            successCount, 
-            errorCount, 
-            errors,
-            successfulProducts: results // ✅ Include successful results
+      if (isDev) {
+        console.error('💥 Bulk upload catastrophic failure:', {
+          error: error.message,
+          stack: error.stack,
+          name: error.name,
+          userContext: {
+            userId: user?.id,
+            role: user?.role
           }
-        }
-      });
-    } else {
-      alert('All products failed to upload. Please check the errors and try again.');
+        });
+      }
+      
+      setValidationErrors([
+        'Upload failed with error:',
+        error.message || 'Unknown error occurred',
+        'Please check the console for details and try again.'
+      ]);
       setStep('review');
     }
   };
@@ -455,7 +1085,7 @@ export const VendorHybridBulkUpload = () => {
         {step === 'review' && (
           <ReviewStep 
             products={products}
-            onUpload={handleFinalUpload}
+            onUpload={handleBulkUpload}
             onBack={() => setStep('form')}
           />
         )}
@@ -583,7 +1213,7 @@ const CSVUploadStep = ({ onFileUpload, validationErrors, onBack }) => {
   );
 };
 
-// Product Form Step Component  
+// ✅ Enhanced Product Form Step with flexible material/pattern inputs
 const ProductFormStep = ({ 
   products, 
   materialTypes, 
@@ -624,7 +1254,7 @@ const ProductFormStep = ({
     <div className="space-y-6">
       {products.map((product, index) => (
         <ProductFormRow
-          key={product.id}
+          key={product.tempId}
           product={product}
           index={index}
           materialTypes={materialTypes}
@@ -654,7 +1284,7 @@ const ProductFormStep = ({
   </div>
 );
 
-// Individual Product Form Row
+// ✅ Enhanced Individual Product Form Row with flexible material/pattern inputs
 const ProductFormRow = ({ 
   product, 
   index, 
@@ -673,7 +1303,7 @@ const ProductFormRow = ({
         <h3 className="text-lg font-semibold">Product {index + 1}</h3>
         {canRemove && (
           <button
-            onClick={() => onRemove(product.id)}
+            onClick={() => onRemove(product.tempId)}
             className="text-red-600 hover:text-red-800"
           >
             Remove
@@ -690,7 +1320,7 @@ const ProductFormRow = ({
           <input
             type="text"
             value={product.name}
-            onChange={(e) => onUpdate(product.id, 'name', e.target.value)}
+            onChange={(e) => onUpdate(product.tempId, 'name', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             placeholder="Enter product name"
           />
@@ -702,14 +1332,17 @@ const ProductFormRow = ({
             Price per Yard (₦) *
           </label>
           <input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             value={product.pricePerYard}
-            onChange={(e) => onUpdate(product.id, 'pricePerYard', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="0.00"
+            onChange={(e) => onUpdate(product.tempId, 'pricePerYard', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+              product.priceValidationError ? 'border-red-300' : 'border-gray-300'
+            }`}
+            placeholder="e.g., 1,500 or ₦1,500.00"
           />
+          {product.priceValidationError && (
+            <p className="text-sm text-red-600 mt-1">{product.priceValidationError}</p>
+          )}
         </div>
 
         {/* Quantity */}
@@ -718,60 +1351,101 @@ const ProductFormRow = ({
             Quantity (Yards) *
           </label>
           <input
-            type="number"
-            min="0"
+            type="text"
             value={product.quantity}
-            onChange={(e) => onUpdate(product.id, 'quantity', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="1"
+            onChange={(e) => onUpdate(product.tempId, 'quantity', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+              product.quantityValidationError ? 'border-red-300' : 'border-gray-300'
+            }`}
+            placeholder="e.g., 100 or 1,000"
           />
+          {product.quantityValidationError && (
+            <p className="text-sm text-red-600 mt-1">{product.quantityValidationError}</p>
+          )}
         </div>
 
-        {/* Material Type */}
+        {/* ✅ Enhanced Material Type - Dropdown with Custom Option */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Material Type *
+            Material Type
           </label>
-          <select
-            value={product.materialType}
-            onChange={(e) => onUpdate(product.id, 'materialType', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select material</option>
-            {materialTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            <select
+              value={materialTypes.includes(product.materialType) ? product.materialType : 'custom'}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  // Don't change the value if custom is selected, let them type
+                } else {
+                  onUpdate(product.tempId, 'materialType', e.target.value);
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select material</option>
+              {materialTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+              <option value="custom">Custom (type below)</option>
+            </select>
+            {(!materialTypes.includes(product.materialType) || product.materialType === '') && (
+              <input
+                type="text"
+                value={product.materialType}
+                onChange={(e) => onUpdate(product.tempId, 'materialType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter custom material type"
+              />
+            )}
+          </div>
         </div>
 
-        {/* Pattern */}
+        {/* ✅ Enhanced Pattern - Dropdown with Custom Option */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Pattern
           </label>
-          <select
-            value={product.pattern}
-            onChange={(e) => onUpdate(product.id, 'pattern', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          >
-            {patterns.map(pattern => (
-              <option key={pattern} value={pattern}>{pattern}</option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            <select
+              value={patterns.includes(product.pattern) ? product.pattern : 'custom'}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  // Don't change the value if custom is selected, let them type
+                } else {
+                  onUpdate(product.tempId, 'pattern', e.target.value);
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              {patterns.map(pattern => (
+                <option key={pattern} value={pattern}>{pattern}</option>
+              ))}
+              <option value="custom">Custom (type below)</option>
+            </select>
+            {!patterns.includes(product.pattern) && (
+              <input
+                type="text"
+                value={product.pattern}
+                onChange={(e) => onUpdate(product.tempId, 'pattern', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter custom pattern"
+              />
+            )}
+          </div>
         </div>
 
-        {/* ID Number */}
+        {/* Status */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Product ID
+            Status
           </label>
-          <input
-            type="text"
-            value={product.idNumber}
-            onChange={(e) => onUpdate(product.id, 'idNumber', e.target.value)}
+          <select
+            value={product.status}
+            onChange={(e) => onUpdate(product.tempId, 'status', e.target.value === 'true')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Auto-generated if empty"
-          />
+          >
+            <option value={true}>Available</option>
+            <option value={false}>Unavailable</option>
+          </select>
         </div>
       </div>
 
@@ -782,7 +1456,7 @@ const ProductFormRow = ({
         </label>
         <textarea
           value={product.description}
-          onChange={(e) => onUpdate(product.id, 'description', e.target.value)}
+          onChange={(e) => onUpdate(product.tempId, 'description', e.target.value)}
           rows={2}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           placeholder="Product description..."
@@ -814,7 +1488,7 @@ const ProductFormRow = ({
               />
               <button
                 onClick={() => {
-                  onUpdate(product.id, 'images', product.images.filter(img => img.id !== image.id));
+                  onUpdate(product.tempId, 'images', product.images.filter(img => img.id !== image.id));
                 }}
                 className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
               >
@@ -837,7 +1511,7 @@ const ProductFormRow = ({
             type="file"
             multiple
             accept="image/*"
-            onChange={(e) => onImageUpload(product.id, e.target.files)}
+            onChange={(e) => onImageUpload(product.tempId, e.target.files)}
             className="hidden"
           />
         </div>
@@ -846,7 +1520,7 @@ const ProductFormRow = ({
   );
 };
 
-// Bulk Image Upload Step
+// ✅ RESTORED: Bulk Image Upload Step
 const BulkImageUploadStep = ({ products, onBulkImageUpload, onSkip, onBack }) => {
   const fileInputRef = useRef(null);
   
@@ -919,68 +1593,120 @@ const BulkImageUploadStep = ({ products, onBulkImageUpload, onSkip, onBack }) =>
 };
 
 // Review Step
-const ReviewStep = ({ products, onUpload, onBack }) => (
-  <div className="max-w-6xl mx-auto">
-    <div className="bg-white rounded-lg p-8 shadow-sm border">
-      <h2 className="text-2xl font-semibold mb-6">Review Products</h2>
-      
-      <div className="mb-6">
-        <p className="text-gray-600">
-          Review your {products.length} products before uploading. You can go back to make changes if needed.
-        </p>
-      </div>
-      
-      {/* Products Summary */}
-      <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-        {products.map((product, index) => (
-          <div key={product.id} className="border rounded-lg p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h4 className="font-semibold">{product.name || `Product ${index + 1}`}</h4>
-                <p className="text-gray-600">
-                  ₦{product.pricePerYard} • {product.quantity} yards • {product.materialType}
-                </p>
-                {product.description && (
-                  <p className="text-sm text-gray-500 mt-1">{product.description}</p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {product.images.slice(0, 3).map(image => (
-                  <img 
-                    key={image.id}
-                    src={image.preview} 
-                    alt="Product" 
-                    className="w-12 h-12 object-cover rounded"
-                  />
-                ))}
-                {product.images.length > 3 && (
-                  <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs">
-                    +{product.images.length - 3}
-                  </div>
-                )}
+const ReviewStep = ({ products, onUpload, onBack }) => {
+  const productsWithoutImages = products.filter(p => !p.images || p.images.length === 0);
+  const totalImages = products.reduce((sum, p) => sum + (p.images?.length || 0), 0);
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="bg-white rounded-lg p-8 shadow-sm border">
+        <h2 className="text-2xl font-semibold mb-6">Review Products</h2>
+        
+        <div className="mb-6">
+          <p className="text-gray-600">
+            Review your {products.length} products before uploading. Total images: {totalImages}
+          </p>
+          
+          {/* ✅ Image Warning */}
+          {productsWithoutImages.length > 0 && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-medium text-yellow-800">Image Warning</h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {productsWithoutImages.length} product(s) have no images. Products without images may have lower visibility to customers.
+                  </p>
+                  <details className="mt-2">
+                    <summary className="text-sm font-medium text-yellow-800 cursor-pointer">
+                      View products without images ({productsWithoutImages.length})
+                    </summary>
+                    <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
+                      {productsWithoutImages.map(product => (
+                        <li key={product.tempId}>{product.name}</li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="flex justify-between">
-        <button
-          onClick={onBack}
-          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          Back to Edit
-        </button>
-        <button
-          onClick={onUpload}
-          className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
-        >
-          Upload {products.length} Products
-        </button>
+          )}
+        </div>
+        
+        {/* Products Summary */}
+        <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+          {products.map((product, index) => (
+            <div key={product.tempId} className="border rounded-lg p-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="font-semibold flex items-center">
+                    {product.name || `Product ${index + 1}`}
+                    {(!product.images || product.images.length === 0) && (
+                      <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        No images
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-gray-600">
+                    ₦{product.pricePerYard.toLocaleString()} • {product.quantity} yards • {product.materialType || 'No material specified'}
+                  </p>
+                  {product.description && (
+                    <p className="text-sm text-gray-500 mt-1">{product.description}</p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    Status: <span className="font-medium">{product.status ? 'Available' : 'Unavailable'}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {product.images && product.images.length > 0 ? (
+                    <>
+                      {product.images.slice(0, 3).map(image => (
+                        <img 
+                          key={image.id}
+                          src={image.preview} 
+                          alt="Product" 
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ))}
+                      {product.images.length > 3 && (
+                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs">
+                          +{product.images.length - 3}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex justify-between">
+          <button
+            onClick={onBack}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Back to Edit
+          </button>
+          <button
+            onClick={onUpload}
+            className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+          >
+            Upload {products.length} Products {totalImages > 0 && `(${totalImages} images)`}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Uploading Step
 const UploadingStep = ({ progress }) => (
@@ -1007,5 +1733,153 @@ const UploadingStep = ({ progress }) => (
     </div>
   </div>
 );
+
+// Image Verification Step Component
+const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
+  const totalExpected = matchingResults.reduce((sum, result) => sum + result.csvImages.length, 0);
+  const totalMatched = matchingResults.reduce((sum, result) => sum + result.matches.length, 0);
+  const totalMissing = matchingResults.reduce((sum, result) => sum + result.missingImages.length, 0);
+  
+  const hasExactMatches = matchingResults.some(result => 
+    result.matches.some(match => match.isExactMatch)
+  );
+  const hasPartialMatches = matchingResults.some(result => 
+    result.matches.some(match => !match.isExactMatch)
+  );
+  const hasMissingImages = totalMissing > 0;
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="bg-white rounded-lg p-8 shadow-sm border">
+        <h2 className="text-2xl font-semibold mb-6">Image Matching Verification</h2>
+        
+        {/* Summary */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="font-semibold mb-3">Matching Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <div className="text-2xl font-bold text-green-800">{totalMatched}</div>
+              <div className="text-sm text-green-700">Images Matched</div>
+            </div>
+            <div className="p-3 bg-red-100 rounded-lg">
+              <div className="text-2xl font-bold text-red-800">{totalMissing}</div>
+              <div className="text-sm text-red-700">Images Missing</div>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <div className="text-2xl font-bold text-blue-800">{totalExpected}</div>
+              <div className="text-sm text-blue-700">Total Expected</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Warning for missing images */}
+        {hasMissingImages && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h4 className="text-sm font-medium text-red-800">Missing Images Detected</h4>
+                <p className="text-sm text-red-700 mt-1">
+                  {totalMissing} image(s) specified in your CSV could not be found in the uploaded files.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Partial matches warning */}
+        {hasPartialMatches && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h4 className="text-sm font-medium text-yellow-800">Partial Matches Found</h4>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Some images were matched using filename variations (case changes, extensions, etc.).
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed matching results */}
+        <div className="space-y-6 mb-6 max-h-96 overflow-y-auto">
+          {matchingResults.map((result, index) => (
+            <div key={index} className="border rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center">
+                Product {result.productIndex}: {result.productName}
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  ({result.matches.length}/{result.csvImages.length} images matched)
+                </span>
+              </h4>
+              
+              {/* Matched images */}
+              {result.matches.length > 0 && (
+                <div className="mb-4">
+                  <h5 className="text-sm font-medium text-green-700 mb-2">✅ Matched Images:</h5>
+                  <div className="space-y-2">
+                    {result.matches.map((match, matchIndex) => (
+                      <div key={matchIndex} className="flex items-center justify-between p-2 bg-green-50 rounded text-sm">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-medium">{match.csvName}</span>
+                          {!match.isExactMatch && (
+                            <>
+                              <span className="text-gray-500">→</span>
+                              <span className="text-green-700">{match.actualFileName}</span>
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                                {match.matchType}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          {(match.fileSize / 1024 / 1024).toFixed(2)}MB
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Missing images */}
+              {result.missingImages.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-red-700 mb-2">❌ Missing Images:</h5>
+                  <div className="space-y-1">
+                    {result.missingImages.map((missingImage, missingIndex) => (
+                      <div key={missingIndex} className="p-2 bg-red-50 rounded text-sm text-red-700">
+                        {missingImage}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {/* Action buttons */}
+        <div className="flex justify-between">
+          <button
+            onClick={onBack}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Back to Images
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+          >
+            Continue to Review ({totalMatched} images will be uploaded)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default VendorHybridBulkUpload;

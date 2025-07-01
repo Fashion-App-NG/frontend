@@ -300,19 +300,23 @@ class VendorService {
     }
   }
 
-  // ✅ Multipart fallback method
+  // ✅ Enhanced multipart method with better error handling
   async createProductMultipart(productData) {
     try {
       const isArray = Array.isArray(productData);
       const productsArray = isArray ? productData : [productData];
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Creating ${productsArray.length} product(s) via multipart form-data fallback`);
+        console.log(`🔄 VendorService.createProductMultipart called with ${productsArray.length} product(s)`);
+        console.log('📊 Auth context:', {
+          hasAuthToken: !!this.getAuthToken(),
+          baseURL: this.baseURL
+        });
       }
 
       if (productsArray.length > 1) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Multipart fallback: Processing products individually');
+          console.warn('⚠️ Multipart fallback: Processing products individually to avoid payload issues');
         }
 
         const results = [];
@@ -322,7 +326,14 @@ class VendorService {
           try {
             const singleResult = await this.createProductMultipart(productsArray[i]);
             results.push(singleResult);
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ Product ${i + 1}/${productsArray.length} created successfully`);
+            }
           } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`❌ Product ${i + 1}/${productsArray.length} failed:`, error.message);
+            }
             errors.push({ index: i, error: error.message });
           }
         }
@@ -332,6 +343,7 @@ class VendorService {
         }
 
         return {
+          success: true,
           message: `Multipart fallback completed: ${results.length} successful, ${errors.length} failed`,
           count: results.length,
           createdCount: results.length,
@@ -342,72 +354,153 @@ class VendorService {
       }
 
       const product = productsArray[0];
-      const formData = new FormData();
-
-      // ✅ Add product fields (not indexed since it's single product)
-      formData.append('name', product.name);
-      formData.append('pricePerYard', product.pricePerYard.toString());
-      formData.append('quantity', product.quantity.toString());
-      formData.append('materialType', product.materialType);
-      formData.append('vendorId', product.vendorId);
-      formData.append('idNumber', product.idNumber || `PRD-${Date.now()}`);
-      formData.append('description', product.description || 'Product description');
-      formData.append('pattern', product.pattern || 'Solid');
-      formData.append('status', product.status === true || product.status === 'available' ? 'ACTIVE' : 'INACTIVE');
-
-      // ✅ Add image files
-      let imageCount = 0;
-      if (product.images && product.images.length > 0) {
-        product.images.forEach(imageItem => {
-          let file = null;
-
-          if (imageItem.file instanceof File) {
-            file = imageItem.file;
-          } else if (imageItem instanceof File) {
-            file = imageItem;
+      
+      // ✅ Enhanced validation for FormData
+      if (product instanceof FormData) {
+        // Product is already FormData from frontend
+        const formData = product;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📋 Received FormData from frontend');
+          let entryCount = 0;
+          let imageCount = 0;
+          
+          for (let [key, value] of formData.entries()) {
+            entryCount++;
+            if (key === 'images') imageCount++;
+            
+            if (value instanceof File) {
+              console.log(`  📎 ${key}: ${value.name} (${(value.size / 1024).toFixed(1)}KB)`);
+            } else {
+              console.log(`  📝 ${key}: ${value}`);
+            }
           }
+          
+          console.log(`📊 FormData summary: ${entryCount} entries, ${imageCount} images`);
+        }
 
-          if (file) {
-            formData.append('images', file);
-            imageCount++;
+        // ✅ Enhanced API call with better error handling
+        const response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.getAuthToken()}`
+            // Don't set Content-Type for FormData - let browser set it with boundary
+          },
+          body: formData
+        });
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📤 API Response status:', response.status, response.statusText);
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { message: errorText || `HTTP ${response.status}: ${response.statusText}` };
           }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ API Error Response:', errorData);
+          }
+          
+          throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product via multipart`);
+        }
+
+        const data = await response.json();
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Product creation successful:', {
+            success: data.success,
+            productId: data.product?.id || data.product?._id,
+            message: data.message
+          });
+        }
+
+        return {
+          success: true,
+          ...data
+        };
+        
+      } else {
+        // ✅ Handle object-based product data (legacy)
+        const formData = new FormData();
+
+        // Add product fields with proper validation
+        formData.append('name', product.name || '');
+        formData.append('pricePerYard', (product.pricePerYard || 0).toString());
+        formData.append('quantity', (product.quantity || 0).toString());
+        formData.append('materialType', product.materialType || '');
+        formData.append('vendorId', product.vendorId || '');
+        formData.append('idNumber', product.idNumber || `PRD-${Date.now()}`);
+        formData.append('description', product.description || 'Product description');
+        formData.append('pattern', product.pattern || 'Solid');
+        formData.append('status', product.status === true || product.status === 'available' ? 'ACTIVE' : 'INACTIVE');
+
+        // Add image files
+        let imageCount = 0;
+        if (product.images && product.images.length > 0) {
+          product.images.forEach(imageItem => {
+            let file = null;
+
+            if (imageItem.file instanceof File) {
+              file = imageItem.file;
+            } else if (imageItem instanceof File) {
+              file = imageItem;
+            }
+
+            if (file) {
+              formData.append('images', file);
+              imageCount++;
+            }
+          });
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📤 Sending legacy object-based multipart request:', {
+            endpoint: `${this.baseURL}/product`,
+            totalImages: imageCount,
+            formDataEntries: Array.from(formData.entries()).length
+          });
+        }
+
+        const response = await fetch(`${this.baseURL}/product`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.getAuthToken()}`
+          },
+          body: formData
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product via multipart`);
+        }
+
+        const data = await response.json();
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Legacy multipart product creation successful:', {
+            message: data.message,
+            product: data.product?.name || 'Unknown'
+          });
+        }
+
+        return {
+          success: true,
+          ...data
+        };
       }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 Sending multipart request:', {
-          endpoint: `${this.baseURL}/product`,
-          totalImages: imageCount,
-          formDataEntries: Array.from(formData.entries()).length
-        });
-      }
-
-      const response = await fetch(`${this.baseURL}/product`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product via multipart`);
-      }
-
-      const data = await response.json();
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Multipart product creation successful:', {
-          message: data.message,
-          product: data.product?.name || 'Unknown'
-        });
-      }
-
-      return data;
+      
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Multipart product creation failed:', error);
+        console.error('❌ VendorService.createProductMultipart failed:', {
+          error: error.message,
+          stack: error.stack
+        });
       }
       throw error;
     }

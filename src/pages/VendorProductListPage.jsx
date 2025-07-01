@@ -13,6 +13,13 @@ const VendorProductListPage = () => {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
+  // ✅ Add view mode state with LIST as default for vendors
+  const [viewMode, setViewMode] = useState(() => {
+    // Check URL params for view preference
+    const urlViewMode = searchParams.get('view');
+    return urlViewMode === 'grid' ? 'grid' : 'list'; // Default to 'list' for vendors
+  });
+
   // Initialize filters from URL params
   const [filters, setFilters] = useState(() => ({
     search: searchParams.get('search') || '',
@@ -20,9 +27,19 @@ const VendorProductListPage = () => {
     pattern: searchParams.get('pattern') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
-    sortBy: searchParams.get('sortBy') || 'name',
-    sortOrder: searchParams.get('sortOrder') || 'asc'
+    sortBy: searchParams.get('sortBy') || 'date', // ✅ Default to date sorting
+    sortOrder: searchParams.get('sortOrder') || 'desc' // ✅ Default to newest first
   }));
+
+  // ✅ Update URL when view mode changes
+  const handleViewModeChange = (newViewMode) => {
+    setViewMode(newViewMode);
+    
+    // Update URL params to preserve view mode preference
+    const params = new URLSearchParams(searchParams);
+    params.set('view', newViewMode);
+    setSearchParams(params);
+  };
 
   // ✅ ENHANCED: Load vendor products using correct endpoint with debug logging
   const loadVendorProducts = useCallback(async (currentFilters) => {
@@ -54,6 +71,17 @@ const VendorProductListPage = () => {
       
       if (process.env.NODE_ENV === 'development') {
         console.log('📦 Raw vendor products:', vendorProducts.length);
+      }
+
+      // ✅ SORT BY UPLOAD DATE DESCENDING (newest first)
+      vendorProducts.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.dateCreated || 0);
+        const dateB = new Date(b.createdAt || b.dateCreated || 0);
+        return dateB - dateA; // Descending order (newest first)
+      });
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📅 Products sorted by upload date (newest first)');
       }
 
       // ✅ Apply client-side filtering since the API endpoint may not support all filters
@@ -93,11 +121,12 @@ const VendorProductListPage = () => {
       }
       
       // ✅ Apply sorting
-      if (currentFilters.sortBy) {
+      if (currentFilters.sortBy && currentFilters.sortBy !== 'date') {
         vendorProducts.sort((a, b) => {
           let aVal = a[currentFilters.sortBy];
           let bVal = b[currentFilters.sortBy];
           
+          // Handle different data types
           if (currentFilters.sortBy === 'pricePerYard' || currentFilters.sortBy === 'price') {
             aVal = parseFloat(aVal || 0);
             bVal = parseFloat(bVal || 0);
@@ -118,12 +147,16 @@ const VendorProductListPage = () => {
       setTotalCount(vendorProducts.length);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Vendor products processed and loaded:', vendorProducts.length);
+        console.log('✅ Products loaded and filtered:', {
+          total: vendorProducts.length,
+          hasImages: vendorProducts.filter(p => p.images?.length > 0).length,
+          sortedBy: currentFilters.sortBy || 'upload date (newest first)'
+        });
       }
       
-    } catch (err) {
-      console.error('❌ Failed to load vendor products:', err);
-      setError(err.message || 'Failed to load your products. Please try again.');
+    } catch (error) {
+      console.error('❌ Error loading vendor products:', error);
+      setError(error.message || 'Failed to load products');
       setProducts([]);
       setTotalCount(0);
     } finally {
@@ -209,13 +242,44 @@ const VendorProductListPage = () => {
                 ) : error ? (
                   'Error loading products'
                 ) : totalCount > 0 ? (
-                  <>Showing {totalCount} of your product{totalCount !== 1 ? 's' : ''}</>
+                  <>Showing {totalCount} of your product{totalCount !== 1 ? 's' : ''} (sorted by upload date)</>
                 ) : (
                   'No products found'
                 )}
               </p>
             </div>
+            
             <div className="flex gap-3">
+              {/* ✅ View Mode Toggle */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'list' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  List
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  Grid
+                </button>
+              </div>
+
               <Link 
                 to="/vendor/upload" 
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
@@ -246,13 +310,24 @@ const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Loading State */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
+            : "space-y-4 mt-6"
+          }>
             {[...Array(8)].map((_, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 animate-pulse">
-                <div className="aspect-[4/3] bg-gray-200 rounded-t-lg"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              <div key={index} className={viewMode === 'grid' 
+                ? "bg-white rounded-lg shadow-sm border animate-pulse"
+                : "bg-white rounded-lg shadow-sm border p-4 animate-pulse"
+              }>
+                <div className={viewMode === 'grid' 
+                  ? "h-48 bg-gray-200 rounded-lg mb-4"
+                  : "flex items-center space-x-4"
+                }>
+                  {viewMode === 'list' && <div className="w-16 h-16 bg-gray-200 rounded"></div>}
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -280,14 +355,21 @@ const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Your beautiful Products Grid */}
         {!loading && !error && products.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
+            : "space-y-4 mt-6"
+          }>
             {products.map((product) => (
-              <ProductCard
-                key={product.id || product._id}
-                product={product}
-                showVendorInfo={false}
-                className="relative group"
-              />
+              viewMode === 'grid' ? (
+                <ProductCard
+                  key={product.id || product._id}
+                  product={product}
+                  showVendorInfo={false}
+                  className="relative group"
+                />
+              ) : (
+                <ProductListItem key={product.id} product={product} />
+              )
             ))}
           </div>
         )}
@@ -296,7 +378,7 @@ const VendorProductListPage = () => {
         {!loading && !error && products.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
@@ -356,5 +438,60 @@ const VendorProductListPage = () => {
     </div>
   );
 };
+
+// ✅ NEW: Product List Item Component for list view
+const ProductListItem = ({ product }) => (
+  <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+    <div className="flex items-center space-x-4">
+      {/* Product Image */}
+      <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
+        {product.images && product.images.length > 0 ? (
+          <img 
+            src={product.images[0]} 
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Product Details */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-lg font-semibold text-gray-900 truncate">{product.name}</h3>
+        <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+          <span>₦{product.pricePerYard?.toLocaleString() || product.price?.toLocaleString()}</span>
+          <span>•</span>
+          <span>{product.quantity} yards</span>
+          {product.materialType && (
+            <>
+              <span>•</span>
+              <span>{product.materialType}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Status & Actions */}
+      <div className="flex items-center space-x-3">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          product.status === 'ACTIVE' || product.status === true || product.status === 'available'
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-red-100 text-red-800'
+        }`}>
+          {product.status === 'ACTIVE' || product.status === true || product.status === 'available' ? 'Active' : 'Inactive'}
+        </span>
+        
+        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 export default VendorProductListPage;
