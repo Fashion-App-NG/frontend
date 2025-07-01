@@ -106,7 +106,7 @@ const getProductImage = (product) => {
   return null;
 };
 
-const VendorProductListPage = () => {
+export const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
@@ -132,17 +132,7 @@ const VendorProductListPage = () => {
     sortOrder: searchParams.get('sortOrder') || 'desc' // ✅ Default to newest first
   }));
 
-  // ✅ Update URL when view mode changes
-  const handleViewModeChange = (newViewMode) => {
-    setViewMode(newViewMode);
-    
-    // Update URL params to preserve view mode preference
-    const params = new URLSearchParams(searchParams);
-    params.set('view', newViewMode);
-    setSearchParams(params);
-  };
-
-  // ✅ ENHANCED: Load vendor products using correct endpoint with debug logging
+  // ENHANCED: Load vendor products using correct endpoint with debug logging
   const loadVendorProducts = useCallback(async (currentFilters) => {
     if (!user?.id) {
       if (process.env.NODE_ENV === 'development') {
@@ -373,8 +363,7 @@ const VendorProductListPage = () => {
 
   // ✅ FIXED: Return content only (no sidebar - let VendorLayout handle it)
   return (
-    <div className="p-6 max-w-7xl mx-auto"> {/* ✅ REMOVED: min-h-screen bg-[#d8dfe9] flex wrapper */}
-      
+    <div className="min-h-screen bg-[#d8dfe9]">
       {/* ✅ REMOVED: ml-[254px] since VendorLayout handles spacing */}
       <div className="w-full"> {/* ✅ CHANGED: from flex-1 ml-[254px] to w-full */}
         {/* Header */}
@@ -420,7 +409,7 @@ const VendorProductListPage = () => {
                   }`}
                 >
                   <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   Grid
                 </button>
@@ -673,4 +662,5 @@ const ProductListItem = ({ product }) => {
   );
 };
 
+// ✅ ADD: Default export to match App.jsx import
 export default VendorProductListPage;

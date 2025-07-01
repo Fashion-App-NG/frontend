@@ -1428,9 +1428,6 @@ const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
   const totalMatched = matchingResults.reduce((sum, result) => sum + result.matches.length, 0);
   const totalMissing = matchingResults.reduce((sum, result) => sum + result.missingImages.length, 0);
   
-  const hasExactMatches = matchingResults.some(result => 
-    result.matches.some(match => match.isExactMatch)
-  );
   const hasPartialMatches = matchingResults.some(result => 
     result.matches.some(match => !match.isExactMatch)
   );
