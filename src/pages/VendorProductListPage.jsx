@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
-import ProductCard from '../components/Product/ProductCard';
 import ProductFilters from '../components/Product/ProductFilters';
+import ProductGrid from '../components/Product/ProductGrid';
+import ProductViewToggle from '../components/Product/ProductViewToggle';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
 
@@ -12,8 +13,8 @@ const VendorProductListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [view, setView] = useState('list');
 
-  // Initialize filters from URL params
   const [filters, setFilters] = useState(() => ({
     search: searchParams.get('search') || '',
     materialType: searchParams.get('materialType') || '',
@@ -24,12 +25,15 @@ const VendorProductListPage = () => {
     sortOrder: searchParams.get('sortOrder') || 'asc'
   }));
 
-  // ✅ ENHANCED: Load vendor products using correct endpoint with debug logging
+  useEffect(() => {
+    const savedView = localStorage.getItem('vendorProductView');
+    if (savedView && ['grid', 'list'].includes(savedView)) {
+      setView(savedView);
+    }
+  }, []);
+
   const loadVendorProducts = useCallback(async (currentFilters) => {
     if (!user?.id) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ No user ID available for loading vendor products');
-      }
       setError('Vendor ID not found. Please log in again.');
       setLoading(false);
       return;
@@ -39,11 +43,6 @@ const VendorProductListPage = () => {
     setError(null);
 
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Loading vendor products for vendor ID:', user.id);
-      }
-      
-      // ✅ Use the vendor-specific endpoint from productService
       const response = await productService.getVendorProducts(user.id);
       
       if (response.error) {
@@ -52,11 +51,6 @@ const VendorProductListPage = () => {
 
       let vendorProducts = response.products || [];
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📦 Raw vendor products:', vendorProducts.length);
-      }
-
-      // ✅ Apply client-side filtering since the API endpoint may not support all filters
       if (currentFilters.search && currentFilters.search.trim()) {
         const searchTerm = currentFilters.search.toLowerCase();
         vendorProducts = vendorProducts.filter(product => 
@@ -92,7 +86,6 @@ const VendorProductListPage = () => {
         );
       }
       
-      // ✅ Apply sorting
       if (currentFilters.sortBy) {
         vendorProducts.sort((a, b) => {
           let aVal = a[currentFilters.sortBy];
@@ -117,12 +110,8 @@ const VendorProductListPage = () => {
       setProducts(vendorProducts);
       setTotalCount(vendorProducts.length);
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Vendor products processed and loaded:', vendorProducts.length);
-      }
-      
     } catch (err) {
-      console.error('❌ Failed to load vendor products:', err);
+      console.error('Failed to load vendor products:', err);
       setError(err.message || 'Failed to load your products. Please try again.');
       setProducts([]);
       setTotalCount(0);
@@ -132,9 +121,6 @@ const VendorProductListPage = () => {
   }, [user?.id]);
 
   const handleFiltersChange = useCallback((newFilters) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Filters changed:', newFilters);
-    }
     setFilters(newFilters);
     
     const params = new URLSearchParams();
@@ -148,18 +134,24 @@ const VendorProductListPage = () => {
     loadVendorProducts(newFilters);
   }, [setSearchParams, loadVendorProducts]);
 
+  const handleViewChange = useCallback((newView) => {
+    setView(newView);
+    localStorage.setItem('vendorProductView', newView);
+  }, []);
+
+  // ✅ Fix: Load products only when user changes, pass current filters directly
   useEffect(() => {
     if (user?.id) {
       loadVendorProducts(filters);
     }
-  }, [user?.id, loadVendorProducts, filters]);
+    // ✅ ESLint disable comment to acknowledge the intentional omission
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, loadVendorProducts]);
 
-  // Redirect unauthenticated users
   if (!isAuthenticated) {
     return <Navigate to="/login/vendor" replace />;
   }
 
-  // Role-based access control
   if (user && user.role !== 'vendor') {
     if (user.role === 'shopper') {
       return <Navigate to="/shopper/dashboard" replace />;
@@ -169,7 +161,6 @@ const VendorProductListPage = () => {
     }
   }
 
-  // Handle authentication issues
   if (!user?.id) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -192,13 +183,9 @@ const VendorProductListPage = () => {
     );
   }
 
-  // ✅ FIXED: Return content only (no sidebar - let VendorLayout handle it)
   return (
-    <div className="p-6 max-w-7xl mx-auto"> {/* ✅ REMOVED: min-h-screen bg-[#d8dfe9] flex wrapper */}
-      
-      {/* ✅ REMOVED: ml-[254px] since VendorLayout handles spacing */}
-      <div className="w-full"> {/* ✅ CHANGED: from flex-1 ml-[254px] to w-full */}
-        {/* Header */}
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="w-full">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -215,52 +202,45 @@ const VendorProductListPage = () => {
                 )}
               </p>
             </div>
-            <div className="flex gap-3">
-              <Link 
-                to="/vendor/upload" 
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Product
-              </Link>
-              <Link 
-                to="/vendor/bulk-upload" 
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                Bulk Upload
-              </Link>
+            
+            <div className="flex items-center gap-4">
+              <ProductViewToggle 
+                currentView={view}
+                onViewChange={handleViewChange}
+                defaultView="list"
+                disabled={loading}
+              />
+              
+              <div className="flex gap-3">
+                <Link 
+                  to="/vendor/upload" 
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Product
+                </Link>
+                <Link 
+                  to="/vendor/bulk-upload" 
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Bulk Upload
+                </Link>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ PRESERVED: Your amazing filters functionality */}
         <ProductFilters 
           onFiltersChange={handleFiltersChange}
           loading={loading}
         />
 
-        {/* ✅ PRESERVED: Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-            {[...Array(8)].map((_, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 animate-pulse">
-                <div className="aspect-[4/3] bg-gray-200 rounded-t-lg"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ✅ PRESERVED: Error State */}
-        {error && !loading && (
+        {!loading && error && (
           <div className="text-center py-12">
             <div className="text-red-400 mb-4">
               <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,21 +258,21 @@ const VendorProductListPage = () => {
           </div>
         )}
 
-        {/* ✅ PRESERVED: Your beautiful Products Grid */}
-        {!loading && !error && products.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id || product._id}
-                product={product}
-                showVendorInfo={false}
-                className="relative group"
-              />
-            ))}
-          </div>
+        {!loading && !error && (
+          <ProductGrid 
+            products={products}
+            loading={loading}
+            error={error}
+            showVendorInfo={false}
+            view={view}
+            emptyMessage={
+              filters.search || filters.materialType || filters.pattern ? 
+                'No products match your filters. Try adjusting your search criteria.' : 
+                'Start building your catalog by adding your first product!'
+            }
+          />
         )}
 
-        {/* ✅ PRESERVED: Empty State with your smart filter/no-filter logic */}
         {!loading && !error && products.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
