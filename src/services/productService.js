@@ -126,11 +126,13 @@ class ProductService {
   // ✅ Enhanced getVendorProducts with response logging
   async getVendorProducts(vendorId) {
     try {
-      console.log('🔄 ProductService getVendorProducts starting:', {
-        vendorId,
-        url: `${this.baseURL}/product/vendor/${vendorId}`,
-        timestamp: new Date().toISOString()
-      });
+      // ✅ FIX: Wrap in development guard
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 ProductService getVendorProducts starting:', {
+          vendorId,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       const headers = this.getAuthHeaders();
       
