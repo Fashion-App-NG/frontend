@@ -300,117 +300,109 @@ class VendorService {
     }
   }
 
-  // ✅ Multipart fallback method
+  // ✅ Enhanced multipart method with better error handling
   async createProductMultipart(productData) {
     try {
       const isArray = Array.isArray(productData);
       const productsArray = isArray ? productData : [productData];
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Creating ${productsArray.length} product(s) via multipart form-data fallback`);
+        console.log(`🔄 VendorService.createProductMultipart called with ${productsArray.length} product(s)`);
+        console.log('📊 Auth context:', {
+          hasAuthToken: !!this.getAuthToken(),
+          baseURL: this.baseURL
+        });
       }
 
       if (productsArray.length > 1) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Multipart fallback: Processing products individually');
+          console.warn('⚠️ Multipart fallback: Processing products individually to avoid payload issues');
         }
 
         const results = [];
-        const errors = [];
+        const errors = []; // ✅ ADD: Initialize errors array here
 
         for (let i = 0; i < productsArray.length; i++) {
           try {
-            const singleResult = await this.createProductMultipart(productsArray[i]);
+            const singleResult = await this.processSingleProduct(productsArray[i]); // ✅ Non-recursive call
             results.push(singleResult);
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ Product ${i + 1}/${productsArray.length} created successfully`);
+            }
           } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error(`❌ Product ${i + 1}/${productsArray.length} failed:`, error.message);
+            }
             errors.push({ index: i, error: error.message });
           }
         }
 
+        // ✅ ADD: Check if all products failed before returning success
         if (results.length === 0) {
           throw new Error(`All ${productsArray.length} products failed in multipart fallback`);
         }
 
         return {
+          success: true,
           message: `Multipart fallback completed: ${results.length} successful, ${errors.length} failed`,
           count: results.length,
           createdCount: results.length,
           errorCount: errors.length,
           products: results.map(r => r.product).filter(Boolean),
-          errors: errors
+          errors: errors // ✅ Include errors array
         };
       }
 
-      const product = productsArray[0];
-      const formData = new FormData();
-
-      // ✅ Add product fields (not indexed since it's single product)
-      formData.append('name', product.name);
-      formData.append('pricePerYard', product.pricePerYard.toString());
-      formData.append('quantity', product.quantity.toString());
-      formData.append('materialType', product.materialType);
-      formData.append('vendorId', product.vendorId);
-      formData.append('idNumber', product.idNumber || `PRD-${Date.now()}`);
-      formData.append('description', product.description || 'Product description');
-      formData.append('pattern', product.pattern || 'Solid');
-      formData.append('status', product.status === true || product.status === 'available' ? 'ACTIVE' : 'INACTIVE');
-
-      // ✅ Add image files
-      let imageCount = 0;
-      if (product.images && product.images.length > 0) {
-        product.images.forEach(imageItem => {
-          let file = null;
-
-          if (imageItem.file instanceof File) {
-            file = imageItem.file;
-          } else if (imageItem instanceof File) {
-            file = imageItem;
-          }
-
-          if (file) {
-            formData.append('images', file);
-            imageCount++;
-          }
-        });
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 Sending multipart request:', {
-          endpoint: `${this.baseURL}/product`,
-          totalImages: imageCount,
-          formDataEntries: Array.from(formData.entries()).length
-        });
-      }
-
-      const response = await fetch(`${this.baseURL}/product`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product via multipart`);
-      }
-
-      const data = await response.json();
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Multipart product creation successful:', {
-          message: data.message,
-          product: data.product?.name || 'Unknown'
-        });
-      }
-
-      return data;
+      // Single product case - use helper method
+      return await this.processSingleProduct(productData);
+      
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Multipart product creation failed:', error);
-      }
       throw error;
     }
+  }
+
+  // ✅ ADD: Non-recursive helper method
+  async processSingleProduct(productData) {
+    const formData = new FormData();
+    
+    // Add product fields with fallbacks
+    formData.append('name', productData.name);
+    formData.append('pricePerYard', productData.pricePerYard.toString());
+    formData.append('quantity', productData.quantity.toString());
+    formData.append('materialType', productData.materialType);
+    formData.append('vendorId', productData.vendorId);
+    formData.append('idNumber', productData.idNumber || `PRD-${Date.now()}`);
+    formData.append('description', productData.description);
+    formData.append('pattern', productData.pattern);
+    formData.append('status', productData.status);
+
+    // ✅ FIX: Handle both image formats
+    if (productData.images && productData.images.length > 0) {
+      productData.images.forEach((imageItem, index) => {
+        // Handle File objects wrapped in objects (e.g., {file: File, name: 'image.jpg'})
+        if (imageItem.file instanceof File) {
+          formData.append('images', imageItem.file);
+        }
+        // ✅ RESTORE: Handle bare File objects in array
+        else if (imageItem instanceof File) {
+          formData.append('images', imageItem);
+        }
+      });
+    }
+
+    const response = await fetch(`${this.baseURL}/product`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || `HTTP ${response.status}: Failed to create product`);
+    }
+
+    return await response.json();
   }
 
   // ✅ Wrapper methods
