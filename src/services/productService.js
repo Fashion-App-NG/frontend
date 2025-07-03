@@ -98,14 +98,29 @@ class ProductService {
 
       const data = await response.json();
       
+      // ✅ DEBUG: Log vendor data structure
+      if (data.products && data.products.length > 0) {
+        console.log('🔍 Sample product vendor data:', {
+          firstProduct: data.products[0],
+          vendorField: data.products[0].vendor,
+          vendorIdField: data.products[0].vendorId,
+          createdByField: data.products[0].createdBy
+        });
+      }
+      
       // ✅ FIXED: Normalize product status and ensure proper IDs
       if (data.products && Array.isArray(data.products)) {
         data.products = data.products.map((product, index) => ({
           ...product,
           id: product.id || product._id || product.productId || `product-${index}`,
           display: product.display !== false,
-          // ✅ Add normalized status
-          status: this.normalizeProductStatus(product)
+          status: this.normalizeProductStatus(product),
+          // ✅ ENHANCED: Normalize vendor data
+          vendor: product.vendor || {
+            id: product.vendorId,
+            name: product.vendorName || product.createdBy?.name,
+            storeName: product.vendorStoreName || product.createdBy?.storeName
+          }
         })).filter(product => product.display !== false);
       }
 

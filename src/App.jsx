@@ -58,7 +58,7 @@ import ShopperProfile from './pages/ShopperProfile';
 import ShopperSettings from './pages/ShopperSettings';
 
 // Import the shopper browse page
-import ShopperBrowsePage from './pages/ShopperBrowsePage';
+import ShopperProductListPage from './pages/ShopperProductListPage';
 
 function App() {
   return (
@@ -97,7 +97,7 @@ function App() {
               <Route path="/shopper/*" element={<ShopperLayout />}>
                 <Route index element={<ShopperDashboardPage />} />
                 <Route path="dashboard" element={<ShopperDashboardPage />} />
-                <Route path="browse" element={<ShopperBrowsePage />} />
+                <Route path="browse" element={<ShopperProductListPage />} />
                 {/* ✅ FIXED: Shopper product detail route - same adaptive component */}
                 <Route path="product/:id" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
