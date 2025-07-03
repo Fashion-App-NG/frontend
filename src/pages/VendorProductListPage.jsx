@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import ProductCard from '../components/Product/ProductCard';
 import ProductFilters from '../components/Product/ProductFilters';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
@@ -45,8 +46,6 @@ const getProductImage = (product) => {
     });
   }
 
-  // ✅ COPY the exact logic from ProductCard.jsx getImageSrc()
-  
   // Handle base64 encoded images (from localStorage)
   if (product.image && product.image.startsWith('data:image/')) {
     return product.image;
@@ -109,11 +108,11 @@ const VIEW_MODES = {
   GRID: 'grid'
 };
 
-// ✅ ADD: Sort options constants (already suggested but ensure it's added)
+// ✅ ADD: Sort options constants
 const SORT_OPTIONS = {
   DATE: 'date',
   NAME: 'name',
-  PRICE: 'pricePerYard',  // ✅ Change from 'price' to 'pricePerYard'
+  PRICE: 'pricePerYard',  // ✅ Use actual field name
   QUANTITY: 'quantity'
 };
 
@@ -130,11 +129,11 @@ export const VendorProductListPage = () => {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ✅ Add view mode state with LIST as default for vendors
+  // ✅ FIX: Use viewMode consistently throughout
   const [viewMode, setViewMode] = useState(() => {
     // Check URL params for view preference
     const urlViewMode = searchParams.get('view');
-    return urlViewMode === 'grid' ? 'grid' : 'list'; // Default to 'list' for vendors
+    return urlViewMode === 'grid' ? VIEW_MODES.GRID : VIEW_MODES.LIST;
   });
 
   const [filters, setFilters] = useState(() => ({
@@ -143,8 +142,8 @@ export const VendorProductListPage = () => {
     pattern: searchParams.get('pattern') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
-    sortBy: searchParams.get('sortBy') || SORT_OPTIONS.DATE, // ✅ Use constant
-    sortOrder: searchParams.get('sortOrder') || SORT_ORDER.DESC // ✅ Use constant
+    sortBy: searchParams.get('sortBy') || SORT_OPTIONS.DATE,
+    sortOrder: searchParams.get('sortOrder') || SORT_ORDER.DESC
   }));
 
   // ENHANCED: Load vendor products using correct endpoint with debug logging
@@ -278,15 +277,18 @@ export const VendorProductListPage = () => {
           if (currentFilters.sortBy === 'pricePerYard' || currentFilters.sortBy === 'price') {
             aVal = parseFloat(aVal || 0);
             bVal = parseFloat(bVal || 0);
-          } else if (typeof aVal === 'string') {
-            aVal = aVal.toLowerCase();
-            bVal = bVal?.toLowerCase() || '';
+          } else if (currentFilters.sortBy === 'quantity') {
+            aVal = parseInt(aVal || 0);
+            bVal = parseInt(bVal || 0);
+          } else {
+            aVal = (aVal || '').toString().toLowerCase();
+            bVal = (bVal || '').toString().toLowerCase();
           }
           
           if (currentFilters.sortOrder === 'desc') {
-            return bVal > aVal ? 1 : -1;
+            return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
           } else {
-            return aVal > bVal ? 1 : -1;
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
           }
         });
       }
@@ -318,18 +320,34 @@ export const VendorProductListPage = () => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value && value.toString().trim()) {
-        params.set(key, value);
+        params.append(key, value);
       }
     });
+    
+    // ✅ ADD: Include view mode in URL params
+    if (viewMode !== VIEW_MODES.LIST) {
+      params.append('view', viewMode);
+    }
+    
     setSearchParams(params);
     
     loadVendorProducts(newFilters);
-  }, [setSearchParams, loadVendorProducts]);
+  }, [setSearchParams, loadVendorProducts, viewMode]);
 
-  const handleViewChange = useCallback((newView) => {
-    setView(newView);
-    localStorage.setItem('vendorProductView', newView);
-  }, []);
+  // ✅ FIX: Remove unused handleViewChange function and use setViewMode directly
+  const handleViewModeChange = useCallback((newViewMode) => {
+    setViewMode(newViewMode);
+    localStorage.setItem('vendorProductView', newViewMode);
+    
+    // ✅ Update URL params to include view mode
+    const params = new URLSearchParams(searchParams);
+    if (newViewMode !== VIEW_MODES.LIST) {
+      params.set('view', newViewMode);
+    } else {
+      params.delete('view');
+    }
+    setSearchParams(params);
+  }, [searchParams, setSearchParams]);
 
   // ✅ Fix: Load products only when user changes, pass current filters directly
   useEffect(() => {
@@ -401,9 +419,9 @@ export const VendorProductListPage = () => {
               {/* ✅ View Mode Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode(VIEW_MODES.LIST)} // ✅ Use constant
+                  onClick={() => handleViewModeChange(VIEW_MODES.LIST)} // ✅ Use new handler
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === VIEW_MODES.LIST // ✅ Use constant
+                    viewMode === VIEW_MODES.LIST
                       ? 'bg-white text-gray-900 shadow-sm' 
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
@@ -411,9 +429,9 @@ export const VendorProductListPage = () => {
                   List
                 </button>
                 <button
-                  onClick={() => setViewMode(VIEW_MODES.GRID)} // ✅ Use constant
+                  onClick={() => handleViewModeChange(VIEW_MODES.GRID)} // ✅ Use new handler
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === VIEW_MODES.GRID // ✅ Use constant
+                    viewMode === VIEW_MODES.GRID
                       ? 'bg-white text-gray-900 shadow-sm' 
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
@@ -451,20 +469,20 @@ export const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Loading State */}
         {loading && (
-          <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
+          <div className={viewMode === VIEW_MODES.GRID
             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
             : "space-y-4 mt-6"
           }>
             {[...Array(8)].map((_, index) => (
-              <div key={index} className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
+              <div key={index} className={viewMode === VIEW_MODES.GRID
                 ? "bg-white rounded-lg shadow-sm border animate-pulse"
                 : "bg-white rounded-lg shadow-sm border p-4 animate-pulse"
               }>
-                <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
+                <div className={viewMode === VIEW_MODES.GRID
                   ? "h-48 bg-gray-200 rounded-lg mb-4"
                   : "flex items-center space-x-4"
                 }>
-                  {viewMode === 'list' && <div className="w-16 h-16 bg-gray-200 rounded"></div>}
+                  {viewMode === VIEW_MODES.LIST && <div className="w-16 h-16 bg-gray-200 rounded"></div>}
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                     <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -496,12 +514,12 @@ export const VendorProductListPage = () => {
 
         {/* ✅ PRESERVED: Your beautiful Products Grid */}
         {!loading && !error && products.length > 0 && (
-          <div className={viewMode === VIEW_MODES.GRID  // ✅ Use constant instead of 'grid'
+          <div className={viewMode === VIEW_MODES.GRID
             ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
             : "space-y-4 mt-6"
           }>
             {products.map((product) => (
-              viewMode === 'grid' ? (
+              viewMode === VIEW_MODES.GRID ? (
                 <ProductCard
                   key={product.id || product._id}
                   product={product}
@@ -509,7 +527,7 @@ export const VendorProductListPage = () => {
                   className="relative group"
                 />
               ) : (
-                <ProductListItem key={product.id} product={product} />
+                <ProductListItem key={product.id || product._id} product={product} />
               )
             ))}
           </div>
@@ -545,8 +563,8 @@ export const VendorProductListPage = () => {
                       pattern: '',
                       minPrice: '',
                       maxPrice: '',
-                      sortBy: 'name',
-                      sortOrder: 'asc'
+                      sortBy: SORT_OPTIONS.DATE,
+                      sortOrder: SORT_ORDER.DESC
                     };
                     setFilters(defaultFilters);
                     setSearchParams({});
@@ -668,5 +686,6 @@ const ProductListItem = ({ product }) => {
   );
 };
 
-// ✅ ADD: Default export to match App.jsx import
+// ✅ ADD: Export both named and default exports
+export { getProductImage, getProductStatus };
 export default VendorProductListPage;
