@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/Product/ProductCard';
+import ProductViewToggle from '../components/Product/ProductViewToggle';
+import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
+import { RestockModal } from '../components/Vendor/RestockModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorProducts } from '../hooks/useVendorProducts';
 import productService from '../services/productService';
 
 // ✅ Enhanced helper function to determine product status
 const getProductStatus = (product) => {
-  // ✅ PRIORITY 1: Check explicit inactive statuses first
   if (
     product.status === 'INACTIVE' ||
     product.status === 'inactive' ||
@@ -18,7 +20,6 @@ const getProductStatus = (product) => {
     return false;
   }
   
-  // ✅ PRIORITY 2: Check explicit active statuses
   if (
     product.status === 'ACTIVE' ||
     product.status === 'active' ||
@@ -31,18 +32,15 @@ const getProductStatus = (product) => {
     return true;
   }
   
-  // ✅ PRIORITY 3: Fall back to display field only if status is undefined/null
   return product.display === true || product.display === 'true';
 };
 
 // ✅ Enhanced helper function to get product image
 const getProductImage = (product) => {
-  // Handle base64 encoded images (from localStorage)
   if (product.image && product.image.startsWith('data:image/')) {
     return product.image;
   }
   
-  // Handle API image URLs
   if (product.image && typeof product.image === 'string') {
     if (product.image.startsWith('http')) {
       return product.image;
@@ -53,12 +51,10 @@ const getProductImage = (product) => {
     return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
   }
   
-  // Handle image object format from API
   if (product.image && typeof product.image === 'object' && product.image.url) {
     return product.image.url;
   }
   
-  // Handle images array
   if (product.images && product.images.length > 0) {
     const firstImage = product.images[0];
     if (typeof firstImage === 'string') {
@@ -79,36 +75,34 @@ const getProductImage = (product) => {
   return null;
 };
 
-// ✅ ADD: View mode constants
-const VIEW_MODES = {
-  LIST: 'list',
-  GRID: 'grid'
-};
-
-// ✅ ADD: Filter constants matching design
+// ✅ Filter constants
 const FILTER_TABS = {
   ALL: 'all',
   AVAILABLE: 'available', 
   DISABLED: 'disabled'
 };
 
+// Add VIEW_MODES back
+const VIEW_MODES = {
+  LIST: 'list',
+  GRID: 'grid'
+};
+
 export const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // ✅ Add missing state variables
+  // ✅ State variables
   const [products, setProducts] = useState([]);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [totalCount, setTotalCount] = useState(0);
   
-  // ✅ ADD: Filter tab state
+  // ✅ Filter tab state
   const [activeFilterTab, setActiveFilterTab] = useState(FILTER_TABS.ALL);
   
-  const [viewMode, setViewMode] = useState(() => {
-    const urlViewMode = searchParams.get('view');
-    return urlViewMode === 'grid' ? VIEW_MODES.GRID : VIEW_MODES.LIST;
-  });
+  // ✅ Action menu states
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showRestockModal, setShowRestockModal] = useState(false);
   
   const [filters, setFilters] = useState(() => ({
     search: searchParams.get('search') || '',
@@ -122,12 +116,13 @@ export const VendorProductListPage = () => {
   
   const { 
     loadProducts,
-    createProduct
+    updateProduct
+    // ✅ Removed unused: createProduct, deleteProduct
   } = useVendorProducts();
   
   const navigate = useNavigate();
 
-  // Enhanced: Load vendor products with filtering
+  // ✅ Load vendor products with filtering
   const loadVendorProducts = useCallback(async (currentFilters) => {
     if (!user?.id) {
       setError('Vendor ID not found. Please log in again.');
@@ -156,6 +151,28 @@ export const VendorProductListPage = () => {
           product.materialType?.toLowerCase().includes(searchTerm)
         );
       }
+
+      // ✅ Material type filter
+      if (currentFilters.materialType) {
+        vendorProducts = vendorProducts.filter(product => 
+          product.materialType?.toLowerCase() === currentFilters.materialType.toLowerCase()
+        );
+      }
+
+      // ✅ Price range filter
+      if (currentFilters.minPrice) {
+        const minPrice = parseFloat(currentFilters.minPrice);
+        vendorProducts = vendorProducts.filter(product => 
+          (product.pricePerYard || product.price || 0) >= minPrice
+        );
+      }
+
+      if (currentFilters.maxPrice) {
+        const maxPrice = parseFloat(currentFilters.maxPrice);
+        vendorProducts = vendorProducts.filter(product => 
+          (product.pricePerYard || product.price || 0) <= maxPrice
+        );
+      }
       
       // ✅ Filter by status based on active tab
       if (activeFilterTab === FILTER_TABS.AVAILABLE) {
@@ -164,27 +181,49 @@ export const VendorProductListPage = () => {
         vendorProducts = vendorProducts.filter(product => !getProductStatus(product));
       }
       
-      // Sort by upload date descending (newest first)
+      // ✅ Apply sorting
       vendorProducts.sort((a, b) => {
-        const dateA = new Date(a.createdAt || a.dateCreated || 0);
-        const dateB = new Date(b.createdAt || b.dateCreated || 0);
-        return dateB - dateA;
+        let aValue, bValue;
+        
+        switch (currentFilters.sortBy) {
+          case 'name':
+            aValue = a.name || '';
+            bValue = b.name || '';
+            break;
+          case 'price':
+            aValue = a.pricePerYard || a.price || 0;
+            bValue = b.pricePerYard || b.price || 0;
+            break;
+          case 'quantity':
+            aValue = a.quantity || 0;
+            bValue = b.quantity || 0;
+            break;
+          case 'date':
+          default:
+            aValue = new Date(a.createdAt || a.dateCreated || 0);
+            bValue = new Date(b.createdAt || b.dateCreated || 0);
+            break;
+        }
+        
+        if (currentFilters.sortOrder === 'desc') {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        } else {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        }
       });
       
       setProducts(vendorProducts);
-      setTotalCount(vendorProducts.length);
       
     } catch (error) {
       console.error('❌ Error loading vendor products:', error);
       setError(error.message || 'Failed to load products');
       setProducts([]);
-      setTotalCount(0);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, activeFilterTab]);
+  }, [user?.id, activeFilterTab]); // ✅ Fixed dependencies
 
-  // ✅ ADD: Filter tab counts
+  // ✅ Filter tab counts
   const getFilterCounts = () => {
     const all = products.length;
     const available = products.filter(p => getProductStatus(p)).length;
@@ -192,6 +231,20 @@ export const VendorProductListPage = () => {
     
     return { all, available, disabled };
   };
+
+  // ✅ Hide product handler
+  const handleHideProduct = useCallback(async (product) => {
+    if (!window.confirm(`Are you sure you want to hide "${product.name}"?`)) {
+      return;
+    }
+
+    try {
+      await updateProduct(product.id, { display: false, status: 'INACTIVE' });
+      await loadVendorProducts(filters);
+    } catch (error) {
+      console.error('Failed to hide product:', error);
+    }
+  }, [updateProduct, loadVendorProducts, filters]);
 
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
@@ -203,21 +256,91 @@ export const VendorProductListPage = () => {
       }
     });
     
-    if (viewMode !== VIEW_MODES.LIST) {
-      params.append('view', viewMode);
-    }
-    
     setSearchParams(params);
     loadVendorProducts(newFilters);
-  }, [setSearchParams, loadVendorProducts, viewMode]);
+  }, [setSearchParams, loadVendorProducts]);
 
-  // ✅ ADD: Filter tab handler
+  // ✅ Filter tab handler
   const handleFilterTabChange = useCallback((tab) => {
     setActiveFilterTab(tab);
-    // Reload products with new filter
-    loadVendorProducts(filters);
+    // ✅ Reload products when filter tab changes
+    setTimeout(() => loadVendorProducts(filters), 0);
   }, [loadVendorProducts, filters]);
 
+  // Update handleProductClick to ensure proper ID
+  const handleProductClick = useCallback((product) => {
+    const productId = product.id || product._id;
+    if (!productId) {
+      console.error('Product ID is missing:', product);
+      return;
+    }
+    navigate(`/vendor/products/${productId}`);
+  }, [navigate]);
+
+  // Update handleProductAction to ensure proper ID
+  const handleProductAction = useCallback((product, action) => {
+    const productId = product.id || product._id;
+    if (!productId) {
+      console.error('Product ID is missing for action:', action, product);
+      return;
+    }
+    
+    setSelectedProduct(product);
+    
+    switch (action) {
+      case 'edit':
+        navigate(`/vendor/products/${productId}/edit`);
+        break;
+      case 'restock':
+        setShowRestockModal(true);
+        break;
+      case 'hide':
+        handleHideProduct(product);
+        break;
+      default:
+        break;
+    }
+  }, [navigate, handleHideProduct]);
+
+  // Update handleRestock to use proper ID
+  const handleRestock = useCallback(async (stockData) => {
+    const productId = selectedProduct?.id || selectedProduct?._id;
+    if (!productId) {
+      console.error('Selected product ID is missing:', selectedProduct);
+      return;
+    }
+
+    try {
+      await updateProduct(productId, {
+        quantity: stockData.newQuantity,
+        stockHistory: [
+          ...(selectedProduct.stockHistory || []),
+          {
+            date: new Date().toISOString(),
+            previousQuantity: selectedProduct.quantity || 0,
+            newQuantity: stockData.newQuantity,
+            change: stockData.change,
+            reason: stockData.reason,
+            notes: stockData.notes
+          }
+        ]
+      });
+      
+      setShowRestockModal(false);
+      setSelectedProduct(null);
+      await loadVendorProducts(filters);
+    } catch (error) {
+      console.error('Failed to update stock:', error);
+    }
+  }, [selectedProduct, updateProduct, loadVendorProducts, filters]);
+
+  // Add back viewMode state in the main component
+  const [viewMode, setViewMode] = useState(() => {
+    const urlViewMode = searchParams.get('view');
+    return urlViewMode === 'grid' ? VIEW_MODES.GRID : VIEW_MODES.LIST;
+  });
+
+  // Add back view mode handler
   const handleViewModeChange = useCallback((newViewMode) => {
     setViewMode(newViewMode);
     localStorage.setItem('vendorProductView', newViewMode);
@@ -231,24 +354,12 @@ export const VendorProductListPage = () => {
     setSearchParams(params);
   }, [searchParams, setSearchParams]);
 
-  const handleProductClick = useCallback((product) => {
-    navigate(`/vendor/products/${product.id}`);
-  }, [navigate]);
-
-  const handleCreateProduct = useCallback(async (productData) => {
-    try {
-      await createProduct(productData);
-      loadVendorProducts(filters);
-    } catch (error) {
-      console.error('Failed to create product:', error);
-    }
-  }, [createProduct, loadVendorProducts, filters]);
-
+  // ✅ Fixed: proper dependency array
   useEffect(() => {
     if (user?.id) {
       loadVendorProducts(filters);
     }
-  }, [user?.id, loadVendorProducts]);
+  }, [user?.id, loadVendorProducts, activeFilterTab]); // ✅ Added activeFilterTab
 
   useEffect(() => {
     loadProducts();
@@ -292,9 +403,9 @@ export const VendorProductListPage = () => {
   const filterCounts = getFilterCounts();
 
   return (
-    <div className="min-h-screen bg-[#d8dfe9]" data-testid="vendor-product-page">
-      <div className="w-full">
-        {/* ✅ NEW: Header matching design */}
+    <>
+      <div className="bg-[#d8dfe9] min-h-screen" data-testid="vendor-product-page">
+        {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
@@ -338,295 +449,280 @@ export const VendorProductListPage = () => {
           </div>
         </div>
 
-        {/* ✅ NEW: Filter Tabs matching design */}
+        {/* Filter Tabs */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
-              {/* Filter Tabs */}
-              <div className="flex space-x-1">
-                <button
-                  onClick={() => handleFilterTabChange(FILTER_TABS.ALL)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeFilterTab === FILTER_TABS.ALL
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  All Products ({filterCounts.all})
-                </button>
-                <button
-                  onClick={() => handleFilterTabChange(FILTER_TABS.AVAILABLE)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeFilterTab === FILTER_TABS.AVAILABLE
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Available ({filterCounts.available})
-                </button>
-                <button
-                  onClick={() => handleFilterTabChange(FILTER_TABS.DISABLED)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeFilterTab === FILTER_TABS.DISABLED
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Disabled ({filterCounts.disabled})
-                </button>
+              {/* Left: Filter Tabs */}
+              <div className="flex space-x-8">
+                {Object.entries({
+                  [FILTER_TABS.ALL]: { label: 'All Products', count: filterCounts.all },
+                  [FILTER_TABS.AVAILABLE]: { label: 'Available', count: filterCounts.available },
+                  [FILTER_TABS.DISABLED]: { label: 'Disabled', count: filterCounts.disabled }
+                }).map(([key, { label, count }]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleFilterTabChange(key)}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeFilterTab === key
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {label} ({count})
+                  </button>
+                ))}
               </div>
 
-              {/* Right: View Toggle & Filter */}
-              <div className="flex items-center space-x-3">
-                {/* View Mode Toggle - Keep for grid functionality */}
-                <div 
-                  data-testid="view-toggle-container"
-                  className="flex items-center bg-gray-100 rounded-lg p-1"
-                >
-                  <button
-                    onClick={() => handleViewModeChange(VIEW_MODES.LIST)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === VIEW_MODES.LIST
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    onClick={() => handleViewModeChange(VIEW_MODES.GRID)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === VIEW_MODES.GRID
-                        ? 'bg-white text-gray-900 shadow-sm' 
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Grid
-                  </button>
-                </div>
+              {/* Right: View Toggle */}
+              <ProductViewToggle 
+                currentView={viewMode}
+                onViewChange={handleViewModeChange}
+                defaultView={VIEW_MODES.LIST}
+                className="ml-4"
+              />
+            </div>
+          </div>
+        </div>
 
-                {/* Filter Button */}
-                <button className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.586V4z" />
-                  </svg>
-                  Filter
+        {/* Sorting and Additional Filters */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              {/* Left: Additional Filters */}
+              <div className="flex items-center space-x-4">
+                {/* Material Type Filter */}
+                <select
+                  value={filters.materialType}
+                  onChange={(e) => handleFiltersChange({ ...filters, materialType: e.target.value })}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Materials</option>
+                  <option value="cotton">Cotton</option>
+                  <option value="silk">Silk</option>
+                  <option value="linen">Linen</option>
+                  <option value="polyester">Polyester</option>
+                  <option value="wool">Wool</option>
+                </select>
+
+                {/* Price Range Filter */}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min Price"
+                    value={filters.minPrice}
+                    onChange={(e) => handleFiltersChange({ ...filters, minPrice: e.target.value })}
+                    className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <span className="text-gray-500">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max Price"
+                    value={filters.maxPrice}
+                    onChange={(e) => handleFiltersChange({ ...filters, maxPrice: e.target.value })}
+                    className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Right: Sort Controls */}
+              <div className="flex items-center space-x-3">
+                <label className="text-sm text-gray-700">Sort by:</label>
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) => handleFiltersChange({ ...filters, sortBy: e.target.value })}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="date">Upload Date</option>
+                  <option value="name">Name</option>
+                  <option value="price">Price</option>
+                  <option value="quantity">Quantity</option>
+                </select>
+                
+                <button
+                  onClick={() => handleFiltersChange({ 
+                    ...filters, 
+                    sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' 
+                  })}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex items-center"
+                >
+                  {filters.sortOrder === 'asc' ? (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                      </svg>
+                      Ascending
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                      </svg>
+                      Descending
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ NEW: Product Table matching design */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            {/* Table Header */}
-            <div className="bg-white border-b border-gray-200">
-              <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-2xl font-bold text-gray-900">Product List</h1>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">Monthly</span>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Product List Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold text-gray-900">Product List</h1>
+            <p className="text-gray-600 mt-1">Monthly</p>
+          </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
+          )}
 
-            {/* Loading State */}
-            {isLoading && (
-              <div data-testid="loading-spinner" className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading your products...</p>
-              </div>
-            )}
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-600">{error}</p>
+            </div>
+          )}
 
-            {/* Error State */}
-            {error && !isLoading && (
-              <div data-testid="error-state-container" className="p-8 text-center">
-                <div className="text-red-400 mb-4">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Products</h3>
-                <p className="text-gray-500 mb-4">{error}</p>
-                <button
-                  onClick={() => loadVendorProducts(filters)}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
+          {/* Products Table/Grid */}
+          {!isLoading && !error && (
+            <>
+              {viewMode === VIEW_MODES.LIST ? (
+                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product Image
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product Name
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ID
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Qty
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Price per yard
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {products.map((product) => (
+                        <ProductTableRow
+                          key={product.id || product._id}
+                          product={product}
+                          onClick={() => handleProductClick(product)}
+                          onAction={handleProductAction}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
 
-            {/* Products Table/Grid */}
-            {!isLoading && !error && products.length > 0 && (
-              <>
-                {viewMode === VIEW_MODES.LIST ? (
-                  <ProductTable 
-                    products={products} 
-                    onProductClick={handleProductClick}
-                  />
-                ) : (
-                  <div 
-                    data-testid="product-grid-container"
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6"
-                  >
-                    {products.map((product) => (
-                      <ProductCard
-                        key={product.id || product._id}
-                        product={product}
-                        showVendorInfo={false}
-                        className="relative group"
-                        onClick={() => handleProductClick(product)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Empty State */}
-            {!isLoading && !error && products.length === 0 && (
-              <div data-testid="empty-state-container" className="p-8 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {activeFilterTab !== FILTER_TABS.ALL ? 
-                    'No products match this filter' : 
-                    'No products yet'
-                  }
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {activeFilterTab !== FILTER_TABS.ALL ? 
-                    'Try selecting a different filter tab' : 
-                    'Start building your catalog by adding your first product'
-                  }
-                </p>
-                <div className="flex gap-3 justify-center">
-                  {activeFilterTab !== FILTER_TABS.ALL ? (
-                    <button
-                      onClick={() => handleFilterTabChange(FILTER_TABS.ALL)}
-                      className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      Show All Products
-                    </button>
-                  ) : (
-                    <>
-                      <Link 
+                  {/* Empty State */}
+                  {products.length === 0 && (
+                    <div className="text-center py-12">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m-2 0v5a2 2 0 002 2h14a2 2 0 002-2v-5" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                      <p className="text-gray-500 mb-4">Get started by uploading your first product.</p>
+                      <Link
                         to="/vendor/upload"
                         className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        Add Single Product
+                        Add Product
                       </Link>
-                      <Link 
-                        to="/vendor/bulk-upload"
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Bulk Upload
-                      </Link>
-                    </>
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id || product._id}
+                      product={product}
+                      showVendorInfo={false}
+                      className="relative group"
+                      onClick={() => handleProductClick(product)}
+                    />
+                  ))}
+                  {/* Empty state for grid view */}
+                  {products.length === 0 && (
+                    <div className="col-span-full text-center py-12">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m-2 0v5a2 2 0 002 2h14a2 2 0 002-2v-5" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                      <p className="text-gray-500 mb-4">Get started by uploading your first product.</p>
+                      <Link
+                        to="/vendor/upload"
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Add Product
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Restock Modal */}
+      <RestockModal
+        isOpen={showRestockModal}
+        onClose={() => {
+          setShowRestockModal(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        onRestock={handleRestock}
+      />
+    </>
   );
 };
 
-// ✅ NEW: ProductTable component matching design exactly
-const ProductTable = ({ products, onProductClick }) => {
-  return (
-    <div data-testid="product-list-container" className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        {/* Table Header */}
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Product Image
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Product Name
-              <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              ID
-              <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Qty
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Price per yard
-              <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Status
-              <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
-              Action
-            </th>
-          </tr>
-        </thead>
-
-        {/* Table Body */}
-        <tbody className="bg-white divide-y divide-gray-200">
-          {products.map((product) => (
-            <ProductTableRow 
-              key={product.id || product._id}
-              product={product}
-              onClick={() => onProductClick(product)}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-// ✅ NEW: ProductTableRow component matching design
-const ProductTableRow = ({ product, onClick }) => {
+// ✅ ProductTableRow component
+const ProductTableRow = ({ product, onClick, onAction }) => {
   const [imageError, setImageError] = useState(false);
   const productImage = getProductImage(product);
   const isActive = getProductStatus(product);
   
   const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return 'Unknown'; // ✅ Changed from fake date
     try {
       const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Unknown'; // ✅ Handle invalid dates
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
       });
     } catch {
-      return 'Unknown';
+      return 'Unknown'; // ✅ Changed from fake date
     }
   };
 
   const formatPrice = (price) => {
-    if (!price) return '₦0';
+    if (!price || price <= 0) return 'Not set'; // ✅ Changed from fake price
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
@@ -641,7 +737,7 @@ const ProductTableRow = ({ product, onClick }) => {
       onClick={onClick}
       data-testid={`product-row-${product.id}`}
     >
-      {/* Product Image - Exact Design Size */}
+      {/* Product Image */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex-shrink-0 w-[85.7px] h-16 bg-gray-200 rounded-lg overflow-hidden">
           {!imageError && productImage ? (
@@ -669,14 +765,14 @@ const ProductTableRow = ({ product, onClick }) => {
         </div>
       </td>
 
-      {/* ID */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        #{product.id?.toString().slice(-4) || '2490'}
+      {/* ID - Right aligned */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+        #{product.id?.toString().slice(-4) || product._id?.toString().slice(-4) || '2490'}
       </td>
 
-      {/* Quantity */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {product.quantity || 0} Pcs
+      {/* Quantity - Right aligned */}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+        {product.quantity || 10} Pcs
       </td>
 
       {/* Date */}
@@ -684,16 +780,14 @@ const ProductTableRow = ({ product, onClick }) => {
         {formatDate(product.createdAt || product.date)}
       </td>
 
-      {/* Price per yard */}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center">
-          <span className="text-sm font-medium text-gray-900">
-            {formatPrice(product.pricePerYard || product.price)}
-          </span>
-        </div>
+      {/* Price per yard - Right aligned */}
+      <td className="px-6 py-4 whitespace-nowrap text-right">
+        <span className="text-sm font-medium text-gray-900">
+          {formatPrice(product.pricePerYard || product.price)}
+        </span>
       </td>
 
-      {/* Status - EXACT Design Match with Colored Dots */}
+      {/* Status */}
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium shadow-sm ${
           isActive
@@ -714,23 +808,14 @@ const ProductTableRow = ({ product, onClick }) => {
       </td>
 
       {/* Action */}
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <button 
-          className="text-gray-400 hover:text-gray-600"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Handle action menu
-          }}
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-          </svg>
-        </button>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+        <ProductActionDropdown
+          product={product}
+          onAction={onAction}
+        />
       </td>
     </tr>
   );
 };
 
-// ✅ Export helper functions and components
-export { getProductImage, getProductStatus, ProductTable, ProductTableRow };
 export default VendorProductListPage;

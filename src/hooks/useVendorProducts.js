@@ -214,7 +214,8 @@ export const useVendorProducts = () => {
 };
 
 
-const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
+// eslint-disable-next-line no-unused-vars
+const VendorProductEditModal = ({ isOpen, onClose, product, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
     pricePerYard: '',

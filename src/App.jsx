@@ -35,6 +35,8 @@ import VendorDashboardPage from './pages/VendorDashboardPage';
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 import VendorNotificationsPage from './pages/VendorNotificationsPage';
 import VendorOrdersPage from './pages/VendorOrdersPage';
+import VendorProductDetailPage from './pages/VendorProductDetailPage';
+import VendorProductEditPage from './pages/VendorProductEditPage';
 import VendorProductListPage from './pages/VendorProductListPage';
 import VendorProductUploadPage from './pages/VendorProductUploadPage';
 import VendorSalesPage from './pages/VendorSalesPage';
@@ -113,18 +115,18 @@ function App() {
               <Route path="/orders" element={<OrdersPage />} />
 
               {/* Vendor routes */}
-              <Route path="/vendor/*" element={<VendorLayout />}>
+              <Route path="/vendor" element={<VendorLayout />}>
                 <Route index element={<VendorDashboardPage />} />
                 <Route path="dashboard" element={<VendorDashboardPage />} />
                 <Route path="products" element={<VendorProductListPage />} />
+                <Route path="products/:id" element={<VendorProductDetailPage />} />
+                <Route path="products/:id/edit" element={<VendorProductEditPage />} />
                 <Route path="upload" element={<VendorProductUploadPage />} />
                 <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
                 <Route path="orders" element={<VendorOrdersPage />} />
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />
-                {/* ✅ FIXED: Vendor product detail route - same adaptive component */}
-                <Route path="product/:id" element={<ProductDetailPage />} />
               </Route>
 
               {/* Admin routes */}
