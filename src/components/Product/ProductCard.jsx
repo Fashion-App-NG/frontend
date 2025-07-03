@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
+const ProductCard = ({ product, showVendorInfo = false, className = '', onClick }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
 
-  // ✅ FIXED: Generate context-aware product URLs
+  // ✅ Generate context-aware product URLs
   const getProductUrl = () => {
     const productId = product.id || product._id;
     
-    // Check current route context
     if (location.pathname.startsWith('/shopper/')) {
       return `/shopper/product/${productId}`;
     }
@@ -20,7 +19,6 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
       return `/vendor/product/${productId}`;
     }
     
-    // Default to public route for guests or direct access
     return `/product/${productId}`;
   };
 
@@ -36,10 +34,6 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     });
   }
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
   // ✅ FIXED: Improved image source logic to handle API data
   const getImageSrc = () => {
     if (imageError) {
@@ -53,15 +47,12 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     
     // Handle API image URLs
     if (product.image && typeof product.image === 'string') {
-      // If it's already a full URL, use it
       if (product.image.startsWith('http')) {
         return product.image;
       }
-      // If it's a relative path, construct full URL
       if (product.image.startsWith('/')) {
         return `${process.env.REACT_APP_API_BASE_URL}${product.image}`;
       }
-      // If it's just a filename, construct full path
       return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
     }
     
@@ -97,40 +88,82 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     }).format(price);
   };
 
+  const productImage = getImageSrc();
+
+  const handleClick = (e) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick(product);
+    }
+  };
+
   return (
     <Link 
       to={productUrl}
+      data-testid="product-card"
       className={`group block bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 ${className}`}
+      onClick={handleClick}
     >
       {/* Product Image */}
       <div className="aspect-[4/3] bg-gray-100 rounded-t-lg overflow-hidden relative">
-        <img
-          src={getImageSrc()}
-          alt={product.name || 'Product'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-          onError={handleImageError}
-        />
+        {!imageError && productImage ? (
+          <img 
+            src={productImage}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+            onError={() => setImageError(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div 
+            className="w-full h-full flex items-center justify-center bg-gray-200"
+            data-testid="image-fallback"
+          >
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
         
-        {/* Status Badge */}
+        {/* ✅ EXACT STATUS BADGE MATCH: Same design as table */}
         {product.status && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium">
-            {/* ✅ FIXED: Add debug logging to see actual status values */}
-            {process.env.NODE_ENV === 'development' && console.log('🔍 Product status debug:', {
-              productName: product.name,
-              status: product.status,
-              display: product.display,
-              quantity: product.quantity,
-              statusType: typeof product.status
-            })}
-            {product.status === 'In Stock' || 
-             product.status === 'available' || 
-             product.status === 'in_stock' ||
-             (product.quantity && parseInt(product.quantity) > 0) ||
-             product.display !== false ? (
-              <span className="bg-green-100 text-green-800">In Stock</span>
-            ) : (
-              <span className="bg-red-100 text-red-800">Out of Stock</span>
-            )}
+          <div className="absolute top-2 right-2">
+            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium shadow-sm ${
+              product.status === 'ACTIVE' || 
+              product.status === 'In Stock' || 
+              product.status === 'available' || 
+              product.status === 'in_stock' ||
+              (product.quantity && parseInt(product.quantity) > 0) ||
+              product.display !== false
+                ? 'bg-white text-green-800 border border-gray-200'
+                : product.status === 'Low in Stock'
+                ? 'bg-white text-yellow-800 border border-gray-200'
+                : 'bg-white text-red-800 border border-gray-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full mr-2 ${
+                product.status === 'ACTIVE' || 
+                product.status === 'In Stock' || 
+                product.status === 'available' || 
+                product.status === 'in_stock' ||
+                (product.quantity && parseInt(product.quantity) > 0) ||
+                product.display !== false
+                  ? 'bg-[#28b446]'
+                  : product.status === 'Low in Stock'
+                  ? 'bg-[#fbbb00]'
+                  : 'bg-[#cd0000]'
+              }`}></span>
+              {product.status === 'ACTIVE' || 
+               product.status === 'In Stock' || 
+               product.status === 'available' || 
+               product.status === 'in_stock' ||
+               (product.quantity && parseInt(product.quantity) > 0) ||
+               product.display !== false
+                ? 'In Stock'
+                : product.status === 'Low in Stock'
+                ? 'Low in Stock'
+                : 'Out Of Stock'
+              }
+            </span>
           </div>
         )}
       </div>
