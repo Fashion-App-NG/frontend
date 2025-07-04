@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import VendorService from '../services/vendorService';
+import productService from '../services/productService'; // ✅ Use consistent import
 
 export const useVendorProducts = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
-  const [loading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // ✅ Fix naming consistency
   const [error, setError] = useState(null);
 
   // Transform API product to component format
@@ -14,6 +14,7 @@ export const useVendorProducts = () => {
     name: apiProduct.name,
     description: apiProduct.description || 'No description available',
     image: apiProduct.image || '/api/placeholder/86/66',
+    images: apiProduct.images || [],
     quantity: apiProduct.quantity || 0,
     date: apiProduct.createdAt ? new Date(apiProduct.createdAt).toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -21,8 +22,10 @@ export const useVendorProducts = () => {
       day: 'numeric' 
     }) : 'Unknown',
     uploadDate: apiProduct.createdAt || new Date().toISOString(),
-    price: apiProduct.pricePerYard || 0,
-    status: apiProduct.display ? 'In Stock' : 'Out Of Stock',
+    createdAt: apiProduct.createdAt,
+    pricePerYard: apiProduct.pricePerYard || 0,
+    price: apiProduct.pricePerYard || apiProduct.price || 0,
+    status: apiProduct.status || (apiProduct.display ? 'ACTIVE' : 'INACTIVE'),
     statusColor: apiProduct.display ? '#28b446' : '#cd0000',
     materialType: apiProduct.materialType,
     pattern: apiProduct.pattern,
@@ -31,7 +34,7 @@ export const useVendorProducts = () => {
     isApiProduct: true
   }), []);
 
-  // Load products from API
+  // Load products from API - ✅ Updated to use productService
   const loadProducts = useCallback(async () => {
     if (!user?.id) {
       console.warn('No user ID available for loading products');
@@ -39,12 +42,18 @@ export const useVendorProducts = () => {
     }
 
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
       
-      const response = await VendorService.getVendorProducts(user.id);
+      // ✅ Use productService instead of VendorService
+      const response = await productService.getVendorProducts(user.id);
       
       if (response.success && response.products) {
+        const transformedProducts = response.products.map(transformApiProduct);
+        setProducts(transformedProducts);
+        console.log(`✅ Loaded ${transformedProducts.length} products from API`);
+      } else if (response.products) {
+        // Handle direct products array response
         const transformedProducts = response.products.map(transformApiProduct);
         setProducts(transformedProducts);
         console.log(`✅ Loaded ${transformedProducts.length} products from API`);
@@ -64,11 +73,14 @@ export const useVendorProducts = () => {
           name: product.name || 'Unknown Product',
           description: product.description || 'No description available',
           image: product.image || '/api/placeholder/86/66',
+          images: product.images || [],
           quantity: product.quantity || 0,
           date: product.date || 'Unknown',
           uploadDate: product.uploadDate || new Date().toISOString(),
-          price: product.price || 0,
-          status: product.status || 'Out Of Stock',
+          createdAt: product.createdAt || product.uploadDate,
+          pricePerYard: product.pricePerYard || product.price || 0,
+          price: product.price || product.pricePerYard || 0,
+          status: product.status || 'INACTIVE',
           statusColor: product.statusColor || '#cd0000',
           materialType: product.materialType || null,
           pattern: product.pattern || null,
@@ -90,18 +102,18 @@ export const useVendorProducts = () => {
         setProducts([]);
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [user?.id, transformApiProduct]);
 
-  // Create product
+  // Create product - ✅ Updated to use productService
   const createProduct = useCallback(async (productData) => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
       
-      // ✅ Use unified API
-      const response = await VendorService.createSingleProduct(productData);
+      // ✅ Use productService for consistency
+      const response = await productService.createProduct(productData);
       
       // Refresh products list
       await loadProducts();
@@ -112,17 +124,17 @@ export const useVendorProducts = () => {
       setError(error.message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [loadProducts]);
 
-  // ✅ Add bulk creation method
+  // ✅ Add bulk creation method using productService
   const createBulkProducts = useCallback(async (productsArray) => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
       
-      const response = await VendorService.createBulkProducts(productsArray);
+      const response = await productService.createBulkProducts(productsArray);
       
       // Refresh products list
       await loadProducts();
@@ -133,19 +145,19 @@ export const useVendorProducts = () => {
       setError(error.message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [loadProducts]);
 
-  // Update product
+  // Update product - ✅ Updated to use productService
   const updateProduct = useCallback(async (productId, updateData) => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
 
-      const response = await VendorService.updateProduct(productId, updateData);
+      const response = await productService.updateProduct(productId, updateData);
       
-      if (response.message) {
+      if (response.success || response.message) {
         // Refresh products list
         await loadProducts();
         return response;
@@ -155,29 +167,29 @@ export const useVendorProducts = () => {
       setError(error.message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [loadProducts]);
 
-  // Hide product (soft delete)
-  const hideProduct = useCallback(async (productId) => {
+  // Delete product - ✅ Updated to use productService
+  const deleteProduct = useCallback(async (productId) => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
 
-      const response = await VendorService.hideProduct(productId);
+      const response = await productService.deleteProduct(productId);
       
-      if (response.message) {
+      if (response.success || response.message) {
         // Refresh products list
         await loadProducts();
         return response;
       }
     } catch (error) {
-      console.error('Failed to hide product:', error);
+      console.error('Failed to delete product:', error);
       setError(error.message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [loadProducts]);
 
@@ -196,13 +208,14 @@ export const useVendorProducts = () => {
     createProduct,
     createBulkProducts,
     updateProduct,
-    hideProduct,
+    deleteProduct,
     setError: (errorMessage) => setError(errorMessage)
   };
 };
 
 
-const VendorProductEditModal = ({ product, isOpen, onClose, onSave }) => {
+// eslint-disable-next-line no-unused-vars
+const VendorProductEditModal = ({ isOpen, onClose, product, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
     pricePerYard: '',

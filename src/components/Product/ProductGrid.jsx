@@ -1,14 +1,16 @@
 import ProductCard from './ProductCard';
+import ProductListItem from './ProductListItem';
 
 const ProductGrid = ({ 
   products = [], 
   loading = false, 
   error = null, 
   showVendorInfo = true, 
-  emptyMessage = "No products found." 
+  emptyMessage = "No products found.",
+  view = 'grid' // 'grid' or 'list'
 }) => {
   if (loading) {
-    return (
+    return view === 'grid' ? (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {[...Array(8)].map((_, index) => (
           <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 animate-pulse">
@@ -16,6 +18,22 @@ const ProductGrid = ({
             <div className="p-4">
               <div className="h-4 bg-gray-200 rounded mb-2"></div>
               <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {[...Array(6)].map((_, index) => (
+          <div key={index} className="bg-white rounded-lg border border-gray-100 animate-pulse">
+            <div className="flex items-center p-4 gap-4">
+              <div className="w-20 h-20 bg-gray-200 rounded-lg"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+              </div>
+              <div className="w-24 h-8 bg-gray-200 rounded"></div>
             </div>
           </div>
         ))}
@@ -51,6 +69,22 @@ const ProductGrid = ({
     );
   }
 
+  // ✅ Render based on view type
+  if (view === 'list') {
+    return (
+      <div className="space-y-3">
+        {products.map((product) => (
+          <ProductListItem
+            key={product.id || product._id}
+            product={product}
+            showVendorInfo={showVendorInfo}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Default grid view
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {products.map((product) => (

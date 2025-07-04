@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
+const ProductCard = ({ product, showVendorInfo = false, className = '', onClick, onAction, isInCart, favorites }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
 
-  // ✅ FIXED: Generate context-aware product URLs
+  // ✅ Generate context-aware product URLs
   const getProductUrl = () => {
     const productId = product.id || product._id;
     
-    // Check current route context
     if (location.pathname.startsWith('/shopper/')) {
       return `/shopper/product/${productId}`;
     }
@@ -20,7 +19,6 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
       return `/vendor/product/${productId}`;
     }
     
-    // Default to public route for guests or direct access
     return `/product/${productId}`;
   };
 
@@ -36,10 +34,6 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     });
   }
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
   // ✅ FIXED: Improved image source logic to handle API data
   const getImageSrc = () => {
     if (imageError) {
@@ -53,15 +47,12 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     
     // Handle API image URLs
     if (product.image && typeof product.image === 'string') {
-      // If it's already a full URL, use it
       if (product.image.startsWith('http')) {
         return product.image;
       }
-      // If it's a relative path, construct full URL
       if (product.image.startsWith('/')) {
         return `${process.env.REACT_APP_API_BASE_URL}${product.image}`;
       }
-      // If it's just a filename, construct full path
       return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
     }
     
@@ -97,40 +88,89 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
     }).format(price);
   };
 
+  const productImage = getImageSrc();
+
+  const handleClick = (e) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick(product);
+    }
+  };
+
   return (
     <Link 
       to={productUrl}
+      data-testid="product-card"
       className={`group block bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 ${className}`}
+      onClick={handleClick}
     >
       {/* Product Image */}
       <div className="aspect-[4/3] bg-gray-100 rounded-t-lg overflow-hidden relative">
-        <img
-          src={getImageSrc()}
-          alt={product.name || 'Product'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-          onError={handleImageError}
-        />
+        {!imageError && productImage ? (
+          <img 
+            src={productImage}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+            onError={() => setImageError(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div 
+            className="w-full h-full flex items-center justify-center bg-gray-200"
+            data-testid="image-fallback"
+          >
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
         
-        {/* Status Badge */}
+        {/* ✅ EXACT STATUS BADGE MATCH: Same design as table */}
         {product.status && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium">
-            {/* ✅ FIXED: Add debug logging to see actual status values */}
-            {process.env.NODE_ENV === 'development' && console.log('🔍 Product status debug:', {
-              productName: product.name,
-              status: product.status,
-              display: product.display,
-              quantity: product.quantity,
-              statusType: typeof product.status
-            })}
-            {product.status === 'In Stock' || 
-             product.status === 'available' || 
-             product.status === 'in_stock' ||
-             (product.quantity && parseInt(product.quantity) > 0) ||
-             product.display !== false ? (
-              <span className="bg-green-100 text-green-800">In Stock</span>
-            ) : (
-              <span className="bg-red-100 text-red-800">Out of Stock</span>
-            )}
+          <div className="absolute top-2 right-2">
+            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium shadow-sm ${
+              product.status === 'ACTIVE' || 
+              product.status === 'In Stock' || 
+              product.status === 'available' || 
+              product.status === 'in_stock' ||
+              (product.quantity && parseInt(product.quantity) > 0) ||
+              product.display !== false
+                ? 'bg-white text-green-800 border border-gray-200'
+                : product.status === 'Low in Stock'
+                ? 'bg-white text-yellow-800 border border-gray-200'
+                : 'bg-white text-red-800 border border-gray-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full mr-2 ${
+                product.status === 'ACTIVE' || 
+                product.status === 'In Stock' || 
+                product.status === 'available' || 
+                product.status === 'in_stock' ||
+                (product.quantity && parseInt(product.quantity) > 0) ||
+                product.display !== false
+                  ? 'bg-[#28b446]'
+                  : product.status === 'Low in Stock'
+                  ? 'bg-[#fbbb00]'
+                  : 'bg-[#cd0000]'
+              }`}></span>
+              {product.status === 'ACTIVE' || 
+               product.status === 'In Stock' || 
+               product.status === 'available' || 
+               product.status === 'in_stock' ||
+               (product.quantity && parseInt(product.quantity) > 0) ||
+               product.display !== false
+                ? 'In Stock'
+                : product.status === 'Low in Stock'
+                ? 'Low in Stock'
+                : 'Out Of Stock'
+              }
+            </span>
+          </div>
+        )}
+
+        {/* ✅ PRESERVED: Image Count Badge - Keep existing implementation */}
+        {product.images && product.images.length > 1 && (
+          <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-sm">
+            {product.images.length}
           </div>
         )}
       </div>
@@ -190,6 +230,91 @@ const ProductCard = ({ product, showVendorInfo = false, className = '' }) => {
               Recently Added
             </span>
           </div>
+        )}
+      </div>
+
+      {/* Add to Cart & Favorite Buttons - Only for shoppers */}
+      {(!user || user.role === 'shopper') && (
+        <div className="absolute bottom-2 right-2 flex space-x-1">
+          {/* Quick Add to Cart */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction && onAction(product, 'add_to_cart');
+            }}
+            className={`p-2 rounded-full shadow-sm transition-colors ${
+              isInCart 
+                ? 'bg-green-500 text-white' 
+                : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+            }`}
+            title={isInCart ? 'In Cart' : 'Add to Cart'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0h8m-8 0a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
+            </svg>
+          </button>
+
+          {/* Quick Favorite */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction && onAction(product, 'toggle_favorite');
+            }}
+            className={`p-2 rounded-full shadow-sm transition-colors ${
+              favorites?.has(product.id || product._id)
+                ? 'bg-red-500 text-white' 
+                : 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-600'
+            }`}
+            title={favorites?.has(product.id || product._id) ? 'Remove from Favorites' : 'Add to Favorites'}
+          >
+            <svg className="w-4 h-4" fill={favorites?.has(product.id || product._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Enhanced Actions for Shoppers */}
+      <div className="flex gap-2 p-4">
+        <Link
+          to={`/shopper/product/${product.id || product._id}`}
+          className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          View Details
+        </Link>
+        
+        {onAction && (
+          <>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onAction(product, 'add_to_cart');
+              }}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                isInCart 
+                  ? 'bg-green-600 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {isInCart ? 'In Cart' : 'Add to Cart'}
+            </button>
+            
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onAction(product, 'toggle_favorite');
+              }}
+              className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                favorites?.has(product.id || product._id)
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <svg className="w-3 h-3" fill={favorites?.has(product.id || product._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </>
         )}
       </div>
     </Link>

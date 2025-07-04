@@ -23,10 +23,13 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "test:coverage": "react-scripts test --coverage --watchAll=false",
-    "test:ci": "CI=true react-scripts test --coverage --watchAll=false",
-    "eject": "react-scripts eject",
-    "build:production": "REACT_APP_ENV=production react-scripts build",
+    "test:watch": "yarn test --watchAll",
+    "test:coverage": "yarn test --coverage --watchAll=false",
+    "test:ci": "CI=true yarn test --coverage --watchAll=false --testTimeout=10000",
+    "test:visual": "yarn test --testNamePattern='Visual Regression'",
+    "test:responsive": "yarn test --testNamePattern='Responsive Layout'",
+    "test:components": "yarn test --testPathPattern=components",
+    "lint:test": "eslint src/**/*.test.js src/**/*.test.jsx --fix",
     "prebuild": "npm run ensure-ui",
     "prebuild:designer": "npm run switch:designer",
     "prebuild:ai": "npm run switch:ai",
@@ -63,5 +66,21 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}",
+      "!src/index.js",
+      "!src/reportWebVitals.js",
+      "!src/setupTests.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 75,
+        "functions": 75,
+        "lines": 75,
+        "statements": 75
+      }
+    }
   }
 }
