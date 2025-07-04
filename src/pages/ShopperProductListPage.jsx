@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/Product/ProductCard';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import { ShopperProductTableRow } from '../components/Shopper/ShopperProductTableRow';
-import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import productService from '../services/productService';
 
@@ -63,7 +62,6 @@ const VIEW_MODES = {
 
 // ✅ Enhanced ShopperProductListPage
 export const ShopperProductListPage = () => {
-  const { user, isAuthenticated } = useAuth();
   const { addToCart, isInCart } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -109,14 +107,14 @@ export const ShopperProductListPage = () => {
 
       let shopperProducts = response.products || [];
       
-      // ✅ Filter out inactive products for shoppers
+      // Filter out inactive products for shoppers
       shopperProducts = shopperProducts.filter(product => 
         product.display !== false && 
         product.status !== 'INACTIVE' &&
         (product.quantity === undefined || product.quantity > 0)
       );
       
-      // ✅ Apply client-side filtering
+      // ✅ Apply client-side filtering (search, material, vendor, price)
       if (currentFilters.search && currentFilters.search.trim()) {
         const searchTerm = currentFilters.search.toLowerCase();
         shopperProducts = shopperProducts.filter(product => 
@@ -127,14 +125,12 @@ export const ShopperProductListPage = () => {
         );
       }
 
-      // ✅ Material type filter
       if (currentFilters.materialType) {
         shopperProducts = shopperProducts.filter(product => 
           product.materialType?.toLowerCase() === currentFilters.materialType.toLowerCase()
         );
       }
 
-      // ✅ Vendor filter
       if (currentFilters.vendor) {
         shopperProducts = shopperProducts.filter(product => 
           product.vendor?.storeName?.toLowerCase().includes(currentFilters.vendor.toLowerCase()) ||
@@ -142,7 +138,6 @@ export const ShopperProductListPage = () => {
         );
       }
 
-      // ✅ Price range filter
       if (currentFilters.minPrice) {
         const minPrice = parseFloat(currentFilters.minPrice);
         shopperProducts = shopperProducts.filter(product => 
@@ -157,7 +152,7 @@ export const ShopperProductListPage = () => {
         );
       }
       
-      // ✅ Filter by status based on active tab
+      // Filter by status based on active tab
       if (activeFilterTab === FILTER_TABS.IN_STOCK) {
         shopperProducts = shopperProducts.filter(product => 
           product.quantity && product.quantity > 0
@@ -168,7 +163,7 @@ export const ShopperProductListPage = () => {
         );
       }
       
-      // ✅ Apply sorting
+      // Apply sorting
       shopperProducts.sort((a, b) => {
         let aValue, bValue;
         
@@ -212,7 +207,7 @@ export const ShopperProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeFilterTab, favorites]);
+  }, [activeFilterTab, favorites]); // ✅ Remove filters dependency since we use currentFilters parameter
 
   // ✅ Filter counts for shoppers
   const getFilterCounts = () => {
@@ -307,7 +302,7 @@ export const ShopperProductListPage = () => {
 
   useEffect(() => {
     loadShopperProducts(filters);
-  }, [loadShopperProducts, activeFilterTab]);
+  }, [loadShopperProducts, activeFilterTab, filters]);
 
   const filterCounts = getFilterCounts();
 

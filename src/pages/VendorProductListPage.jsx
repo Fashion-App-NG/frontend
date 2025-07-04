@@ -249,10 +249,11 @@ export const VendorProductListPage = () => {
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
     
+    // ✅ Fix: Use params.set instead of append
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value && value.toString().trim()) {
-        params.append(key, value);
+        params.set(key, value); // ✅ Use set instead of append
       }
     });
     
@@ -359,7 +360,7 @@ export const VendorProductListPage = () => {
     if (user?.id) {
       loadVendorProducts(filters);
     }
-  }, [user?.id, loadVendorProducts, activeFilterTab]); // ✅ Added activeFilterTab
+  }, [user?.id, loadVendorProducts, activeFilterTab, filters]); // ✅ Add filters dependency
 
   useEffect(() => {
     loadProducts();
@@ -702,7 +703,7 @@ export const VendorProductListPage = () => {
 
 // ✅ ProductTableRow component
 const ProductTableRow = ({ product, onClick, onAction }) => {
-  const [imageError, setImageError] = useState(false);
+  const [imageError, setImageError] = useState(false); // ✅ Now useState is available
   const productImage = getProductImage(product);
   const isActive = getProductStatus(product);
   

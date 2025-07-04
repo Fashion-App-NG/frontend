@@ -98,14 +98,16 @@ class ProductService {
 
       const data = await response.json();
       
-      // ✅ DEBUG: Log vendor data structure
+      // ✅ Fix: Gate debug logging in getAllProducts
       if (data.products && data.products.length > 0) {
-        console.log('🔍 Sample product vendor data:', {
-          firstProduct: data.products[0],
-          vendorField: data.products[0].vendor,
-          vendorIdField: data.products[0].vendorId,
-          createdByField: data.products[0].createdBy
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Sample product vendor data:', {
+            firstProduct: data.products[0],
+            vendorField: data.products[0].vendor,
+            vendorIdField: data.products[0].vendorId,
+            createdByField: data.products[0].createdBy
+          });
+        }
       }
       
       // ✅ FIXED: Normalize product status and ensure proper IDs
@@ -124,7 +126,11 @@ class ProductService {
         })).filter(product => product.display !== false);
       }
 
-      console.log('✅ Products fetched:', data.products?.length || 0);
+      // ✅ Apply same pattern to all debug logs
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Products fetched:', data.products?.length || 0);
+      }
+      
       return data;
     } catch (error) {
       console.error('❌ Error fetching products:', error);

@@ -9,14 +9,26 @@ export const CartProvider = ({ children }) => {
   // ✅ Load cart from localStorage on mount
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem('fashionCart');
+      let savedCart = localStorage.getItem('fashionCart');
+      
+      // Check for old key if new key is not found
+      if (!savedCart) {
+        const oldCart = localStorage.getItem('fashionCultureCart');
+        if (oldCart) {
+          savedCart = oldCart;
+          localStorage.setItem('fashionCart', oldCart); // Migrate to new key
+          localStorage.removeItem('fashionCultureCart'); // Remove old key
+        }
+      }
+      
       if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        setCartItems(parsedCart);
-        setCartCount(parsedCart.reduce((total, item) => total + (item.quantity || 1), 0));
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed)) {
+          setCartItems(parsed);
+        }
       }
     } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
+      console.error('Failed to load cart from localStorage:', error);
       setCartItems([]);
       setCartCount(0);
     }

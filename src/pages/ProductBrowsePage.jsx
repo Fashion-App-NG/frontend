@@ -32,11 +32,12 @@ const ProductBrowsePage = () => {
     }
   }, []);
 
+  // ✅ Fix: Remove unnecessary filters dependency
   const loadProducts = useCallback(async (currentFilters) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await productService.getAllProducts(currentFilters);
       
       if (response.error) {
@@ -54,7 +55,7 @@ const ProductBrowsePage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // ✅ Remove filters dependency since we use currentFilters parameter
 
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
