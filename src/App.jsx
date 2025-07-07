@@ -60,6 +60,9 @@ import ShopperSettings from './pages/ShopperSettings';
 // Import the shopper browse page
 import ShopperProductListPage from './pages/ShopperProductListPage';
 
+// ✅ ADD: Import checkout page
+import CheckoutPage from './pages/checkout/CheckoutPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -98,10 +101,11 @@ function App() {
                 <Route index element={<ShopperDashboardPage />} />
                 <Route path="dashboard" element={<ShopperDashboardPage />} />
                 <Route path="browse" element={<ShopperProductListPage />} />
-                {/* ✅ FIXED: Shopper product detail route - same adaptive component */}
                 <Route path="product/:id" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="cart" element={<ShopperCart />} />
+                {/* ✅ ADD: Checkout route */}
+                <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ShopperProfile />} />
                 <Route path="favorites" element={<ShopperFavorites />} />
                 <Route path="notifications" element={<ShopperNotifications />} />
