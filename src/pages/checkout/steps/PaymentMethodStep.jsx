@@ -1,6 +1,13 @@
 import { useState } from 'react';
+import { PaystackButton } from 'react-paystack';
+import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useCart } from '../../../contexts/CartContext';
+import checkoutService from '../../../services/checkoutService';
 
 const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
+  const { user } = useAuth();
+  const { getCartTotal, clearCart } = useCart();
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     cardHolder: '',
@@ -14,12 +21,99 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
       state: ''
     }
   });
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('paystack');
 
-  const handleSubmit = (e) => {
+  // Calculate totals
+  const subtotal = getCartTotal();
+  const deliveryFee = 3000;
+  const tax = Math.round(subtotal * 0.075); // 7.5% VAT
+  const total = subtotal + deliveryFee + tax;
+
+  // ✅ Paystack configuration
+  const paystackProps = {
+    email: user?.email || 'customer@example.com',
+    amount: formatAmountForPaystack(total), // Convert to kobo
+    currency: PAYSTACK_CONFIG.currency,
+    publicKey: PAYSTACK_CONFIG.publicKey,
+    text: `Pay ₦${total.toLocaleString()}`,
+    channels: PAYSTACK_CONFIG.channels,
+    metadata: {
+      sessionId: sessionData?.sessionId,
+      userId: user?.id,
+      orderAmount: total,
+      itemCount: sessionData?.reservedItems?.length || 0,
+      custom_fields: [
+        {
+          display_name: "Fashion App Order",
+          variable_name: "order_type",
+          value: "fashion_checkout"
+        }
+      ]
+    },
+    onSuccess: handlePaymentSuccess,
+    onClose: handlePaymentClose,
+  };
+
+  // ✅ Handle successful payment
+  async function handlePaymentSuccess(reference) {
+    console.log('✅ Payment successful:', reference);
+    setProcessingPayment(true);
+
+    try {
+      // Save payment method first
+      await checkoutService.setPaymentMethod(sessionData.sessionId, 'paystack');
+      
+      // Confirm order with payment reference
+      const orderResult = await checkoutService.confirmOrder(
+        sessionData.sessionId, 
+        reference.reference
+      );
+
+      if (orderResult.success) {
+        console.log('✅ Order confirmed:', orderResult.order);
+        
+        // Clear cart after successful order
+        clearCart();
+        
+        // Store order details for confirmation page
+        localStorage.setItem('lastOrder', JSON.stringify(orderResult.order));
+        
+        // Proceed to confirmation step
+        onNext();
+      } else {
+        throw new Error(orderResult.message || 'Order confirmation failed');
+      }
+    } catch (error) {
+      console.error('❌ Order confirmation error:', error);
+      alert(`Order confirmation failed: ${error.message}`);
+    } finally {
+      setProcessingPayment(false);
+    }
+  }
+
+  // ✅ Handle payment popup close
+  function handlePaymentClose() {
+    console.log('💳 Payment popup closed');
+    setProcessingPayment(false);
+  }
+
+  // ✅ Handle manual card form submission (fallback)
+  const handleManualPayment = async (e) => {
     e.preventDefault();
-    // TODO: Process payment via Paystack
-    console.log('Payment data:', paymentData);
-    onNext();
+    console.log('💳 Manual payment data:', paymentData);
+    
+    // For development: simulate payment success
+    if (process.env.NODE_ENV === 'development') {
+      await handlePaymentSuccess({
+        reference: `mock_ref_${Date.now()}`,
+        status: 'success',
+        trans: Date.now(),
+        transaction: Date.now()
+      });
+    } else {
+      alert('Please use Paystack payment for secure processing');
+    }
   };
 
   const handleChange = (e) => {
@@ -42,177 +136,226 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
     }
   };
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price || 0);
+  };
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Payment Method Selection */}
-        <div className="border border-gray-300 rounded-lg p-4">
+      {/* Payment Method Selection */}
+      <div className="space-y-4 mb-6">
+        {/* Paystack Payment (Recommended) */}
+        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+          paymentMethod === 'paystack' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+        }`} onClick={() => setPaymentMethod('paystack')}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="paystack"
+                name="paymentMethod"
+                value="paystack"
+                checked={paymentMethod === 'paystack'}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-4 h-4 text-blue-600"
+              />
+              <label htmlFor="paystack" className="ml-3 flex items-center">
+                <span className="text-sm font-medium text-gray-900">Paystack</span>
+                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Recommended</span>
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <img src="https://paystack.com/assets/img/payments/mastercard.png" alt="Mastercard" className="h-6" />
+              <img src="https://paystack.com/assets/img/payments/visa.png" alt="Visa" className="h-6" />
+              <img src="https://paystack.com/assets/img/payments/verve.png" alt="Verve" className="h-6" />
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 mt-2 ml-7">
+            Secure payment with cards, bank transfers, USSD, and mobile money
+          </p>
+        </div>
+
+        {/* Manual Card Entry (Fallback) */}
+        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+          paymentMethod === 'manual' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+        }`} onClick={() => setPaymentMethod('manual')}>
           <div className="flex items-center">
             <input
               type="radio"
-              id="credit-card"
+              id="manual"
               name="paymentMethod"
-              value="credit-card"
-              defaultChecked
+              value="manual"
+              checked={paymentMethod === 'manual'}
+              onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-4 h-4 text-blue-600"
             />
-            <label htmlFor="credit-card" className="ml-3 flex items-center">
-              <span className="text-sm font-medium text-gray-900">Credit card</span>
-              <div className="ml-4 flex space-x-2">
-                <img src="/visa-logo.png" alt="Visa" className="h-6" />
-                <img src="/mastercard-logo.png" alt="Mastercard" className="h-6" />
-              </div>
+            <label htmlFor="manual" className="ml-3 text-sm font-medium text-gray-900">
+              Credit/Debit Card (Manual Entry)
             </label>
           </div>
         </div>
+      </div>
 
-        {/* Card Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Card Number
-            </label>
-            <input
-              type="text"
-              name="cardNumber"
-              value={paymentData.cardNumber}
-              onChange={handleChange}
-              placeholder="1234 5678 9012 3456"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+      {/* Payment Summary */}
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 className="font-medium text-gray-900 mb-3">Payment Summary</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Subtotal</span>
+            <span className="font-medium">{formatPrice(subtotal)}</span>
           </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Card Holder Name
-            </label>
-            <input
-              type="text"
-              name="cardHolder"
-              value={paymentData.cardHolder}
-              onChange={handleChange}
-              placeholder="John Doe"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+          <div className="flex justify-between">
+            <span className="text-gray-600">Delivery Fee</span>
+            <span className="font-medium">{formatPrice(deliveryFee)}</span>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Expiration date (MM/YY)
-            </label>
-            <input
-              type="text"
-              name="expiryDate"
-              value={paymentData.expiryDate}
-              onChange={handleChange}
-              placeholder="12/25"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+          <div className="flex justify-between">
+            <span className="text-gray-600">Tax (7.5%)</span>
+            <span className="font-medium">{formatPrice(tax)}</span>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              CVV
-            </label>
-            <input
-              type="text"
-              name="cvv"
-              value={paymentData.cvv}
-              onChange={handleChange}
-              placeholder="123"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+          <hr className="my-2" />
+          <div className="flex justify-between text-lg font-semibold">
+            <span>Total</span>
+            <span className="text-blue-600">{formatPrice(total)}</span>
           </div>
         </div>
+      </div>
 
-        {/* Billing Address */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Billing address</h3>
-          
-          <div className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              id="same-as-delivery"
-              name="billing.sameAsDelivery"
-              checked={paymentData.billingAddress.sameAsDelivery}
-              onChange={handleChange}
-              className="w-4 h-4 text-blue-600"
-            />
-            <label htmlFor="same-as-delivery" className="ml-2 text-sm text-gray-700">
-              Same as my delivery address
-            </label>
+      {/* Paystack Payment Button */}
+      {paymentMethod === 'paystack' && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-sm text-blue-800">
+                You'll be redirected to Paystack's secure payment page to complete your purchase.
+              </p>
+            </div>
           </div>
 
-          {!paymentData.billingAddress.sameAsDelivery && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <input
-                  type="text"
-                  name="billing.phone"
-                  value={paymentData.billingAddress.phone}
-                  onChange={handleChange}
-                  placeholder="Phone no"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <input
-                  type="text"
-                  name="billing.address"
-                  value={paymentData.billingAddress.address}
-                  onChange={handleChange}
-                  placeholder="Address"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <input
-                  type="text"
-                  name="billing.city"
-                  value={paymentData.billingAddress.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <select
-                  name="billing.state"
-                  value={paymentData.billingAddress.state}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select State</option>
-                  <option value="Lagos">Lagos</option>
-                  <option value="Abuja">Abuja</option>
-                </select>
+          <div className="flex justify-between items-center pt-6">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={processingPayment}
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Back
+            </button>
+            
+            <PaystackButton
+              {...paystackProps}
+              className={`px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
+                processingPayment ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={processingPayment || !sessionData}
+            />
+          </div>
+
+          {processingPayment && (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span className="text-sm text-gray-600">Processing your order...</span>
               </div>
             </div>
           )}
         </div>
+      )}
 
-        <div className="flex justify-between pt-6">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Back
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Checkout Now
-          </button>
-        </div>
-      </form>
+      {/* Manual Card Form (Fallback) */}
+      {paymentMethod === 'manual' && (
+        <form onSubmit={handleManualPayment} className="space-y-6">
+          {/* Card Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Card Number
+              </label>
+              <input
+                type="text"
+                name="cardNumber"
+                value={paymentData.cardNumber}
+                onChange={handleChange}
+                placeholder="1234 5678 9012 3456"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Card Holder Name
+              </label>
+              <input
+                type="text"
+                name="cardHolder"
+                value={paymentData.cardHolder}
+                onChange={handleChange}
+                placeholder="John Doe"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Expiry Date (MM/YY)
+              </label>
+              <input
+                type="text"
+                name="expiryDate"
+                value={paymentData.expiryDate}
+                onChange={handleChange}
+                placeholder="12/25"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CVV
+              </label>
+              <input
+                type="text"
+                name="cvv"
+                value={paymentData.cvv}
+                onChange={handleChange}
+                placeholder="123"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-6">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={processingPayment}
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              disabled={processingPayment}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {processingPayment ? 'Processing...' : 'Process Payment'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };
