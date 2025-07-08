@@ -24,30 +24,40 @@ const CheckoutPage = () => {
     timeRemaining,
     initializeSession,
     nextStep,
-    prevStep,
-    goToStep
+    prevStep
+    // goToStep // ✅ Remove unused goToStep destructuring
   } = useCheckoutSession();
 
-  console.log('🔍 CHECKOUT PAGE DEBUG - Component Loading');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 CHECKOUT PAGE DEBUG - Component Loading');
+  }
 
   // Redirect if cart is empty
   useEffect(() => {
-    console.log('🔍 CHECKOUT PAGE DEBUG - Cart Check:', { cartCount, cartItems });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT PAGE DEBUG - Cart Check:', { cartCount, cartItems });
+    }
     if (cartCount === 0) {
-      console.log('🔍 CHECKOUT PAGE DEBUG - Redirecting to cart (empty)');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 CHECKOUT PAGE DEBUG - Redirecting to cart (empty)');
+      }
       navigate('/shopper/cart');
     }
-  }, [cartCount, navigate]);
+  }, [cartCount, cartItems, navigate]); // ✅ Include cartItems in dependency array
 
   // Initialize checkout session
   useEffect(() => {
-    console.log('🔍 CHECKOUT PAGE DEBUG - Session Check:', { 
-      cartItemsLength: cartItems.length, 
-      sessionData, 
-      hasInitializeSession: !!initializeSession 
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT PAGE DEBUG - Session Check:', { 
+        cartItemsLength: cartItems.length, 
+        sessionData, 
+        hasInitializeSession: !!initializeSession 
+      });
+    }
     if (cartItems.length > 0 && !sessionData) {
-      console.log('🔍 CHECKOUT PAGE DEBUG - Calling initializeSession');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 CHECKOUT PAGE DEBUG - Calling initializeSession');
+      }
       initializeSession();
     }
   }, [cartItems, sessionData, initializeSession]);
@@ -69,10 +79,27 @@ const CheckoutPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Setting up your checkout...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-4">Checkout Error</h1>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/shopper/cart')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Return to Cart
+          </button>
         </div>
       </div>
     );

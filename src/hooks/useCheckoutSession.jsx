@@ -3,7 +3,7 @@ import { useCart } from '../contexts/CartContext';
 import checkoutService from '../services/checkoutService';
 
 export const useCheckoutSession = () => {
-  const { cartItems, clearCart } = useCart();
+  const { cartItems } = useCart(); // ✅ Only import what you need
   const [currentStep, setCurrentStep] = useState(1);
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -13,10 +13,12 @@ export const useCheckoutSession = () => {
   // ✅ IMPROVED: Better error handling and logging
   const initializeSession = useCallback(async () => {
     try {
-      console.log('🔍 CHECKOUT HOOK DEBUG - Initialize Session Called', {
-        cartItemsLength: cartItems.length,
-        cartItems: cartItems
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 CHECKOUT HOOK DEBUG - Initialize Session Called', {
+          cartItemsLength: cartItems.length,
+          cartItems: cartItems
+        });
+      }
       
       setLoading(true);
       setError(null); // Clear previous errors
@@ -29,11 +31,15 @@ export const useCheckoutSession = () => {
           
           // Check if session is still valid (not expired)
           if (new Date(parsed.expiresAt) > new Date()) {
-            console.log('✅ Using existing valid session:', parsed);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Using existing valid session:', parsed);
+            }
             setSessionData(parsed);
             return parsed;
           } else {
-            console.log('🔄 Removing expired session');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔄 Removing expired session');
+            }
             localStorage.removeItem('checkoutSession');
           }
         } catch (parseError) {
@@ -43,10 +49,14 @@ export const useCheckoutSession = () => {
       }
 
       // Create new session with current cart items
-      console.log('🔄 Creating new checkout session...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Creating new checkout session...');
+      }
       const newSession = await checkoutService.createSession(cartItems);
       
-      console.log('✅ New session created:', newSession);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ New session created:', newSession);
+      }
       setSessionData(newSession);
       return newSession;
       
@@ -69,16 +79,18 @@ export const useCheckoutSession = () => {
       try {
         const remaining = new Date(sessionData.expiresAt) - new Date();
         if (remaining <= 0) {
-          console.log('⏰ Session expired, clearing...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⏰ Session expired, clearing session but NOT cart if order completed...');
+          }
           setTimeRemaining(0);
           
-          // Auto-cancel expired session
-          if (sessionData.sessionId && !sessionData.sessionId.includes('mock')) {
+          // ✅ Only cancel session if we're not on confirmation step
+          if (currentStep < 4 && sessionData.sessionId && !sessionData.sessionId.includes('mock')) {
             checkoutService.cancelSession(sessionData.sessionId).catch(err => {
               console.warn('⚠️ Error canceling expired session:', err);
             });
+            setSessionData(null);
           }
-          setSessionData(null);
         } else {
           setTimeRemaining(remaining);
         }
@@ -88,7 +100,7 @@ export const useCheckoutSession = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [sessionData]);
+  }, [sessionData, currentStep]); // ✅ Keep currentStep dependency
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));

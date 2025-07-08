@@ -147,17 +147,31 @@ class CheckoutService {
   // ✅ UPDATED: Real order confirmation API integration
   async confirmOrder(sessionId, paymentReference) {
     try {
-      console.log('🔍 Confirming order:', { sessionId, paymentReference });
+      console.log('🔍 Confirming order with inventory update tracking:', { 
+        sessionId, 
+        paymentReference 
+      });
       
       const response = await fetch(`${this.baseURL}/checkout/confirm`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ sessionId, paymentReference })
+        body: JSON.stringify({ 
+          sessionId, 
+          paymentReference,
+          updateInventory: true // ✅ Explicitly request inventory update
+        })
       });
 
       if (!response.ok) {
         if (process.env.NODE_ENV === 'development') {
           const mockOrder = this.getMockOrder(paymentReference);
+          
+          // ✅ Mock inventory update logging
+          console.log('🔄 Mock inventory updates for order:', {
+            items: mockOrder.order.items,
+            inventoryUpdated: true
+          });
+          
           this.clearSession();
           return mockOrder;
         }
@@ -165,10 +179,14 @@ class CheckoutService {
       }
 
       const data = await response.json();
-      console.log('✅ Order confirmed:', data);
+      console.log('✅ Order confirmed with inventory updates:', {
+        order: data.order,
+        inventoryUpdates: data.inventoryUpdates,
+        updatedProducts: data.updatedProducts
+      });
       
       if (data.success) {
-        this.clearSession(); // Clear session after successful order
+        this.clearSession();
       }
       return data;
       
@@ -350,4 +368,6 @@ class CheckoutService {
   }
 }
 
-export default new CheckoutService();
+// ✅ Assign to variable before exporting
+const checkoutServiceInstance = new CheckoutService();
+export default checkoutServiceInstance;

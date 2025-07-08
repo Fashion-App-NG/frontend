@@ -1,25 +1,40 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useCart } from '../../../contexts/CartContext'; // ✅ Add cart context
 
 const OrderConfirmationStep = ({ sessionData }) => {
   const { user } = useAuth();
+  const { clearCart } = useCart(); // ✅ Get clearCart function
   const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
-    // Get order data from localStorage (set by PaymentMethodStep)
-    const lastOrder = localStorage.getItem('lastOrder');
-    if (lastOrder) {
-      try {
-        const order = JSON.parse(lastOrder);
-        setOrderData(order);
-        // Clean up localStorage
-        localStorage.removeItem('lastOrder');
-      } catch (error) {
-        console.error('Error parsing order data:', error);
+    const loadOrderAndClearCart = async () => {
+      // Get order data from localStorage
+      const lastOrder = localStorage.getItem('lastOrder');
+      if (lastOrder) {
+        try {
+          const order = JSON.parse(lastOrder);
+          setOrderData(order);
+          
+          // ✅ Clear cart after loading order data
+          try {
+            await clearCart(true); // Pass true to indicate checkout completion
+            console.log('✅ Cart cleared on order confirmation page load');
+          } catch (clearError) {
+            console.warn('⚠️ Failed to clear cart on confirmation:', clearError);
+          }
+          
+          // Clean up localStorage
+          localStorage.removeItem('lastOrder');
+        } catch (error) {
+          console.error('Error parsing order data:', error);
+        }
       }
-    }
-  }, []);
+    };
+
+    loadOrderAndClearCart();
+  }, [clearCart]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-NG', {

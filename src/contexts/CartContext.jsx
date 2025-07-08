@@ -394,14 +394,14 @@ export const CartProvider = ({ children }) => {
     }
   }, [removeFromCart, cartItems]); // ✅ FIX: Add cartItems dependency
 
-  // ✅ Clear entire cart
-  const clearCart = useCallback(async () => {
+  // ✅ Clear entire cart - enhanced for checkout completion
+  const clearCart = useCallback(async (isCheckoutCompletion = false) => {
     try {
       setIsLoading(true);
       setError(null);
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('🗑️ Clearing cart via API...');
+        console.log('🗑️ Clearing cart via API...', { isCheckoutCompletion });
       }
 
       const response = await cartService.clearCart();
@@ -416,12 +416,17 @@ export const CartProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Failed to clear cart:', error);
-      setError(error.message);
       
-      // Fallback to local clear
-      setCartItems([]);
-      setCartCount(0);
-      localStorage.removeItem('fashionCart');
+      // For checkout completion, always clear locally even if API fails
+      if (isCheckoutCompletion) {
+        console.log('🔄 Forcing local cart clear after checkout completion');
+        setCartItems([]);
+        setCartCount(0);
+        localStorage.removeItem('fashionCart');
+        localStorage.removeItem('guestSessionId'); // Clear guest session too
+      } else {
+        setError(error.message);
+      }
     } finally {
       setIsLoading(false);
     }

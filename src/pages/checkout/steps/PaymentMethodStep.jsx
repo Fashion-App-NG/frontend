@@ -73,14 +73,22 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
       if (orderResult.success) {
         console.log('✅ Order confirmed:', orderResult.order);
         
-        // Clear cart after successful order
-        clearCart();
-        
-        // Store order details for confirmation page
+        // ✅ Store order details for confirmation page
         localStorage.setItem('lastOrder', JSON.stringify(orderResult.order));
         
-        // Proceed to confirmation step
+        // ✅ Move to confirmation step FIRST
         onNext();
+        
+        // ✅ Clear cart only AFTER successful order confirmation
+        // No setTimeout needed - just clear immediately after navigation
+        try {
+          await clearCart();
+          console.log('✅ Cart cleared after successful order');
+        } catch (clearError) {
+          console.warn('⚠️ Cart clear failed, but order was successful:', clearError);
+          // Don't throw - order was successful, cart clear is secondary
+        }
+        
       } else {
         throw new Error(orderResult.message || 'Order confirmation failed');
       }
@@ -172,9 +180,9 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
               </label>
             </div>
             <div className="flex items-center space-x-2">
-              <img src="https://paystack.com/assets/img/payments/mastercard.png" alt="Mastercard" className="h-6" />
-              <img src="https://paystack.com/assets/img/payments/visa.png" alt="Visa" className="h-6" />
-              <img src="https://paystack.com/assets/img/payments/verve.png" alt="Verve" className="h-6" />
+              <img src="/assets/img/payments/mastercard.png" alt="Mastercard" className="h-6" />
+              <img src="/assets/img/payments/visa.png" alt="Visa" className="h-6" />
+              <img src="/assets/img/payments/verve.png" alt="Verve" className="h-6" />
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-2 ml-7">
