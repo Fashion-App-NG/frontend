@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react'; // ✅ Add useMemo
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
@@ -25,25 +25,39 @@ const CheckoutPage = () => {
     initializeSession,
     nextStep,
     prevStep
-    // goToStep // ✅ Remove unused goToStep destructuring
   } = useCheckoutSession();
+
+  // ✅ Extract complex expression to a separate variable
+  const hasSessionData = useMemo(() => !!sessionData, [sessionData]);
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 CHECKOUT PAGE DEBUG - Component Loading');
   }
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 CHECKOUT PAGE DEBUG - Cart Check:', { cartCount, cartItems });
+      console.log('🔍 [CHECKOUT] Cart check effect triggered', { 
+        cartCount, 
+        cartItemsLength: cartItems.length,
+        currentStep,
+        hasSessionData
+      });
     }
-    if (cartCount === 0) {
+    
+    // ✅ Don't redirect if we're on the confirmation step (step 4)
+    if (cartCount === 0 && currentStep < 4) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 CHECKOUT PAGE DEBUG - Redirecting to cart (empty)');
+        console.log('🔴 [CHECKOUT] Cart is empty, redirecting to cart page');
+        console.log('🔴 [CHECKOUT] Current step when redirecting:', currentStep);
       }
       navigate('/shopper/cart');
+    } else if (cartCount === 0 && currentStep === 4) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
+      }
     }
-  }, [cartCount, cartItems, navigate]); // ✅ Include cartItems in dependency array
+  }, [cartCount, cartItems, navigate, currentStep, hasSessionData]); // ✅ Use extracted variable
 
   // Initialize checkout session
   useEffect(() => {
