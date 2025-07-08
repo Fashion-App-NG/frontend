@@ -49,7 +49,7 @@ const CheckoutPage = () => {
     } else if (cartCount === 0 && currentStep === 4) {
       console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
     }
-  }, [cartCount, cartItems, navigate, currentStep]); // ✅ Add currentStep to dependencies
+  }, [cartCount, cartItems, navigate, currentStep, sessionData]); // ✅ Add sessionData to dependencies
 
   // Initialize checkout session
   useEffect(() => {

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
 
 const OrderConfirmationStep = ({ sessionData }) => {
-  const { user } = useAuth();
   const { clearCart, cartCount } = useCart();
   const [orderData, setOrderData] = useState(null);
 
@@ -38,7 +36,7 @@ const OrderConfirmationStep = ({ sessionData }) => {
     };
 
     loadOrderAndClearCart();
-  }, [clearCart]);
+  }, [clearCart, cartCount]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-NG', {

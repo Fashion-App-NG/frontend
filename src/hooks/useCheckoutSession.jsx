@@ -103,7 +103,9 @@ export const useCheckoutSession = () => {
   }, [sessionData, currentStep]); // ✅ Keep currentStep dependency
 
   const nextStep = () => {
-    console.log('🔵 [SESSION] Moving from step', currentStep, 'to step', currentStep + 1);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔵 [SESSION] Moving from step', currentStep, 'to step', currentStep + 1);
+    }
     setCurrentStep(prev => Math.min(prev + 1, 4));
   };
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));

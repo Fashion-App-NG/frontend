@@ -8,7 +8,7 @@ import checkoutService from '../../../services/checkoutService';
 
 const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
   const { user } = useAuth();
-  const { getCartTotal, cartCount } = useCart(); // ✅ Add cartCount
+  const { cartCount, getCartTotal } = useCart(); // ✅ Keep getCartTotal if used
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     cardHolder: '',
