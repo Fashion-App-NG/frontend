@@ -1,3 +1,4 @@
+import { CreditCard, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
@@ -7,7 +8,7 @@ import checkoutService from '../../../services/checkoutService';
 
 const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
   const { user } = useAuth();
-  const { getCartTotal, clearCart } = useCart();
+  const { getCartTotal, cartCount } = useCart(); // ✅ Add cartCount
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     cardHolder: '',
@@ -57,9 +58,11 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
 
   // ✅ Handle successful payment
   async function handlePaymentSuccess(reference) {
-    console.log('✅ Payment successful:', reference);
+    console.log('🔵 [PAYMENT] Payment successful, starting confirmation process');
+    console.log('🔵 [PAYMENT] Current cart count before onNext:', cartCount); // ✅ Now cartCount is available
+    
     setProcessingPayment(true);
-
+    
     try {
       // Save payment method first
       await checkoutService.setPaymentMethod(sessionData.sessionId, 'paystack');
@@ -71,29 +74,22 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
       );
 
       if (orderResult.success) {
-        console.log('✅ Order confirmed:', orderResult.order);
+        console.log('🟢 [PAYMENT] Order confirmed, storing order data');
         
         // ✅ Store order details for confirmation page
         localStorage.setItem('lastOrder', JSON.stringify(orderResult.order));
         
+        console.log('🔵 [PAYMENT] About to call onNext()');
         // ✅ Move to confirmation step FIRST
-        onNext();
+        onNext(); // This should navigate to step 4
         
-        // ✅ Clear cart only AFTER successful order confirmation
-        // No setTimeout needed - just clear immediately after navigation
-        try {
-          await clearCart();
-          console.log('✅ Cart cleared after successful order');
-        } catch (clearError) {
-          console.warn('⚠️ Cart clear failed, but order was successful:', clearError);
-          // Don't throw - order was successful, cart clear is secondary
-        }
+        console.log('🔵 [PAYMENT] onNext() called, order will be confirmed');
         
       } else {
         throw new Error(orderResult.message || 'Order confirmation failed');
       }
     } catch (error) {
-      console.error('❌ Order confirmation error:', error);
+      console.error('❌ [PAYMENT] Error:', error);
       alert(`Order confirmation failed: ${error.message}`);
     } finally {
       setProcessingPayment(false);
@@ -180,9 +176,10 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
               </label>
             </div>
             <div className="flex items-center space-x-2">
-              <img src="/assets/img/payments/mastercard.png" alt="Mastercard" className="h-6" />
-              <img src="/assets/img/payments/visa.png" alt="Visa" className="h-6" />
-              <img src="/assets/img/payments/verve.png" alt="Verve" className="h-6" />
+              {/* ✅ Replace with Lucide React icons */}
+              <CreditCard className="h-6 w-6 text-red-500" title="Mastercard" />
+              <CreditCard className="h-6 w-6 text-blue-600" title="Visa" />
+              <Wallet className="h-6 w-6 text-green-600" title="Verve" />
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-2 ml-7">

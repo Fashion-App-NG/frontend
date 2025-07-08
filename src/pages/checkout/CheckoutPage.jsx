@@ -32,18 +32,24 @@ const CheckoutPage = () => {
     console.log('🔍 CHECKOUT PAGE DEBUG - Component Loading');
   }
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 CHECKOUT PAGE DEBUG - Cart Check:', { cartCount, cartItems });
-    }
-    if (cartCount === 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 CHECKOUT PAGE DEBUG - Redirecting to cart (empty)');
-      }
+    console.log('🔍 [CHECKOUT] Cart check effect triggered', { 
+      cartCount, 
+      cartItemsLength: cartItems.length,
+      currentStep,
+      sessionData: !!sessionData 
+    });
+    
+    // ✅ Don't redirect if we're on the confirmation step (step 4)
+    if (cartCount === 0 && currentStep < 4) {
+      console.log('🔴 [CHECKOUT] Cart is empty, redirecting to cart page');
+      console.log('🔴 [CHECKOUT] Current step when redirecting:', currentStep);
       navigate('/shopper/cart');
+    } else if (cartCount === 0 && currentStep === 4) {
+      console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
     }
-  }, [cartCount, cartItems, navigate]); // ✅ Include cartItems in dependency array
+  }, [cartCount, cartItems, navigate, currentStep]); // ✅ Add currentStep to dependencies
 
   // Initialize checkout session
   useEffect(() => {
