@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react'; // ✅ Add useMemo
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
@@ -25,8 +25,10 @@ const CheckoutPage = () => {
     initializeSession,
     nextStep,
     prevStep
-    // goToStep // ✅ Remove unused goToStep destructuring
   } = useCheckoutSession();
+
+  // ✅ Extract complex expression to a separate variable
+  const hasSessionData = useMemo(() => !!sessionData, [sessionData]);
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 CHECKOUT PAGE DEBUG - Component Loading');
@@ -34,22 +36,28 @@ const CheckoutPage = () => {
 
   // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {
-    console.log('🔍 [CHECKOUT] Cart check effect triggered', { 
-      cartCount, 
-      cartItemsLength: cartItems.length,
-      currentStep,
-      sessionData: !!sessionData 
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [CHECKOUT] Cart check effect triggered', { 
+        cartCount, 
+        cartItemsLength: cartItems.length,
+        currentStep,
+        hasSessionData
+      });
+    }
     
     // ✅ Don't redirect if we're on the confirmation step (step 4)
     if (cartCount === 0 && currentStep < 4) {
-      console.log('🔴 [CHECKOUT] Cart is empty, redirecting to cart page');
-      console.log('🔴 [CHECKOUT] Current step when redirecting:', currentStep);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔴 [CHECKOUT] Cart is empty, redirecting to cart page');
+        console.log('🔴 [CHECKOUT] Current step when redirecting:', currentStep);
+      }
       navigate('/shopper/cart');
     } else if (cartCount === 0 && currentStep === 4) {
-      console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
+      }
     }
-  }, [cartCount, cartItems, navigate, currentStep, sessionData]); // ✅ Add sessionData to dependencies
+  }, [cartCount, cartItems, navigate, currentStep, hasSessionData]); // ✅ Use extracted variable
 
   // Initialize checkout session
   useEffect(() => {

@@ -12,8 +12,10 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Shipping data:', shippingData);
+    }
     // TODO: Save shipping info via API
-    console.log('Shipping data:', shippingData);
     onNext();
   };
 

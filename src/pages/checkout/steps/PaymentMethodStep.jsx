@@ -58,32 +58,34 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
 
   // ✅ Handle successful payment
   async function handlePaymentSuccess(reference) {
-    console.log('🔵 [PAYMENT] Payment successful, starting confirmation process');
-    console.log('🔵 [PAYMENT] Current cart count before onNext:', cartCount); // ✅ Now cartCount is available
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔵 [PAYMENT] Payment successful, starting confirmation process');
+      console.log('🔵 [PAYMENT] Current cart count before onNext:', cartCount);
+    }
     
     setProcessingPayment(true);
     
     try {
-      // Save payment method first
       await checkoutService.setPaymentMethod(sessionData.sessionId, 'paystack');
-      
-      // Confirm order with payment reference
-      const orderResult = await checkoutService.confirmOrder(
-        sessionData.sessionId, 
-        reference.reference
-      );
+      const orderResult = await checkoutService.confirmOrder(sessionData.sessionId, reference.reference);
 
       if (orderResult.success) {
-        console.log('🟢 [PAYMENT] Order confirmed, storing order data');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🟢 [PAYMENT] Order confirmed, storing order data');
+        }
         
         // ✅ Store order details for confirmation page
         localStorage.setItem('lastOrder', JSON.stringify(orderResult.order));
         
-        console.log('🔵 [PAYMENT] About to call onNext()');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔵 [PAYMENT] About to call onNext()');
+        }
         // ✅ Move to confirmation step FIRST
         onNext(); // This should navigate to step 4
         
-        console.log('🔵 [PAYMENT] onNext() called, order will be confirmed');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔵 [PAYMENT] onNext() called, order will be confirmed');
+        }
         
       } else {
         throw new Error(orderResult.message || 'Order confirmation failed');
@@ -98,25 +100,25 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
 
   // ✅ Handle payment popup close
   function handlePaymentClose() {
-    console.log('💳 Payment popup closed');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('💳 Payment popup closed');
+    }
     setProcessingPayment(false);
   }
 
   // ✅ Handle manual card form submission (fallback)
   const handleManualPayment = async (e) => {
     e.preventDefault();
-    console.log('💳 Manual payment data:', paymentData);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('💳 Manual payment data:', paymentData);
+    }
     
     // For development: simulate payment success
     if (process.env.NODE_ENV === 'development') {
-      await handlePaymentSuccess({
-        reference: `mock_ref_${Date.now()}`,
-        status: 'success',
-        trans: Date.now(),
-        transaction: Date.now()
+      handlePaymentSuccess({
+        reference: 'test_ref_' + Date.now(),
+        status: 'success'
       });
-    } else {
-      alert('Please use Paystack payment for secure processing');
     }
   };
 
@@ -177,9 +179,24 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
             </div>
             <div className="flex items-center space-x-2">
               {/* ✅ Replace with Lucide React icons */}
-              <CreditCard className="h-6 w-6 text-red-500" title="Mastercard" />
-              <CreditCard className="h-6 w-6 text-blue-600" title="Visa" />
-              <Wallet className="h-6 w-6 text-green-600" title="Verve" />
+              <CreditCard 
+                className="h-6 w-6 text-red-500" 
+                title="Mastercard" 
+                aria-label="Mastercard accepted"
+                role="img" 
+              />
+              <CreditCard 
+                className="h-6 w-6 text-blue-600" 
+                title="Visa" 
+                aria-label="Visa accepted"
+                role="img" 
+              />
+              <Wallet 
+                className="h-6 w-6 text-green-600" 
+                title="Verve" 
+                aria-label="Verve accepted"
+                role="img" 
+              />
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-2 ml-7">
