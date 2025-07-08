@@ -423,5 +423,6 @@ class ProductService {
   }
 }
 
+// ✅ FIX: Remove the undefined products reference
 const productServiceInstance = new ProductService();
 export default productServiceInstance;

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 
 const ProductCard = ({ product, showVendorInfo = false, className = '', onClick, onAction, isInCart, favorites }) => {
   const location = useLocation();
   const { user } = useAuth();
+  const { isAddingToCart } = useCart();
   const [imageError, setImageError] = useState(false);
 
   // ✅ Generate context-aware product URLs
@@ -33,6 +35,13 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
       userRole: user?.role || 'none'
     });
   }
+
+  // Log environment variables and calculated base URL
+  console.log('🔍 Environment check:', {
+    REACT_APP_API_BASE_URL: process.env.REACT_APP_API_BASE_URL,
+    NODE_ENV: process.env.NODE_ENV,
+    calculatedBaseURL: `${process.env.REACT_APP_API_BASE_URL}/api`
+  });
 
   // ✅ FIXED: Improved image source logic to handle API data
   const getImageSrc = () => {
@@ -97,6 +106,36 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
     }
   };
 
+  // ✅ FIX: Proper add to cart handler using onAction
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // ✅ DEBUG: Log product structure before adding to cart
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 ProductCard - Product data before add to cart:', {
+        productId: product.id || product._id,
+        name: product.name,
+        vendorId: product.vendorId,
+        vendor: product.vendor,
+        createdBy: product.createdBy,
+        allFields: Object.keys(product)
+      });
+    }
+    
+    if (onAction) {
+      onAction(product, 'add_to_cart');
+    }
+  };
+
+  const handleToggleFavorite = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onAction) {
+      onAction(product, 'toggle_favorite');
+    }
+  };
+
   return (
     <Link 
       to={productUrl}
@@ -125,7 +164,7 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
           </div>
         )}
         
-        {/* ✅ EXACT STATUS BADGE MATCH: Same design as table */}
+        {/* Status Badge */}
         {product.status && (
           <div className="absolute top-2 right-2">
             <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium shadow-sm ${
@@ -167,7 +206,7 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
           </div>
         )}
 
-        {/* ✅ PRESERVED: Image Count Badge - Keep existing implementation */}
+        {/* Image Count Badge */}
         {product.images && product.images.length > 1 && (
           <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-sm">
             {product.images.length}
@@ -214,7 +253,7 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
           )}
         </div>
 
-        {/* Vendor Info - Only show when requested and available */}
+        {/* Vendor Info */}
         {showVendorInfo && product.vendor && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-sm text-gray-600">
@@ -231,90 +270,38 @@ const ProductCard = ({ product, showVendorInfo = false, className = '', onClick,
             </span>
           </div>
         )}
-      </div>
 
-      {/* Add to Cart & Favorite Buttons - Only for shoppers */}
-      {(!user || user.role === 'shopper') && (
-        <div className="absolute bottom-2 right-2 flex space-x-1">
-          {/* Quick Add to Cart */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction && onAction(product, 'add_to_cart');
-            }}
-            className={`p-2 rounded-full shadow-sm transition-colors ${
-              isInCart 
-                ? 'bg-green-500 text-white' 
-                : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-            }`}
-            title={isInCart ? 'In Cart' : 'Add to Cart'}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0h8m-8 0a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
-            </svg>
-          </button>
-
-          {/* Quick Favorite */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction && onAction(product, 'toggle_favorite');
-            }}
-            className={`p-2 rounded-full shadow-sm transition-colors ${
-              favorites?.has(product.id || product._id)
-                ? 'bg-red-500 text-white' 
-                : 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-600'
-            }`}
-            title={favorites?.has(product.id || product._id) ? 'Remove from Favorites' : 'Add to Favorites'}
-          >
-            <svg className="w-4 h-4" fill={favorites?.has(product.id || product._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Enhanced Actions for Shoppers */}
-      <div className="flex gap-2 p-4">
-        <Link
-          to={`/shopper/product/${product.id || product._id}`}
-          className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-        >
-          View Details
-        </Link>
-        
-        {onAction && (
-          <>
+        {/* ✅ FIX: Action buttons for shoppers only */}
+        {(!user || user.role === 'shopper') && onAction && (
+          <div className="flex gap-2 mt-4">
             <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(product, 'add_to_cart');
-              }}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+              className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${
                 isInCart 
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-green-600 text-white cursor-default'
+                  : isAddingToCart
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {isInCart ? 'In Cart' : 'Add to Cart'}
+              {isAddingToCart ? 'Adding...' : isInCart ? 'In Cart' : 'Add to Cart'}
             </button>
             
             <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(product, 'toggle_favorite');
-              }}
-              className={`px-2 py-1 text-xs rounded-md transition-colors ${
+              onClick={handleToggleFavorite}
+              className={`px-3 py-2 text-sm rounded-md transition-colors ${
                 favorites?.has(product.id || product._id)
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              title={favorites?.has(product.id || product._id) ? 'Remove from Favorites' : 'Add to Favorites'}
             >
-              <svg className="w-3 h-3" fill={favorites?.has(product.id || product._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill={favorites?.has(product.id || product._id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
-          </>
+          </div>
         )}
       </div>
     </Link>

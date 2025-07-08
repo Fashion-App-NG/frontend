@@ -4,12 +4,11 @@
   publish = "build/"
 
 [build.environment]
-  NODE_VERSION = "18"
-  NPM_VERSION = "9"
-  # ✅ NEW: Environment variable to control UI selection
+  NODE_VERSION = "24"  # ✅ Updated to match your local version
+  NPM_VERSION = "10"   # Node 24 comes with npm 10+
   UI_TYPE = "designer"
 
-# ✅ NEW: Context-specific builds for different UIs
+# Context-specific builds
 [context.production]
   command = "npm ci --include=dev && npm run switch:designer && npm run build"
 

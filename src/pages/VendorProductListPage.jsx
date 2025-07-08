@@ -264,8 +264,7 @@ export const VendorProductListPage = () => {
   // ✅ Filter tab handler
   const handleFilterTabChange = useCallback((tab) => {
     setActiveFilterTab(tab);
-    // ✅ Reload products when filter tab changes
-    setTimeout(() => loadVendorProducts(filters), 0);
+    loadVendorProducts(filters); // ✅ Direct call
   }, [loadVendorProducts, filters]);
 
   // Update handleProductClick to ensure proper ID
@@ -654,7 +653,10 @@ export const VendorProductListPage = () => {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div 
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  data-testid="product-grid-container" // ✅ Add this
+                >
                   {products.map((product) => (
                     <ProductCard
                       key={product.id || product._id}
