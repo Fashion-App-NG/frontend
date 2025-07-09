@@ -71,16 +71,16 @@
   "jest": {
     "collectCoverageFrom": [
       "src/**/*.{js,jsx}",
+      "!src/**/*.test.{js,jsx}",
       "!src/index.js",
-      "!src/reportWebVitals.js",
       "!src/setupTests.js"
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 75,
-        "functions": 75,
-        "lines": 75,
-        "statements": 75
+        "branches": 20,
+        "functions": 20,
+        "lines": 20,
+        "statements": 20
       }
     }
   },

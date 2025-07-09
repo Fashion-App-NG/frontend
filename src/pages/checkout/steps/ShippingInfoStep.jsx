@@ -13,9 +13,12 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (process.env.NODE_ENV === 'development') {
-      console.log('Shipping data:', shippingData);
+      console.log('🚚 [SHIPPING] Shipping data:', shippingData); // ✅ More specific logging
     }
-    // TODO: Save shipping info via API
+    
+    // TODO: Implement actual API call
+    // await checkoutService.saveShippingInfo(sessionData.sessionId, shippingData);
+    
     onNext();
   };
 

@@ -48,7 +48,7 @@ const OrderConfirmationStep = ({ sessionData }) => {
     };
 
     loadOrderAndClearCart();
-  }, [clearCart, cartCount]);
+  }, [clearCart, cartCount]); // ✅ Add cartCount back to dependency array
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-NG', {

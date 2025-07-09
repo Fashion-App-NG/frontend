@@ -170,4 +170,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export default AuthContext;
+// ✅ Make sure AuthContext is exported
+export { AuthContext };
+export default AuthProvider;
