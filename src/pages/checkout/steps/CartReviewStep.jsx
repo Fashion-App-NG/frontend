@@ -1,4 +1,5 @@
 import { useCart } from '../../../contexts/CartContext';
+import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext, sessionData }) => {
   const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
@@ -22,9 +23,10 @@ const CartReviewStep = ({ onNext, sessionData }) => {
           <div className="flex-shrink-0 w-16 h-16">
             {item.image ? (
               <img
-                src={item.image}
+                src={getProductImageUrl(item)}
                 alt={item.name}
-                className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                className="w-16 h-16 object-cover rounded"
+                onError={e => { e.target.src = '/default-product.jpg'; }}
               />
             ) : (
               <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">

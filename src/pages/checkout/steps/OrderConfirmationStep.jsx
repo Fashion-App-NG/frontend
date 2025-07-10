@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 
-const OrderConfirmationStep = ({ sessionData }) => {
+const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
   const { clearCart, cartCount } = useCart();
   const [orderData, setOrderData] = useState(null);
 
@@ -21,6 +21,7 @@ const OrderConfirmationStep = ({ sessionData }) => {
         try {
           const order = JSON.parse(lastOrder);
           setOrderData(order);
+          if (setConfirmedOrder) setConfirmedOrder(order); // <-- Add this line
           
           if (process.env.NODE_ENV === 'development') {
             console.log('🟡 [CONFIRMATION] About to clear cart on confirmation page');
@@ -93,9 +94,18 @@ const OrderConfirmationStep = ({ sessionData }) => {
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="font-semibold text-gray-900 mb-2">Order Information</h3>
           <div className="space-y-1 text-sm text-gray-600">
-            {/* ✅ Fix: Use flexible property names */}
             <p><span className="font-medium">Order ID:</span> {orderData.orderId || orderData.orderNumber || orderData.id}</p>
             <p><span className="font-medium">Date:</span> {formatDate(orderData.createdAt || orderData.orderDate || orderData.date)}</p>
+            {/* Show breakdown if available */}
+            {typeof orderData.subtotal === 'number' && (
+              <p><span className="font-medium">Subtotal:</span> {formatPrice(orderData.subtotal)}</p>
+            )}
+            {typeof orderData.deliveryFee === 'number' && (
+              <p><span className="font-medium">Delivery Fee:</span> {formatPrice(orderData.deliveryFee)}</p>
+            )}
+            {typeof orderData.tax === 'number' && (
+              <p><span className="font-medium">Tax:</span> {formatPrice(orderData.tax)}</p>
+            )}
             <p><span className="font-medium">Total:</span> {formatPrice(orderData.totalAmount || orderData.total)}</p>
           </div>
         </div>
@@ -105,20 +115,23 @@ const OrderConfirmationStep = ({ sessionData }) => {
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
             <div className="space-y-3">
-              {orderData.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{item.name || item.title}</p>
-                    <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                    {item.size && <p className="text-sm text-gray-600">Size: {item.size}</p>}
-                    {item.color && <p className="text-sm text-gray-600">Color: {item.color}</p>}
+              {orderData.items.map((item, index) => {
+                const unitPrice = item.pricePerYard ?? item.price ?? 0;
+                return (
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{item.name || item.title}</p>
+                      <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                      {item.size && <p className="text-sm text-gray-600">Size: {item.size}</p>}
+                      {item.color && <p className="text-sm text-gray-600">Color: {item.color}</p>}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">{formatPrice(unitPrice * item.quantity)}</p>
+                      <p className="text-sm text-gray-600">{formatPrice(unitPrice)} each</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">{formatPrice(item.price * item.quantity)}</p>
-                    <p className="text-sm text-gray-600">{formatPrice(item.price)} each</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

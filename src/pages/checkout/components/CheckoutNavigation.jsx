@@ -14,19 +14,6 @@ const CheckoutNavigation = ({ currentStep, onNext, onBack, canProceed = true }) 
       >
         Back
       </button>
-
-      {/* Next/Continue Button */}
-      <button
-        onClick={onNext}
-        disabled={!canProceed}
-        className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-          canProceed
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-        }`}
-      >
-        {currentStep === 3 ? 'Place Order' : 'Continue'}
-      </button>
     </div>
   );
 };
