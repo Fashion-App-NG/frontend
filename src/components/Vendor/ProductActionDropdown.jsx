@@ -89,3 +89,5 @@ export const ProductActionDropdown = ({ product, onAction }) => {
     </div>
   );
 };
+
+export default ProductActionDropdown;

@@ -219,3 +219,5 @@ export const RestockModal = ({ isOpen, onClose, product, onRestock }) => {
     </div>
   );
 };
+
+export default RestockModal;

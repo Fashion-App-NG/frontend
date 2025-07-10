@@ -8,18 +8,26 @@ import { useAuth } from '../contexts/AuthContext';
 import { useVendorProducts } from '../hooks/useVendorProducts';
 import productService from '../services/productService';
 
+// ✅ Check if all these components exist and are properly exported:
+// - ProductCard should export default
+// - ProductViewToggle should export default  
+// - ProductActionDropdown should export named
+// - RestockModal should export named
+// - useVendorProducts should export named
+
 // ✅ Enhanced helper function to determine product status
-const getProductStatus = (product) => {
+export const getProductStatus = (product) => {
+  // ✅ Check for INACTIVE states first (higher priority)
   if (
     product.status === 'INACTIVE' ||
     product.status === 'inactive' ||
     product.status === false ||
-    product.status === 'unavailable' ||
-    product.display === false
+    product.status === 'unavailable'
   ) {
     return false;
   }
   
+  // ✅ Check for ACTIVE states (higher priority than display)
   if (
     product.status === 'ACTIVE' ||
     product.status === 'active' ||
@@ -32,33 +40,39 @@ const getProductStatus = (product) => {
     return true;
   }
   
+  // ✅ Only use display as fallback when status is undefined/null
+  if (product.display === false) {
+    return false;
+  }
+  
   return product.display === true || product.display === 'true';
 };
 
 // ✅ Enhanced helper function to get product image
-const getProductImage = (product) => {
-  if (product.image && product.image.startsWith('data:image/')) {
+export const getProductImage = (product) => {
+  // ✅ Handle data URLs (base64 images)
+  if (product.image && typeof product.image === 'string' && product.image.startsWith('data:image/')) {
     return product.image;
   }
   
+  // ✅ Handle string URLs
   if (product.image && typeof product.image === 'string') {
     if (product.image.startsWith('http')) {
       return product.image;
     }
-    if (product.image.startsWith('/')) {
-      return `${process.env.REACT_APP_API_BASE_URL}${product.image}`;
-    }
     return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
   }
   
+  // ✅ Handle image objects with url property
   if (product.image && typeof product.image === 'object' && product.image.url) {
     return product.image.url;
   }
   
+  // ✅ Handle images array
   if (product.images && product.images.length > 0) {
     const firstImage = product.images[0];
     if (typeof firstImage === 'string') {
-      if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
+      if (firstImage.startsWith('http')) {
         return firstImage;
       }
       return `${process.env.REACT_APP_API_BASE_URL}/uploads/${firstImage}`;
@@ -68,8 +82,21 @@ const getProductImage = (product) => {
     }
   }
   
+  // ✅ Handle imageUrls array
+  if (product.imageUrls && product.imageUrls.length > 0) {
+    const firstImageUrl = product.imageUrls[0];
+    if (firstImageUrl.startsWith('http')) {
+      return firstImageUrl;
+    }
+    return `${process.env.REACT_APP_API_BASE_URL}/uploads/${firstImageUrl}`;
+  }
+  
+  // ✅ Handle single imageUrl property
   if (product.imageUrl) {
-    return product.imageUrl;
+    if (product.imageUrl.startsWith('http')) {
+      return product.imageUrl;
+    }
+    return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.imageUrl}`;
   }
   
   return null;
@@ -88,7 +115,7 @@ const VIEW_MODES = {
   GRID: 'grid'
 };
 
-export const VendorProductListPage = () => {
+const VendorProductListPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -821,4 +848,5 @@ const ProductTableRow = ({ product, onClick, onAction }) => {
   );
 };
 
+// Keep only the default export
 export default VendorProductListPage;

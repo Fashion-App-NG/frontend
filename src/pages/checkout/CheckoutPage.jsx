@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'; // ✅ Add useMemo
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
@@ -24,8 +24,10 @@ const CheckoutPage = () => {
     timeRemaining,
     initializeSession,
     nextStep,
-    prevStep
+    prevStep,
+    goToStep
   } = useCheckoutSession();
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
 
   // ✅ Extract complex expression to a separate variable
   const hasSessionData = useMemo(() => !!sessionData, [sessionData]);
@@ -57,7 +59,7 @@ const CheckoutPage = () => {
         console.log('🟢 [CHECKOUT] Cart empty on confirmation step - this is expected after successful order');
       }
     }
-  }, [cartCount, cartItems, navigate, currentStep, hasSessionData]); // ✅ Use extracted variable
+  }, [cartCount, cartItems, navigate, currentStep, hasSessionData]);
 
   // Initialize checkout session
   useEffect(() => {
@@ -85,7 +87,7 @@ const CheckoutPage = () => {
       case 3:
         return <PaymentMethodStep onNext={nextStep} onBack={prevStep} sessionData={sessionData} />;
       case 4:
-        return <OrderConfirmationStep sessionData={sessionData} />;
+        return <OrderConfirmationStep sessionData={sessionData} setConfirmedOrder={setConfirmedOrder} />;
       default:
         return <CartReviewStep onNext={nextStep} sessionData={sessionData} />;
     }
@@ -117,6 +119,21 @@ const CheckoutPage = () => {
         </div>
       </div>
     );
+  }
+
+  // Replace verbose logging with a single consolidated log
+  if (process.env.NODE_ENV === 'development') {
+    const debugState = {
+      cartCount,
+      cartItemsLength: cartItems.length,
+      currentStep,
+      hasSessionData,
+      sessionData: sessionData ? 'present' : 'missing'
+    };
+    
+    console.group('🔍 CHECKOUT DEBUG');
+    console.log('State:', debugState);
+    console.groupEnd();
   }
 
   return (
@@ -159,7 +176,8 @@ const CheckoutPage = () => {
 
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
-            <OrderSummaryCard sessionData={sessionData} />
+            {/* Use confirmedOrder if on confirmation step */}
+            <OrderSummaryCard sessionData={currentStep === 4 && confirmedOrder ? confirmedOrder : sessionData} />
           </div>
         </div>
 

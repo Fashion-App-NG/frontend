@@ -67,7 +67,8 @@ const PaymentMethodStep = ({ onNext, onBack, sessionData }) => {
     
     try {
       await checkoutService.setPaymentMethod(sessionData.sessionId, 'paystack');
-      const orderResult = await checkoutService.confirmOrder(sessionData.sessionId, reference.reference);
+      // Pass sessionData as a second argument for mock
+      const orderResult = await checkoutService.confirmOrder(sessionData.sessionId, reference.reference, sessionData);
 
       if (orderResult.success) {
         if (process.env.NODE_ENV === 'development') {

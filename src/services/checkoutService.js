@@ -145,7 +145,7 @@ class CheckoutService {
   }
 
   // ✅ UPDATED: Real order confirmation API integration
-  async confirmOrder(sessionId, paymentReference) {
+  async confirmOrder(sessionId, paymentReference, sessionData) {
     try {
       console.log('🔍 Confirming order with inventory update tracking:', { 
         sessionId, 
@@ -164,14 +164,7 @@ class CheckoutService {
 
       if (!response.ok) {
         if (process.env.NODE_ENV === 'development') {
-          const mockOrder = this.getMockOrder(paymentReference);
-          
-          // ✅ Mock inventory update logging
-          console.log('🔄 Mock inventory updates for order:', {
-            items: mockOrder.order.items,
-            inventoryUpdated: true
-          });
-          
+          const mockOrder = this.getMockOrder(paymentReference, sessionData);
           this.clearSession();
           return mockOrder;
         }
@@ -193,7 +186,7 @@ class CheckoutService {
     } catch (error) {
       console.error('❌ ConfirmOrder error:', error);
       if (process.env.NODE_ENV === 'development') {
-        const mockOrder = this.getMockOrder(paymentReference);
+        const mockOrder = this.getMockOrder(paymentReference, sessionData);
         this.clearSession();
         return mockOrder;
       }
@@ -285,7 +278,14 @@ class CheckoutService {
   }
 
   // ✅ NEW: Mock order for development
-  getMockOrder(paymentReference) {
+  getMockOrder(paymentReference, sessionData) {
+    // Calculate from sessionData if available
+    const items = sessionData?.reservedItems || [];
+    const subtotal = items.reduce((sum, item) => sum + ((item.pricePerYard || item.price || 0) * (item.quantity || 1)), 0);
+    const deliveryFee = 3000;
+    const tax = Math.round(subtotal * 0.075);
+    const totalAmount = subtotal + deliveryFee + tax;
+
     return {
       success: true,
       order: {
@@ -294,11 +294,14 @@ class CheckoutService {
         status: 'CONFIRMED',
         paymentStatus: 'PAID',
         paymentReference: paymentReference,
-        totalAmount: 675000,
+        subtotal,
+        deliveryFee,
+        tax,
+        totalAmount,
         trackingId: `TRK-${Date.now()}`,
         orderDate: new Date().toISOString(),
         estimatedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-        items: this.currentSession?.reservedItems || [],
+        items,
         shippingAddress: {
           street: "123 Mock Street",
           city: "Lagos",

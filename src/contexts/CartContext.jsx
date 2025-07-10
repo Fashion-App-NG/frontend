@@ -165,6 +165,25 @@ export const CartProvider = ({ children }) => {
     handleLoginCartMerge();
   }, [user, isAuthenticated, loadCart]); // ✅ FIX: Include loadCart dependency
 
+  // Add these helper functions before the addToCartSync function
+
+  // Calculate cart count
+  const updateCartCount = (cart) => {
+    return cart.reduce((total, item) => total + (item.quantity || 1), 0);
+  };
+
+  // Save to localStorage
+  const saveCartToLocalStorage = (cart) => {
+    localStorage.setItem('fashionCart', JSON.stringify(cart));
+  };
+
+  // Then either use addToCartSync or remove it
+  // Option 1: Remove unused function (simplest solution)
+  // Delete the entire addToCartSync function
+
+  // Option 2: Use it instead of the regular addToCart function
+  // Replace your addToCart implementation with addToCartSync
+
   // ✅ FIX: Single, simplified addToCart function
   const addToCart = useCallback(async (product) => {
     // ✅ FIX: Prevent multiple simultaneous requests
@@ -272,6 +291,49 @@ export const CartProvider = ({ children }) => {
       setIsAddingToCart(false);
     }
   }, [isAddingToCart]);
+
+  // Add API synchronization to existing methods
+  const addToCartSync = async (product) => {
+    setIsAddingToCart(true);
+    try {
+      // First, update UI immediately for responsiveness
+      const updatedCart = [...cartItems];
+      const existingItemIndex = cartItems.findIndex(item => item.id === product.id);
+      
+      if (existingItemIndex >= 0) {
+        // Update existing item
+        updatedCart[existingItemIndex].quantity += product.quantity || 1;
+      } else {
+        // Add new item
+        updatedCart.push({...product, quantity: product.quantity || 1});
+      }
+      
+      // Update local state first for immediate feedback
+      setCartItems(updatedCart);
+      updateCartCount(updatedCart);
+      saveCartToLocalStorage(updatedCart);
+      
+      // Then sync with backend
+      if (isAuthenticated) {
+        await cartService.addToCart({
+          productId: product.id,
+          quantity: product.quantity || 1
+        });
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Cart synchronized with backend');
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+      setError(error.message);
+      return false;
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   // ✅ Remove item from cart
   const removeFromCart = useCallback(async (productId) => {

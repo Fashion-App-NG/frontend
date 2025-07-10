@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
   const { 
@@ -109,9 +110,10 @@ const ShopperCart = () => {
                 <div className="flex-shrink-0 w-20 h-20">
                   {item.image ? (
                     <img
-                      src={item.image}
+                      src={getProductImageUrl(item)}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                onError={e => { e.target.src = '/default-product.jpg'; }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
