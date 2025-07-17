@@ -14,8 +14,10 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
 
   const { isAuthenticated } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, isInCart, isLoading, error: cartError } = useCart(); // <-- rename here
   const { toggleFavorite, isFavorite } = useFavorites();
+
+  console.log('[DEBUG] NODE_ENV:', process.env.NODE_ENV);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -41,18 +43,27 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!product) return;
-    
-    const success = addToCart({
+    console.log('[ALWAYS] handleAddToCart called');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEBUG] handleAddToCart called with:', {
+        id: product._id || product.id,
+        name: product.name,
+        price: product.pricePerYard,
+        quantity,
+        image: product.images?.[0] || '/default-product.jpg',
+        vendorId: product.vendorId || product.vendor?.id,
+        vendorName: product.vendorName || product.vendor?.name,
+      });
+    }
+    addToCart({
       id: product._id || product.id,
       name: product.name,
       price: product.pricePerYard,
       image: product.images?.[0] || '/default-product.jpg',
-      quantity: parseInt(quantity)
+      quantity: parseInt(quantity),
+      vendorId: product.vendorId || product.vendor?.id,
+      vendorName: product.vendorName || product.vendor?.name,
     });
-
-    if (success) {
-      alert('Product added to cart!');
-    }
   };
 
   const handleToggleFavorite = async () => {
@@ -60,12 +71,19 @@ const ProductDetailPage = () => {
       alert('Please log in to add favorites');
       return;
     }
-    
+
     const success = await toggleFavorite(product._id || product.id);
     if (success) {
       // Success feedback could be a toast notification
     }
   };
+
+  // Debug: Log every time quantity changes
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEBUG] Quantity state changed:', quantity);
+    }
+  }, [quantity]);
 
   if (loading) {
     return (
@@ -132,6 +150,13 @@ const ProductDetailPage = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Cart error display */}
+        {cartError && (
+          <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+            {cartError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Images */}
           <div>
@@ -151,9 +176,8 @@ const ProductDetailPage = () => {
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square bg-gray-200 rounded-lg overflow-hidden ${
-                      selectedImage === index ? 'ring-2 ring-blue-500' : ''
-                    }`}
+                    className={`aspect-square bg-gray-200 rounded-lg overflow-hidden ${selectedImage === index ? 'ring-2 ring-blue-500' : ''
+                      }`}
                   >
                     <img
                       src={image}
@@ -197,6 +221,10 @@ const ProductDetailPage = () => {
                 <span className="text-sm font-medium text-gray-700">Available</span>
                 <p className="text-gray-900">{product.quantity || 105} yards</p>
               </div>
+
+              <p className="text-sm text-gray-600">
+                Vendor: {product.vendorName || 'Fashion Store'}
+              </p>
             </div>
 
             {/* Quantity Selector */}
@@ -206,7 +234,13 @@ const ProductDetailPage = () => {
               </label>
               <div className="flex items-center border border-gray-300 rounded-lg w-32">
                 <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  onClick={() => {
+                    const newQty = Math.max(1, quantity - 1);
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('[DEBUG] Quantity decremented:', newQty);
+                    }
+                    setQuantity(newQty);
+                  }}
                   className="px-3 py-2 text-gray-600 hover:text-gray-800"
                 >
                   -
@@ -216,11 +250,23 @@ const ProductDetailPage = () => {
                   min="1"
                   max={product.quantity || 105}
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => {
+                    const val = Math.max(1, parseInt(e.target.value) || 1);
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('[DEBUG] Quantity input changed:', val);
+                    }
+                    setQuantity(val);
+                  }}
                   className="flex-1 text-center py-2 border-0 focus:ring-0"
                 />
                 <button
-                  onClick={() => setQuantity(Math.min((product.quantity || 105), quantity + 1))}
+                  onClick={() => {
+                    const newQty = Math.min((product.quantity || 105), quantity + 1);
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('[DEBUG] Quantity incremented:', newQty);
+                    }
+                    setQuantity(newQty);
+                  }}
                   className="px-3 py-2 text-gray-600 hover:text-gray-800"
                 >
                   +
@@ -232,17 +278,17 @@ const ProductDetailPage = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleAddToCart}
+                disabled={isLoading || isInCart(product._id || product.id)}
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Add to Cart
+                {isInCart(product._id || product.id) ? 'In Cart' : isLoading ? 'Adding...' : 'Add to Cart'}
               </button>
               <button
                 onClick={handleToggleFavorite}
-                className={`p-3 rounded-lg border transition-colors ${
-                  isProductFavorited
+                className={`p-3 rounded-lg border transition-colors ${isProductFavorited
                     ? 'bg-red-50 border-red-200 text-red-600'
                     : 'bg-gray-50 border-gray-200 text-gray-600 hover:text-red-600'
-                }`}
+                  }`}
               >
                 <svg className="w-6 h-6" fill={isProductFavorited ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />

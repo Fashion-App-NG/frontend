@@ -11,7 +11,7 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
       console.log('🟡 [CONFIRMATION] OrderConfirmationStep mounted');
       console.log('🟡 [CONFIRMATION] Cart count on mount:', cartCount);
     }
-    
+
     const loadOrderAndClearCart = async () => {
       const lastOrder = localStorage.getItem('lastOrder');
       if (lastOrder) {
@@ -21,8 +21,8 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
         try {
           const order = JSON.parse(lastOrder);
           setOrderData(order);
-          if (setConfirmedOrder) setConfirmedOrder(order); // <-- Add this line
-          
+          if (setConfirmedOrder) setConfirmedOrder(order);
+
           if (process.env.NODE_ENV === 'development') {
             console.log('🟡 [CONFIRMATION] About to clear cart on confirmation page');
           }
@@ -36,7 +36,7 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
               console.warn('⚠️ [CONFIRMATION] Failed to clear cart on confirmation:', clearError);
             }
           }
-          
+
           localStorage.removeItem('lastOrder');
         } catch (error) {
           console.error('❌ [CONFIRMATION] Error parsing order data:', error);
@@ -49,7 +49,7 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
     };
 
     loadOrderAndClearCart();
-  }, [clearCart, cartCount]); // ✅ Add cartCount back to dependency array
+  }, [clearCart, cartCount, setConfirmedOrder]); // ✅ Add setConfirmedOrder to dependencies
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-NG', {
@@ -61,34 +61,30 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-NG', {
-      day: 'numeric',
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-NG', {
+      year: 'numeric',
       month: 'short',
-      year: 'numeric'
+      day: '2-digit'
     });
   };
 
   if (!orderData) {
     return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
         <p className="text-gray-600">Loading order details...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h2>
-        <p className="text-gray-600">Thank you for your purchase. Your order has been successfully processed.</p>
-      </div>
-
+    <div>
+      <h2 className="text-xl font-semibold mb-6 text-center">Order Confirmed!</h2>
+      <p className="text-center mb-8 text-gray-700">
+        Thank you for your purchase. Your order has been successfully processed.
+      </p>
       <div className="space-y-6">
         {/* Order Information */}
         <div className="bg-gray-50 p-4 rounded-lg">
@@ -96,7 +92,6 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
           <div className="space-y-1 text-sm text-gray-600">
             <p><span className="font-medium">Order ID:</span> {orderData.orderId || orderData.orderNumber || orderData.id}</p>
             <p><span className="font-medium">Date:</span> {formatDate(orderData.createdAt || orderData.orderDate || orderData.date)}</p>
-            {/* Show breakdown if available */}
             {typeof orderData.subtotal === 'number' && (
               <p><span className="font-medium">Subtotal:</span> {formatPrice(orderData.subtotal)}</p>
             )}
@@ -109,48 +104,42 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
             <p><span className="font-medium">Total:</span> {formatPrice(orderData.totalAmount || orderData.total)}</p>
           </div>
         </div>
-
-        {/* ✅ Fix: Re-add order items display */}
-        {orderData.items && orderData.items.length > 0 && (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
-            <div className="space-y-3">
-              {orderData.items.map((item, index) => {
-                const unitPrice = item.pricePerYard ?? item.price ?? 0;
-                return (
-                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{item.name || item.title}</p>
-                      <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                      {item.size && <p className="text-sm text-gray-600">Size: {item.size}</p>}
-                      {item.color && <p className="text-sm text-gray-600">Color: {item.color}</p>}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">{formatPrice(unitPrice * item.quantity)}</p>
-                      <p className="text-sm text-gray-600">{formatPrice(unitPrice)} each</p>
-                    </div>
+        {/* Order Items */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-semibold text-gray-900 mb-2">Order Items</h3>
+          {orderData.items && orderData.items.length > 0 ? (
+            <ul className="divide-y divide-gray-200">
+              {orderData.items.map((item, idx) => (
+                <li key={item.id || idx} className="py-2 flex justify-between items-center">
+                  <div>
+                    <div className="font-medium text-gray-800">{item.name}</div>
+                    <div className="text-xs text-gray-500">Quantity: {item.quantity}</div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Navigation buttons */}
-        <div className="flex justify-center space-x-4">
-          <Link 
-            to="/shopper/orders" 
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            View Order History
-          </Link>
-          <Link 
-            to="/shopper/products" 
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-          >
-            Continue Shopping
-          </Link>
+                  <div className="text-right">
+                    <div className="text-gray-900">{formatPrice(item.pricePerYard ? item.pricePerYard * item.quantity : item.price * item.quantity)}</div>
+                    <div className="text-xs text-gray-500">{formatPrice(item.pricePerYard || item.price)} each</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 text-sm">No items found in this order.</p>
+          )}
         </div>
+      </div>
+      <div className="flex justify-center gap-4 mt-8">
+        <Link
+          to="/shopper/orders"
+          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          View Order History
+        </Link>
+        <Link
+          to="/shopper/products"
+          className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+        >
+          Continue Shopping
+        </Link>
       </div>
     </div>
   );

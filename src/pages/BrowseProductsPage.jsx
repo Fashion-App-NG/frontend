@@ -4,6 +4,7 @@ import ProductCard from '../components/Product/ProductCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import productService from '../services/productService';
+import useDebounce from '../hooks/useDebounce';
 
 const BrowseProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -24,8 +25,9 @@ const BrowseProductsPage = () => {
     sortBy: searchParams.get('sortBy') || 'newest',
     sortOrder: searchParams.get('sortOrder') || 'desc'
   });
+  const debouncedFilters = useDebounce(filters, 400);
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (filters) => {
     setLoading(true);
     setError(null);
 
@@ -53,11 +55,11 @@ const BrowseProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    loadProducts(debouncedFilters);
+  }, [debouncedFilters, loadProducts]);
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -149,7 +151,7 @@ const BrowseProductsPage = () => {
               
               <Link to="/shopper/browse" className="flex items-center px-3 py-2 text-blue-600 bg-blue-50 rounded-lg">
                 <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 7a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10" />
                 </svg>
                 Browse Products
               </Link>

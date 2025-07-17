@@ -24,8 +24,7 @@ const CheckoutPage = () => {
     timeRemaining,
     initializeSession,
     nextStep,
-    prevStep,
-    goToStep
+    prevStep
   } = useCheckoutSession();
   const [confirmedOrder, setConfirmedOrder] = useState(null);
 

@@ -10,7 +10,8 @@ const ShopperCart = () => {
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal 
+    getCartTotal,
+    error
   } = useCart();
 
   // ✅ DEBUG: Log cart data in ShopperCart component
@@ -92,6 +93,13 @@ const ShopperCart = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Shopping Cart</h1>
         <span className="text-sm text-gray-600">{cartCount} item{cartCount !== 1 ? 's' : ''}</span>

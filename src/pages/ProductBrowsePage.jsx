@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/Product/ProductFilters';
 import ProductGrid from '../components/Product/ProductGrid';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
+import useDebounce from '../hooks/useDebounce';
 import productService from '../services/productService';
 
 const ProductBrowsePage = () => {
@@ -23,6 +24,7 @@ const ProductBrowsePage = () => {
     sortBy: searchParams.get('sortBy') || 'name',
     sortOrder: searchParams.get('sortOrder') || 'asc'
   }));
+  const debouncedFilters = useDebounce(filters, 400);
 
   // ✅ Load view preference from localStorage
   useEffect(() => {
@@ -78,9 +80,9 @@ const ProductBrowsePage = () => {
   }, []);
 
   useEffect(() => {
-    loadProducts(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Only fetch when debouncedFilters changes
+    loadProducts(debouncedFilters);
+  }, [debouncedFilters]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

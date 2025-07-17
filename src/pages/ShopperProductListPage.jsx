@@ -4,6 +4,7 @@ import ProductCard from '../components/Product/ProductCard';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import { ShopperProductTableRow } from '../components/Shopper/ShopperProductTableRow';
 import { useCart } from '../contexts/CartContext';
+import useDebounce from '../hooks/useDebounce';
 import productService from '../services/productService';
 
 // ✅ Enhanced helper function to get product image (preserves image count logic)
@@ -92,6 +93,7 @@ export const ShopperProductListPage = () => {
     sortBy: searchParams.get('sortBy') || 'date',
     sortOrder: searchParams.get('sortOrder') || 'desc'
   }));
+  const debouncedFilters = useDebounce(filters, 400);
 
   // ✅ Load products with enhanced filtering for shoppers
   const loadShopperProducts = useCallback(async (currentFilters) => {
@@ -301,8 +303,9 @@ export const ShopperProductListPage = () => {
   }, [addToCart, navigate]);
 
   useEffect(() => {
-    loadShopperProducts(filters);
-  }, [loadShopperProducts, activeFilterTab, filters]);
+    // Only fetch when debouncedFilters changes
+    loadShopperProducts(debouncedFilters);
+  }, [debouncedFilters]);
 
   const filterCounts = getFilterCounts();
 

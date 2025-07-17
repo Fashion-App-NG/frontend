@@ -3,6 +3,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 class ProductService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
+    this.cache = {}; // Add this line
     
     if (process.env.NODE_ENV === 'development') {
       console.log('🔧 Product Service Base URL:', this.baseURL);
@@ -60,6 +61,14 @@ class ProductService {
 
   // ✅ FIX: Enhanced getAllProducts with better error handling
   async getAllProducts(filters = {}) {
+    const cacheKey = JSON.stringify(filters);
+    if (this.cache[cacheKey]) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Returning products from cache:', cacheKey);
+      }
+      return this.cache[cacheKey];
+    }
+
     try {
       console.log('🔄 Loading products with filters:', filters);
       
@@ -98,6 +107,9 @@ class ProductService {
 
       const data = await response.json();
       
+      // Store in cache
+      this.cache[cacheKey] = data;
+
       // ✅ Fix: Gate debug logging in getAllProducts
       if (data.products && data.products.length > 0) {
         if (process.env.NODE_ENV === 'development') {
