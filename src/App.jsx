@@ -133,7 +133,7 @@ function App() {
                 <Route index element={<ShopperDashboardPage />} />
                 <Route path="dashboard" element={<ShopperDashboardPage />} />
                 <Route path="browse" element={<ShopperProductListPage />} />
-                <Route path="product/:id" element={<ProductDetailPage />} />
+                <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="cart" element={<ShopperCart />} />
                 {/* ✅ ADD: Checkout route */}

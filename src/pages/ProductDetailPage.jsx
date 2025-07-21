@@ -14,25 +14,28 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
 
   const { isAuthenticated } = useAuth();
-  const { addToCart, isInCart, isLoading, error: cartError } = useCart(); // <-- rename here
+  const { addToCart, isInCart, isLoading, error: cartError } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   console.log('[DEBUG] NODE_ENV:', process.env.NODE_ENV);
 
   useEffect(() => {
-    const loadProduct = async () => {
-      if (!productId) return;
+    if (!productId) {
+      console.error('No productId in route params');
+      return;
+    }
+    console.log('[DEBUG] About to fetch product from backend:', productId);
 
-      setLoading(true);
+    const loadProduct = async () => {
       try {
+        console.log('[DEBUG] Calling productService.getProductById with:', productId);
         const response = await productService.getProductById(productId);
-        if (response.error) {
-          throw new Error(response.error);
-        }
+        console.log('[DEBUG] ProductService response:', response);
+        if (response.error) throw new Error(response.error);
         setProduct(response.product);
       } catch (error) {
-        console.error('Failed to load product:', error);
         setError(error.message);
+        console.error('[DEBUG] Error fetching product:', error);
       } finally {
         setLoading(false);
       }
@@ -50,7 +53,7 @@ const ProductDetailPage = () => {
         name: product.name,
         price: product.pricePerYard,
         quantity,
-        image: product.images?.[0] || '/default-product.jpg',
+        image: product.images?.[0] || '/images/default-product.jpg',
         vendorId: product.vendorId || product.vendor?.id,
         vendorName: product.vendorName || product.vendor?.name,
       });
@@ -59,7 +62,7 @@ const ProductDetailPage = () => {
       id: product._id || product.id,
       name: product.name,
       price: product.pricePerYard,
-      image: product.images?.[0] || '/default-product.jpg',
+      image: product.images?.[0] || '/images/default-product.jpg',
       quantity: parseInt(quantity),
       vendorId: product.vendorId || product.vendor?.id,
       vendorName: product.vendorName || product.vendor?.name,
@@ -108,7 +111,9 @@ const ProductDetailPage = () => {
   }
 
   const isProductFavorited = isFavorite(product._id || product.id);
-  const images = product.images || ['/default-product.jpg'];
+  const images = Array.isArray(product.images) && product.images.length > 0
+    ? product.images.map(img => img.url)
+    : ['/images/default-product.jpg'];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,13 +143,15 @@ const ProductDetailPage = () => {
       {/* Breadcrumb */}
       <div className="bg-yellow-50 py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm">
-            Path: product/{productId}/4dc0e608/70f0d4 |{' '}
-            <Link to="/shopper/browse" className="text-blue-600">Layout files</Link> |{' '}
-            <span>Show Guest Sidebar Tabs</span> |{' '}
-            <span>User: Shopper</span> |{' '}
-            <span>Auth: true</span>
-          </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-sm">
+              Path: product/{productId}/4dc0e608/70f0d4 |{' '}
+              <Link to="/shopper/browse" className="text-blue-600">Layout files</Link> |{' '}
+              <span>Show Guest Sidebar Tabs</span> |{' '}
+              <span>User: Shopper</span> |{' '}
+              <span>Auth: true</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -165,8 +172,10 @@ const ProductDetailPage = () => {
                 src={images[selectedImage]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = '/default-product.jpg';
+                onError={e => {
+                  if (!e.target.src.endsWith('/default-product.jpg')) {
+                    e.target.src = '/images/default-product.jpg';
+                  }
                 }}
               />
             </div>
@@ -184,7 +193,7 @@ const ProductDetailPage = () => {
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = '/default-product.jpg';
+                        e.target.src = '/images/default-product.jpg';
                       }}
                     />
                   </button>
@@ -286,8 +295,8 @@ const ProductDetailPage = () => {
               <button
                 onClick={handleToggleFavorite}
                 className={`p-3 rounded-lg border transition-colors ${isProductFavorited
-                    ? 'bg-red-50 border-red-200 text-red-600'
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:text-red-600'
+                  ? 'bg-red-50 border-red-200 text-red-600'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:text-red-600'
                   }`}
               >
                 <svg className="w-6 h-6" fill={isProductFavorited ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">

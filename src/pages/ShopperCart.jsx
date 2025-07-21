@@ -121,7 +121,7 @@ const ShopperCart = () => {
                       src={getProductImageUrl(item)}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                onError={e => { e.target.src = '/default-product.jpg'; }}
+                onError={e => { e.target.src = '/images/default-product.jpg'; }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">

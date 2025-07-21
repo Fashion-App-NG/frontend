@@ -255,14 +255,14 @@ export const ShopperProductListPage = () => {
   }, [loadShopperProducts, filters]);
 
   // ✅ Product navigation
-  const handleProductClick = useCallback((product) => {
-    const productId = product.id || product._id;
-    if (!productId) {
-      console.error('Product ID is missing:', product);
+  const handleProductClick = (product) => {
+    const id = product.id || product._id;
+    if (!id) {
+      console.error('Product ID missing for navigation:', product);
       return;
     }
-    navigate(`/shopper/product/${productId}`);
-  }, [navigate]);
+    navigate(`/shopper/product/${id}`);
+  };
 
   // ✅ Shopper-specific actions
   const handleProductAction = useCallback((product, action) => {
@@ -305,7 +305,7 @@ export const ShopperProductListPage = () => {
   useEffect(() => {
     // Only fetch when debouncedFilters changes
     loadShopperProducts(debouncedFilters);
-  }, [debouncedFilters]);
+  }, [debouncedFilters, loadShopperProducts]);
 
   const filterCounts = getFilterCounts();
 
