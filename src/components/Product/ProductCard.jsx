@@ -61,7 +61,7 @@ const ProductCard = ({
   // Update the image handling logic
   const getImageSrc = () => {
     if (imageError) {
-      return '/default-product.jpg';
+      return '/images/default-product.jpg';
     }
 
     // Handle images array
@@ -103,7 +103,7 @@ const ProductCard = ({
     }
 
     // Fallback to default image
-    return '/default-product.jpg';
+    return '/images/default-product.jpg';
   };
 
   return (

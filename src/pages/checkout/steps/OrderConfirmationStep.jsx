@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 
-const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
+const OrderConfirmationStep = ({ order }) => {
   const { clearCart, cartCount } = useCart();
   const [orderData, setOrderData] = useState(null);
 
@@ -21,7 +21,6 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
         try {
           const order = JSON.parse(lastOrder);
           setOrderData(order);
-          if (setConfirmedOrder) setConfirmedOrder(order);
 
           if (process.env.NODE_ENV === 'development') {
             console.log('🟡 [CONFIRMATION] About to clear cart on confirmation page');
@@ -49,7 +48,7 @@ const OrderConfirmationStep = ({ sessionData, setConfirmedOrder }) => {
     };
 
     loadOrderAndClearCart();
-  }, [clearCart, cartCount, setConfirmedOrder]); // ✅ Add setConfirmedOrder to dependencies
+  }, [clearCart, cartCount]); // ✅ Add setConfirmedOrder to dependencies
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-NG', {

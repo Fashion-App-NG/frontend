@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
+const ShippingInfoStep = ({ onSubmit, onBack }) => {
   const [shippingData, setShippingData] = useState({
     street: '',
     houseNo: '',
@@ -19,7 +19,7 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
     // TODO: Implement actual API call
     // await checkoutService.saveShippingInfo(sessionData.sessionId, shippingData);
     
-    onNext();
+    onSubmit(shippingData);
   };
 
   const handleChange = (e) => {
@@ -131,19 +131,19 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
           </div>
         </div>
 
-        <div className="flex justify-between pt-6">
+        <div className="flex justify-between mt-6">
           <button
             type="button"
             onClick={onBack}
             className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Back
+            Back to Cart
           </button>
           <button
             type="submit"
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Continue
+            Continue to Payment
           </button>
         </div>
       </form>
