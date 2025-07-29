@@ -190,6 +190,11 @@ export const CartProvider = ({ children }) => {
     }
   }, [cartItems, cartCount, isLoading, error]);
 
+  useEffect(() => {
+    console.log('[CART] Cart items changed:', cartItems);
+    console.log('[CART] Cart count:', cartCount);
+  }, [cartItems, cartCount]);
+
   return (
     <CartContext.Provider value={value}>
       {children}

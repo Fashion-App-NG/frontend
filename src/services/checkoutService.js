@@ -1,6 +1,7 @@
 class CheckoutService {
   constructor() {
     this.baseURL = process.env.REACT_APP_API_BASE_URL || '';
+    this.shippingService = require('./shippingService').default;
   }
 
   // Always prefix with /api
@@ -14,6 +15,13 @@ class CheckoutService {
   }
 
   async saveShippingInfo(shippingAddress, customerInfo) {
+    console.log('Validating address:', shippingAddress);
+    const validationResult = await this.shippingService.validateAddress(shippingAddress);
+    console.log('Validation result:', validationResult);
+    if (!validationResult.success) {
+      throw new Error('Invalid address.');
+    }
+
     const response = await fetch(`${this.baseURL}/api/checkout/shipping`, {
       method: 'POST',
       headers: {

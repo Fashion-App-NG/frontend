@@ -82,7 +82,7 @@ const ProductBrowsePage = () => {
   useEffect(() => {
     // Only fetch when debouncedFilters changes
     loadProducts(debouncedFilters);
-  }, [debouncedFilters]);
+  }, [debouncedFilters, loadProducts]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

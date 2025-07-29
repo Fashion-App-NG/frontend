@@ -2,6 +2,9 @@ import { useCart } from '../../../contexts/CartContext';
 import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext, sessionData }) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Dev - [PAGE] CartReviewStep rendered');
+  }
   const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
 
   const formatPrice = (price) => {
@@ -16,7 +19,7 @@ const CartReviewStep = ({ onNext, sessionData }) => {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Review Your Cart</h2>
-      
+
       {cartItems.map((item, index) => (
         <div key={index} className="flex items-center space-x-4 py-4 border-b border-gray-200">
           {/* Product Image */}

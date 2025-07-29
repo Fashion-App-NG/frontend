@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 
+import CheckoutProgressBar from './components/CheckoutProgressBar';
 import OrderSummaryCard from './components/OrderSummaryCard';
 import CartReviewStep from './steps/CartReviewStep';
 import OrderConfirmationStep from './steps/OrderConfirmationStep';
@@ -21,7 +22,8 @@ const CheckoutPage = () => {
     reviewCart,
     saveShipping,
     confirmOrder,
-    setCurrentStep
+    setCurrentStep,
+    shippingInfo
   } = useCheckoutSession();
 
   // Redirect if cart is empty (but NOT on confirmation step)
@@ -60,19 +62,25 @@ const CheckoutPage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
+          <CheckoutProgressBar currentStep={currentStep} />
           {currentStep === 1 && (
             <CartReviewStep cart={cart} onNext={() => setCurrentStep(2)} />
           )}
           {currentStep === 2 && (
             <ShippingInfoStep
-              onSubmit={saveShipping}
+              onSubmit={(shippingAddress, customerInfo) => saveShipping(shippingAddress, customerInfo)}
               onBack={() => setCurrentStep(1)}
             />
           )}
           {currentStep === 3 && (
             <PaymentMethodStep
-              onSubmit={confirmOrder}
+              onSubmit={({ paymentDetails, reservationDuration }) =>
+                confirmOrder(paymentDetails, reservationDuration)
+              }
               onBack={() => setCurrentStep(2)}
+              shippingAddress={shippingInfo?.shippingAddress}
+              customerInfo={shippingInfo?.customerInfo}
+              cart={cart}
             />
           )}
         </div>

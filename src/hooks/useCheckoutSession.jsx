@@ -30,7 +30,7 @@ export const useCheckoutSession = () => {
     setError(null);
     try {
       setShippingInfo({ shippingAddress, customerInfo });
-      setCurrentStep(2);
+      setCurrentStep(3); // Move to payment step
     } catch (err) {
       setError(err.message);
     } finally {
@@ -43,6 +43,12 @@ export const useCheckoutSession = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('Confirming order with:', {
+        shippingAddress: shippingInfo.shippingAddress,
+        customerInfo: shippingInfo.customerInfo,
+        paymentDetails,
+        reservationDuration
+      });
       const data = await checkoutService.confirmOrder({
         shippingAddress: shippingInfo.shippingAddress,
         customerInfo: shippingInfo.customerInfo,
@@ -50,7 +56,7 @@ export const useCheckoutSession = () => {
         reservationDuration
       });
       setOrder(data.order);
-      setCurrentStep(3);
+      setCurrentStep(4); // Move to confirmation step
     } catch (err) {
       setError(err.message);
     } finally {

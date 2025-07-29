@@ -4,11 +4,16 @@ import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
-import checkoutService from '../../../services/checkoutService';
 
-const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
+// In PaymentMethodStep.jsx
+const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, cart }) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Dev - [PAGE] PaymentMethodStep rendered');
+  }
   const { user } = useAuth();
-  const { cartCount, getCartTotal } = useCart(); // ✅ Keep getCartTotal if used
+  const { getCartTotal } = useCart();
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('paystack');
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     cardHolder: '',
@@ -22,8 +27,7 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
       state: ''
     }
   });
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('paystack');
+  const [orderConfirmed, setOrderConfirmed] = useState(false);
 
   // Calculate totals
   const subtotal = getCartTotal();
@@ -31,19 +35,19 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
   const tax = Math.round(subtotal * 0.075); // 7.5% VAT
   const total = subtotal + deliveryFee + tax;
 
-  // ✅ Paystack configuration
+  // Paystack configuration
   const paystackProps = {
-    email: user?.email || 'customer@example.com',
-    amount: formatAmountForPaystack(total), // Convert to kobo
+    email: customerInfo?.email || user?.email || 'customer@example.com',
+    amount: formatAmountForPaystack(total),
     currency: PAYSTACK_CONFIG.currency,
     publicKey: PAYSTACK_CONFIG.publicKey,
     text: `Pay ₦${total.toLocaleString()}`,
     channels: PAYSTACK_CONFIG.channels,
     metadata: {
-      sessionId: sessionData?.sessionId,
-      userId: user?.id,
+      customerName: customerInfo?.name,
+      customerPhone: customerInfo?.phone,
       orderAmount: total,
-      itemCount: sessionData?.reservedItems?.length || 0,
+      itemCount: cart?.items?.length || 0,
       custom_fields: [
         {
           display_name: "Fashion App Order",
@@ -58,41 +62,19 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
 
   // ✅ Handle successful payment
   async function handlePaymentSuccess(reference) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔵 [PAYMENT] Payment successful, starting confirmation process');
-      console.log('🔵 [PAYMENT] Current cart count before onNext:', cartCount);
-    }
-    
-    setProcessingPayment(true);
-    
-    try {
-      await checkoutService.setPaymentMethod(sessionData.sessionId, 'paystack');
-      // Pass sessionData as a second argument for mock
-      const orderResult = await checkoutService.confirmOrder(sessionData.sessionId, reference.reference, sessionData);
+    if (orderConfirmed) return;
+    setOrderConfirmed(true);
 
-      if (orderResult.success) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🟢 [PAYMENT] Order confirmed, storing order data');
-        }
-        
-        // ✅ Store order details for confirmation page
-        localStorage.setItem('lastOrder', JSON.stringify(orderResult.order));
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔵 [PAYMENT] About to call onNext()');
-        }
-        // ✅ Move to confirmation step FIRST
-        onSubmit(); // This should navigate to step 4
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔵 [PAYMENT] onNext() called, order will be confirmed');
-        }
-        
-      } else {
-        throw new Error(orderResult.message || 'Order confirmation failed');
-      }
+    try {
+      // Replace confirmOrder with onSubmit
+      await onSubmit({
+        shippingAddress,
+        customerInfo,
+        paymentDetails: { reference: reference.reference },
+        reservationDuration: 30
+      });
     } catch (error) {
-      console.error('❌ [PAYMENT] Error:', error);
+      setOrderConfirmed(false);
       alert(`Order confirmation failed: ${error.message}`);
     } finally {
       setProcessingPayment(false);
@@ -113,7 +95,7 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('💳 Manual payment data:', paymentData);
     }
-    
+
     // For development: simulate payment success
     if (process.env.NODE_ENV === 'development') {
       handlePaymentSuccess({
@@ -125,7 +107,7 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.startsWith('billing.')) {
       const field = name.replace('billing.', '');
       setPaymentData({
@@ -166,7 +148,7 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
         }, 1000);
         return;
       }
-      
+
       // Production: Integrate with actual payment gateway
       // Example for Paystack:
       // const response = await paystackPaymentGateway(paymentDetails);
@@ -181,13 +163,12 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
-      
+
       {/* Payment Method Selection */}
       <div className="space-y-4 mb-6">
         {/* Paystack Payment (Recommended) */}
-        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-          paymentMethod === 'paystack' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-        }`} onClick={() => setPaymentMethod('paystack')}>
+        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${paymentMethod === 'paystack' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+          }`} onClick={() => setPaymentMethod('paystack')}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -206,23 +187,23 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
             </div>
             <div className="flex items-center space-x-2">
               {/* ✅ Replace with Lucide React icons */}
-              <CreditCard 
-                className="h-6 w-6 text-red-500" 
-                title="Mastercard" 
+              <CreditCard
+                className="h-6 w-6 text-red-500"
+                title="Mastercard"
                 aria-label="Mastercard accepted"
-                role="img" 
+                role="img"
               />
-              <CreditCard 
-                className="h-6 w-6 text-blue-600" 
-                title="Visa" 
+              <CreditCard
+                className="h-6 w-6 text-blue-600"
+                title="Visa"
                 aria-label="Visa accepted"
-                role="img" 
+                role="img"
               />
-              <Wallet 
-                className="h-6 w-6 text-green-600" 
-                title="Verve" 
+              <Wallet
+                className="h-6 w-6 text-green-600"
+                title="Verve"
                 aria-label="Verve accepted"
-                role="img" 
+                role="img"
               />
             </div>
           </div>
@@ -232,9 +213,8 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
         </div>
 
         {/* Manual Card Entry (Fallback) */}
-        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-          paymentMethod === 'manual' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-        }`} onClick={() => setPaymentMethod('manual')}>
+        <div className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${paymentMethod === 'manual' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+          }`} onClick={() => setPaymentMethod('manual')}>
           <div className="flex items-center">
             <input
               type="radio"
@@ -299,13 +279,12 @@ const PaymentMethodStep = ({ onSubmit, onBack, sessionData }) => {
             >
               Back
             </button>
-            
+
             <PaystackButton
               {...paystackProps}
-              className={`px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
-                processingPayment ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              disabled={processingPayment || !sessionData}
+              className={`px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed ${processingPayment ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              disabled={processingPayment}
             />
           </div>
 
