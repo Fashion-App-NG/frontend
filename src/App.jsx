@@ -151,7 +151,14 @@ function App() {
               <Route path="/orders" element={<OrdersPage />} />
 
               {/* Vendor routes */}
-              <Route path="/vendor" element={<VendorLayout />}>
+              <Route
+                path="/vendor/*"
+                element={
+                  <CartProvider>
+                    <VendorLayout />
+                  </CartProvider>
+                }
+              >
                 <Route index element={<VendorDashboardPage />} />
                 <Route path="dashboard" element={<VendorDashboardPage />} />
                 <Route path="products" element={<VendorProductListPage />} />
