@@ -113,85 +113,45 @@ class AuthService {
         });
       }
 
-      // ✅ FIXED: Improved response normalization with role preservation
-      let normalizedResponse;
-      
-      if (data.user && typeof data.user === 'object') {
-        // Nested structure: { user: {...}, token: "..." }
-        console.log('📦 Using nested response structure');
-        normalizedResponse = {
-          user: {
-            ...data.user,
-            // ✅ Preserve role from request if not in response
-            role: data.user.role || requestBody.role
-          },
-          token: data.token
-        };
-      } else if (data.email && data.id && data.token) {
-        // ✅ FIXED: Flat structure - extract user data AND preserve role
-        console.log('📦 Using flat response structure - extracting user data');
-        const { token, ...userData } = data;
-        normalizedResponse = {
-          user: {
-            ...userData,
-            // ✅ CRITICAL: Use role from response OR preserve from request
-            role: userData.role || requestBody.role
-          },
-          token: token
-        };
+      // ✅ Option 1: Update Response Parsing
+      // Extract token and user from data or data.data (for nested API responses)
+      let token, user;
+      if (data.data && typeof data.data === 'object') {
+        token = data.data.token;
+        user = data.data.user;
       } else {
-        // Final fallback
-        console.log('📦 Using fallback response structure');
-        const { token, ...userData } = data;
-        normalizedResponse = {
-          user: {
-            ...(userData.user || userData),
-            // ✅ Always preserve role from request as final fallback
-            role: (userData.user?.role || userData.role || requestBody.role)
-          },
-          token: token || data.token
-        };
+        token = data.token;
+        user = data.user;
       }
 
-      // ✅ ENHANCED: Detailed post-normalization debugging
+      // Normalize user object and preserve role
+      const normalizedUser = user
+        ? { ...user, role: user.role || requestBody.role }
+        : null;
+
+      // Debug sanity check
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Normalized response with role preservation:', {
-          originalRequestRole: requestBody.role,
-          responseIncludedRole: !!data.role || !!data.user?.role,
-          finalUserRole: normalizedResponse.user?.role,
-          userEmail: normalizedResponse.user?.email,
-          userId: normalizedResponse.user?.id,
-          userStoreName: normalizedResponse.user?.storeName,
-          roleSource: data.role || data.user?.role ? 'response' : 'preserved_from_request'
-        });
+        console.log('🔄 Normalized login response:', { token, user: normalizedUser });
       }
 
       // Validate final normalized response
-      if (!normalizedResponse.user?.role) {
-        console.error('❌ Critical: No role in final normalized response!', {
-          requestRole: requestBody.role,
-          responseData: data,
-          normalizedResponse
+      if (!token || !normalizedUser || !normalizedUser.role) {
+        console.error('❌ Critical: Missing token or user role in login response!', {
+          token,
+          user: normalizedUser,
+          originalData: data
         });
-        throw new Error('Authentication failed: missing user role');
+        throw new Error('Authentication failed: missing token or user role');
       }
 
       // Store token and user data
-      if (normalizedResponse.token) {
-        localStorage.setItem('token', normalizedResponse.token);
-        console.log('✅ Token stored successfully');
-      }
-      
-      if (normalizedResponse.user) {
-        localStorage.setItem('user', JSON.stringify(normalizedResponse.user));
-        console.log('✅ User data stored successfully:', {
-          id: normalizedResponse.user.id,
-          role: normalizedResponse.user.role,
-          email: normalizedResponse.user.email
-        });
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Token and user stored successfully');
       }
 
-      return normalizedResponse;
+      return { token, user: normalizedUser };
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Login error:', error);

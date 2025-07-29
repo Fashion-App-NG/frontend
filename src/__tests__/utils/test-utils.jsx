@@ -1,54 +1,57 @@
 import { render } from '@testing-library/react';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import { AuthContext } from '../../contexts/AuthContext';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthContext } from '../../contexts/AuthContext'; // ✅ Import real AuthContext
 
-// ✅ Default mock context for all tests
-const defaultAuthContext = {
-  user: { id: 'vendor123', role: 'vendor', name: 'Test Vendor' },
-  isAuthenticated: true,
-  loading: false,
-  login: jest.fn(),
-  logout: jest.fn(),
-  updateUser: jest.fn()
-};
+// ✅ Create a mock CartContext only
+const CartContext = React.createContext();
 
-// ✅ Mock all services consistently
-jest.mock('../../services/productService', () => ({
-  getVendorProducts: jest.fn(() => Promise.resolve({
-    products: [
-      { id: '1', name: 'Product 1', pricePerYard: 100, quantity: 10, status: 'ACTIVE' },
-      { id: '2', name: 'Product 2', pricePerYard: 200, quantity: 5, status: 'ACTIVE' }
-    ]
-  })),
-  createProduct: jest.fn(),
-  updateProduct: jest.fn(),
-  deleteProduct: jest.fn()
-}));
+const AllTheProviders = ({ children, authValue, cartValue }) => {
+  const defaultAuthValue = {
+    user: { id: 'vendor123', role: 'vendor', name: 'Test Vendor' },
+    isAuthenticated: true,
+    loading: false,
+    login: jest.fn(),
+    logout: jest.fn(),
+    register: jest.fn()
+  };
 
-export const renderWithProviders = (
-  component,
-  {
-    authContext = defaultAuthContext,
-    initialEntries = ['/'],
-    useMemoryRouter = false,
-    ...renderOptions
-  } = {}
-) => {
-  const Router = useMemoryRouter ? MemoryRouter : BrowserRouter;
-  const routerProps = useMemoryRouter ? { initialEntries } : {};
+  const defaultCartValue = {
+    items: [],
+    cartCount: 0,
+    addToCart: jest.fn(),
+    removeFromCart: jest.fn(),
+    clearCart: jest.fn(),
+    updateQuantity: jest.fn()
+  };
 
-  const Wrapper = ({ children }) => (
-    <Router {...routerProps}>
-      <AuthContext.Provider value={authContext}>
-        {children}
+  return (
+    <BrowserRouter>
+      <AuthContext.Provider value={authValue || defaultAuthValue}>
+        <CartContext.Provider value={cartValue || defaultCartValue}>
+          {children}
+        </CartContext.Provider>
       </AuthContext.Provider>
-    </Router>
+    </BrowserRouter>
   );
-
-  return render(component, { wrapper: Wrapper, ...renderOptions });
 };
 
-// ✅ Viewport testing utility
+const customRender = (ui, { authValue, cartValue, ...options } = {}) =>
+  render(ui, { 
+    wrapper: (props) => <AllTheProviders {...props} authValue={authValue} cartValue={cartValue} />, 
+    ...options 
+  });
+
+// ✅ Export the real AuthContext and mock CartContext
+export { AuthContext, CartContext };
+
+// re-export everything
+  export * from '@testing-library/react';
+
+// override render method
+export { customRender as render };
+
+// ✅ Test utility functions
 export const mockViewport = (width) => {
   Object.defineProperty(window, 'innerWidth', {
     writable: true,
@@ -82,5 +85,10 @@ export const mockViewport = (width) => {
   });
 };
 
-// ✅ Re-export everything from React Testing Library
-export * from '@testing-library/react';
+describe('Test Utils', () => {
+  test('should export render utilities', () => {
+    expect(customRender).toBeDefined();
+    expect(AuthContext).toBeDefined();
+    expect(CartContext).toBeDefined();
+  });
+});

@@ -1,6 +1,10 @@
 import { useCart } from '../../../contexts/CartContext';
+import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext, sessionData }) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Dev - [PAGE] CartReviewStep rendered');
+  }
   const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
 
   const formatPrice = (price) => {
@@ -15,16 +19,17 @@ const CartReviewStep = ({ onNext, sessionData }) => {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Review Your Cart</h2>
-      
+
       {cartItems.map((item, index) => (
         <div key={index} className="flex items-center space-x-4 py-4 border-b border-gray-200">
           {/* Product Image */}
           <div className="flex-shrink-0 w-16 h-16">
             {item.image ? (
               <img
-                src={item.image}
+                src={getProductImageUrl(item)}
                 alt={item.name}
-                className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                className="w-16 h-16 object-cover rounded"
+                onError={e => { e.target.src = '/images/default-product.jpg'; }}
               />
             ) : (
               <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">

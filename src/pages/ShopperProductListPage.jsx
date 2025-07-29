@@ -4,6 +4,7 @@ import ProductCard from '../components/Product/ProductCard';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import { ShopperProductTableRow } from '../components/Shopper/ShopperProductTableRow';
 import { useCart } from '../contexts/CartContext';
+import useDebounce from '../hooks/useDebounce';
 import productService from '../services/productService';
 
 // ✅ Enhanced helper function to get product image (preserves image count logic)
@@ -92,6 +93,7 @@ export const ShopperProductListPage = () => {
     sortBy: searchParams.get('sortBy') || 'date',
     sortOrder: searchParams.get('sortOrder') || 'desc'
   }));
+  const debouncedFilters = useDebounce(filters, 400);
 
   // ✅ Load products with enhanced filtering for shoppers
   const loadShopperProducts = useCallback(async (currentFilters) => {
@@ -253,14 +255,14 @@ export const ShopperProductListPage = () => {
   }, [loadShopperProducts, filters]);
 
   // ✅ Product navigation
-  const handleProductClick = useCallback((product) => {
-    const productId = product.id || product._id;
-    if (!productId) {
-      console.error('Product ID is missing:', product);
+  const handleProductClick = (product) => {
+    const id = product.id || product._id;
+    if (!id) {
+      console.error('Product ID missing for navigation:', product);
       return;
     }
-    navigate(`/shopper/product/${productId}`);
-  }, [navigate]);
+    navigate(`/shopper/product/${id}`);
+  };
 
   // ✅ Shopper-specific actions
   const handleProductAction = useCallback((product, action) => {
@@ -301,8 +303,9 @@ export const ShopperProductListPage = () => {
   }, [addToCart, navigate]);
 
   useEffect(() => {
-    loadShopperProducts(filters);
-  }, [loadShopperProducts, activeFilterTab, filters]);
+    // Only fetch when debouncedFilters changes
+    loadShopperProducts(debouncedFilters);
+  }, [debouncedFilters, loadShopperProducts]);
 
   const filterCounts = getFilterCounts();
 

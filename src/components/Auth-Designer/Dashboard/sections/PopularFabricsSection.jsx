@@ -1,7 +1,7 @@
 import { useCart } from '../../../../contexts/CartContext';
 
 export const PopularFabricsSection = () => {
-  const { addToCart } = useCart();
+  const { addToCart, error } = useCart();
 
   // ✅ FIXED: 4 fabrics to match DiscoverSection exactly
   const fabrics = [
@@ -47,6 +47,11 @@ export const PopularFabricsSection = () => {
 
   return (
     <section className="w-full">
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+          {error}
+        </div>
+      )}
       {/* ✅ FIXED: Use Popular Fabrics font style for heading */}
       <div className="mb-6">
         <h2 className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-2xl">

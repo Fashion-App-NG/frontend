@@ -1,71 +1,67 @@
 import { useCart } from '../../../contexts/CartContext';
 
+// Accepts either sessionData (in-progress) or a confirmed order object
 const OrderSummaryCard = ({ sessionData }) => {
-  const { cartItems, getCartTotal } = useCart();
+  const { getCartTotal } = useCart();
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price || 0);
-  };
+  // Try to use confirmed order data if available
+  const hasOrder =
+    sessionData &&
+    (typeof sessionData.subtotal === "number" ||
+      typeof sessionData.totalAmount === "number");
 
-  const subtotal = getCartTotal();
-  const deliveryFee = 3000; // Fixed delivery fee
-  const tax = Math.round(subtotal * 0.075); // 7.5% tax
-  const total = subtotal + deliveryFee + tax;
+  // Fallback to cart/session calculation if not a confirmed order
+  const subtotal = hasOrder
+    ? sessionData.subtotal
+    : getCartTotal();
+  const deliveryFee = hasOrder
+    ? sessionData.deliveryFee
+    : 3000;
+  const tax = hasOrder
+    ? sessionData.tax
+    : Math.round(subtotal * 0.075);
+  const total = hasOrder
+    ? sessionData.totalAmount || sessionData.total
+    : subtotal + deliveryFee + tax;
+
+  // Defensive: handle missing values
+  const safe = (val) =>
+    typeof val === "number" && !isNaN(val) ? val : 0;
+
+  const formatPrice = (price) =>
+    price != null
+      ? `₦${safe(price).toLocaleString()}`
+      : "₦0";
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
-      
-      {/* Items */}
-      <div className="space-y-3 mb-4">
-        {cartItems.map((item, index) => (
-          <div key={index} className="flex justify-between text-sm">
-            <span className="text-gray-600">
-              {item.name} × {item.quantity}
-            </span>
-            <span className="font-medium">
-              {formatPrice((item.pricePerYard || item.price) * item.quantity)}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <hr className="my-4" />
-
-      {/* Totals */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
           <span className="text-gray-600">Subtotal</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between">
           <span className="text-gray-600">Delivery Fee</span>
           <span>{formatPrice(deliveryFee)}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between">
           <span className="text-gray-600">Tax</span>
           <span>{formatPrice(tax)}</span>
         </div>
         <hr className="my-2" />
         <div className="flex justify-between text-lg font-semibold">
           <span>Total</span>
-          <span>{formatPrice(total)}</span>
+          <span className="text-blue-600">{formatPrice(total)}</span>
         </div>
       </div>
-
-      {/* Session Info */}
-      {sessionData && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-xs text-blue-600">
-            Session ID: {sessionData.sessionId}
-          </p>
+      {/* Optionally show session/order ID for debugging */}
+      {sessionData?.orderId || sessionData?.sessionId ? (
+        <div className="mt-4 text-xs text-blue-900 bg-blue-50 rounded px-2 py-1">
+          <span className="font-medium">Session/Order ID:</span>{" "}
+          {sessionData.orderId || sessionData.sessionId}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

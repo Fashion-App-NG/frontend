@@ -1,129 +1,79 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useCart } from '../contexts/CartContext';
+import { useCallback, useState } from 'react';
 import checkoutService from '../services/checkoutService';
 
 export const useCheckoutSession = () => {
-  const { cartItems } = useCart(); // ✅ Only import what you need
   const [currentStep, setCurrentStep] = useState(1);
-  const [sessionData, setSessionData] = useState(null);
+  const [cart, setCart] = useState(null);
+  const [shippingInfo, setShippingInfo] = useState(null);
+  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [timeRemaining, setTimeRemaining] = useState(null);
 
-  // ✅ IMPROVED: Better error handling and logging
-  const initializeSession = useCallback(async () => {
+  // Step 1: Review Cart
+  const reviewCart = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 CHECKOUT HOOK DEBUG - Initialize Session Called', {
-          cartItemsLength: cartItems.length,
-          cartItems: cartItems
-        });
-      }
-      
-      setLoading(true);
-      setError(null); // Clear previous errors
-      
-      // Check for existing session
-      const savedSession = localStorage.getItem('checkoutSession');
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession);
-          
-          // Check if session is still valid (not expired)
-          if (new Date(parsed.expiresAt) > new Date()) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Using existing valid session:', parsed);
-            }
-            setSessionData(parsed);
-            return parsed;
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('🔄 Removing expired session');
-            }
-            localStorage.removeItem('checkoutSession');
-          }
-        } catch (parseError) {
-          console.error('❌ Error parsing saved session:', parseError);
-          localStorage.removeItem('checkoutSession');
-        }
-      }
-
-      // Create new session with current cart items
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Creating new checkout session...');
-      }
-      const newSession = await checkoutService.createSession(cartItems);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ New session created:', newSession);
-      }
-      setSessionData(newSession);
-      return newSession;
-      
-    } catch (error) {
-      console.error('❌ CHECKOUT HOOK DEBUG - Initialize Session Error:', error);
-      setError(`Checkout initialization failed: ${error.message}`);
-      
-      // ✅ FIX: Don't throw error, allow UI to show error state
-      return null;
+      const data = await checkoutService.reviewCart();
+      setCart(data.cart);
+      setCurrentStep(1);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [cartItems]);
+  }, []);
 
-  // Session countdown timer with error handling
-  useEffect(() => {
-    if (!sessionData?.expiresAt) return;
+  // Step 2: Save Shipping
+  const saveShipping = useCallback(async (shippingAddress, customerInfo) => {
+    setLoading(true);
+    setError(null);
+    try {
+      setShippingInfo({ shippingAddress, customerInfo });
+      setCurrentStep(3); // Move to payment step
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const timer = setInterval(() => {
-      try {
-        const remaining = new Date(sessionData.expiresAt) - new Date();
-        if (remaining <= 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⏰ Session expired, clearing session but NOT cart if order completed...');
-          }
-          setTimeRemaining(0);
-          
-          // ✅ Only cancel session if we're not on confirmation step
-          if (currentStep < 4 && sessionData.sessionId && !sessionData.sessionId.includes('mock')) {
-            checkoutService.cancelSession(sessionData.sessionId).catch(err => {
-              console.warn('⚠️ Error canceling expired session:', err);
-            });
-            setSessionData(null);
-          }
-        } else {
-          setTimeRemaining(remaining);
-        }
-      } catch (error) {
-        console.error('❌ Timer error:', error);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [sessionData, currentStep]); // ✅ Keep currentStep dependency
-
-  const nextStep = () => {
-    setCurrentStep(prev => {
-      const nextStep = Math.min(prev + 1, 4);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔵 [SESSION] Moving from step', prev, 'to step', nextStep);
-      }
-      return nextStep;
-    });
-  };
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
-  const goToStep = (step) => setCurrentStep(step);
+  // Step 3: Confirm Order
+  const confirmOrder = useCallback(async (paymentDetails, reservationDuration = 30) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Confirming order with:', {
+        shippingAddress: shippingInfo.shippingAddress,
+        customerInfo: shippingInfo.customerInfo,
+        paymentDetails,
+        reservationDuration
+      });
+      const data = await checkoutService.confirmOrder({
+        shippingAddress: shippingInfo.shippingAddress,
+        customerInfo: shippingInfo.customerInfo,
+        paymentDetails,
+        reservationDuration
+      });
+      setOrder(data.order);
+      setCurrentStep(4); // Move to confirmation step
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [shippingInfo]);
 
   return {
     currentStep,
-    sessionData,
+    cart,
+    shippingInfo,
+    order,
     loading,
     error,
-    timeRemaining,
-    initializeSession,
-    nextStep,
-    prevStep,
-    goToStep,
-    setError
+    reviewCart,
+    saveShipping,
+    confirmOrder,
+    setCurrentStep
   };
 };

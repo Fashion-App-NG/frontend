@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
   const { 
@@ -9,7 +10,8 @@ const ShopperCart = () => {
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal 
+    getCartTotal,
+    error
   } = useCart();
 
   // ✅ DEBUG: Log cart data in ShopperCart component
@@ -91,6 +93,13 @@ const ShopperCart = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Shopping Cart</h1>
         <span className="text-sm text-gray-600">{cartCount} item{cartCount !== 1 ? 's' : ''}</span>
@@ -109,9 +118,10 @@ const ShopperCart = () => {
                 <div className="flex-shrink-0 w-20 h-20">
                   {item.image ? (
                     <img
-                      src={item.image}
+                      src={getProductImageUrl(item)}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                onError={e => { e.target.src = '/images/default-product.jpg'; }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">

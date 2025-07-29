@@ -1,23 +1,26 @@
 import { useState } from 'react';
+import checkoutService from '../../../services/checkoutService';
 
-const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
+// In ShippingInfoStep.jsx
+
+const ShippingInfoStep = ({ onSubmit, onBack }) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Dev - [PAGE] ShippingInfoStep rendered');
+  }
   const [shippingData, setShippingData] = useState({
     street: '',
     houseNo: '',
-    phone: '',
     city: '',
     postalCode: '',
     state: ''
   });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Shipping data:', shippingData);
-    }
-    // TODO: Save shipping info via API
-    onNext();
-  };
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setShippingData({
@@ -26,10 +29,44 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
     });
   };
 
+  const handleCustomerChange = (e) => {
+    setCustomerInfo({
+      ...customerInfo,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const shippingAddress = {
+      street: `${shippingData.houseNo} ${shippingData.street}`,
+      city: shippingData.city,
+      state: shippingData.state,
+      zipCode: shippingData.postalCode,
+      country: 'Nigeria'
+    };
+
+    try {
+      console.log('Submitting shipping info:', shippingAddress, customerInfo);
+      const result = await checkoutService.saveShippingInfo(shippingAddress, customerInfo);
+      console.log('Shipping info saved:', result);
+
+      // Pass both objects to onSubmit!
+      onSubmit(shippingAddress, customerInfo);
+    } catch (err) {
+      console.error('Shipping error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Delivery Address</h2>
-      
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -46,7 +83,6 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               House no
@@ -61,22 +97,6 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
               required
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone number
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={shippingData.phone}
-              onChange={handleChange}
-              placeholder="Enter Phone Number"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               City
@@ -91,7 +111,6 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Postal code
@@ -106,7 +125,6 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               State
@@ -127,20 +145,68 @@ const ShippingInfoStep = ({ onNext, onBack, sessionData }) => {
             </select>
           </div>
         </div>
-
-        <div className="flex justify-between pt-6">
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4">Customer Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={customerInfo.name}
+                onChange={handleCustomerChange}
+                placeholder="Enter your full name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={customerInfo.email}
+                onChange={handleCustomerChange}
+                placeholder="Enter your email address"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={customerInfo.phone}
+                onChange={handleCustomerChange}
+                placeholder="Enter your phone number"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+        </div>
+        {error && <div className="text-red-600">{error}</div>}
+        <div className="flex justify-between mt-6">
           <button
             type="button"
             onClick={onBack}
             className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Back
+            Back to Cart
           </button>
           <button
             type="submit"
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={loading}
           >
-            Continue
+            {loading ? 'Processing...' : 'Continue to Payment'}
           </button>
         </div>
       </form>

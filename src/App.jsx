@@ -1,6 +1,7 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
+import AuthProvider from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext'; // Import as named or default
+import FavoritesProvider from './contexts/FavoritesContext';
 
 // Import header component
 import Header from './components/Common/Header';
@@ -51,7 +52,6 @@ import ShopperLayout from './components/Layout/ShopperLayout';
 import VendorLayout from './components/Layout/VendorLayout';
 import ShopperCart from './pages/ShopperCart';
 import ShopperDashboardPage from './pages/ShopperDashboardPage';
-import ShopperFavorites from './pages/ShopperFavorites';
 import ShopperNotifications from './pages/ShopperNotifications';
 import ShopperOrders from './pages/ShopperOrders';
 import ShopperProfile from './pages/ShopperProfile';
@@ -66,19 +66,30 @@ import CheckoutPage from './pages/checkout/CheckoutPage';
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
+      <FavoritesProvider>
         <Router>
           <div className="App">
             <Header />
             <Routes>
-              {/* Home route */}
+              {/* Home and public routes */}
               <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
-              
-              {/* Public routes */}
               <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
-              <Route path="/browse" element={<GuestBrowsePage />} />
-              {/* ✅ FIXED: Guest product detail route - adaptive component */}
-              <Route path="/product/:id" element={<ProductDetailPage />} />
+              <Route
+                path="/browse"
+                element={
+                  <CartProvider>
+                    <GuestBrowsePage />
+                  </CartProvider>
+                }
+              />
+              <Route
+                path="/product/:id"
+                element={
+                  <CartProvider>
+                    <ProductDetailPage />
+                  </CartProvider>
+                }
+              />
               <Route path="/products" element={<Navigate to="/browse" replace />} />
               <Route path="/explore" element={<GuestBrowsePage />} />
 
@@ -96,18 +107,39 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<PasswordResetPage />} />
 
-              {/* Shopper routes with layout */}
-              <Route path="/shopper/*" element={<ShopperLayout />}>
+              {/* Guest routes with CartProvider */}
+              <Route
+                path="/guest/*"
+                element={
+                  <CartProvider>
+                    <Routes>
+                      <Route path="browse" element={<GuestBrowsePage />} />
+                      <Route path="cart" element={<ShopperCart />} />
+                      {/* ...other guest routes... */}
+                    </Routes>
+                  </CartProvider>
+                }
+              />
+
+              {/* Shopper routes with CartProvider */}
+              <Route
+                path="/shopper/*"
+                element={
+                  <CartProvider>
+                    <ShopperLayout />
+                  </CartProvider>
+                }
+              >
                 <Route index element={<ShopperDashboardPage />} />
                 <Route path="dashboard" element={<ShopperDashboardPage />} />
                 <Route path="browse" element={<ShopperProductListPage />} />
-                <Route path="product/:id" element={<ProductDetailPage />} />
+                <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="cart" element={<ShopperCart />} />
                 {/* ✅ ADD: Checkout route */}
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ShopperProfile />} />
-                <Route path="favorites" element={<ShopperFavorites />} />
+                <Route path="favorites" element={<FavouritesPage />} />
                 <Route path="notifications" element={<ShopperNotifications />} />
                 <Route path="settings" element={<ShopperSettings />} />
               </Route>
@@ -146,7 +178,7 @@ function App() {
             </Routes>
           </div>
         </Router>
-      </CartProvider>
+      </FavoritesProvider>
     </AuthProvider>
   );
 }

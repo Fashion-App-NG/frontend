@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
 
 class VendorService {
   constructor() {
@@ -562,6 +562,42 @@ class VendorService {
     } catch (error) {
       console.error('Error getting current user:', error);
       return null;
+    }
+  }
+
+  async getAllVendors() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/vendor`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch vendors');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Get vendors failed:', error);
+      throw error;
+    }
+  }
+
+  async getVendorById(vendorId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/vendor/${vendorId}`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch vendor');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Get vendor failed:', error);
+      throw error;
     }
   }
 }
