@@ -17,10 +17,14 @@ class AuthService {
       if (parts.length !== 3) return null;
 
       const payload = parts[1];
-      const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+      const paddedPayload = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
       const decodedPayload = atob(paddedPayload);
       const parsed = JSON.parse(decodedPayload);
 
+      // Add debug log
+      console.log('[DEBUG] Decoded JWT payload:', parsed);
+
+      // Check for userId, id, or sub
       return parsed.userId || parsed.id || parsed.sub || null;
     } catch (error) {
       console.error('Failed to extract userId from token:', error);
@@ -53,12 +57,13 @@ class AuthService {
         throw error;
       }
 
-      const userId = data.token ? this.extractUserIdFromToken(data.token) : null;
+      const token = data.token || (data.data && data.data.token);
+      const userId = token ? this.extractUserIdFromToken(token) : null;
 
       return {
         message: data.message,
-        token: data.token,
-        userId: userId,
+        token,
+        userId,
         originalResponse: data
       };
     } catch (error) {
