@@ -23,7 +23,9 @@ const CheckoutPage = () => {
     saveShipping,
     confirmOrder,
     setCurrentStep,
-    shippingInfo
+    shippingInfo,
+    clearCart,
+    loadCart
   } = useCheckoutSession();
 
   // Redirect if cart is empty (but NOT on confirmation step)
@@ -54,7 +56,7 @@ const CheckoutPage = () => {
 
   // Confirmation step: show only confirmation
   if (currentStep === 4 && order) {
-    return <OrderConfirmationStep order={order} />;
+    return <OrderConfirmationStep clearCart={clearCart} loadCart={loadCart} order={order} />;
   }
 
   // All other steps: show step + order summary

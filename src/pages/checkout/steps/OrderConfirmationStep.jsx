@@ -9,14 +9,17 @@ const OrderConfirmationStep = ({ order, clearCart, loadCart }) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('[OrderConfirmationStep] Mounted. order:', order);
     }
-    const loadOrderAndClearCart = async () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[OrderConfirmationStep] Running clearCart and loadCart...');
+    async function clearAndReload() {
+      if (clearCart) {
+        console.log('[DEBUG] About to call clearCart in OrderConfirmationStep');
+        console.log('[DEBUG] clearCart in OrderConfirmationStep:', clearCart);
+        await clearCart();
       }
-      if (clearCart) await clearCart(true);
+      // TEMP: Add delay to test for race condition
+      await new Promise(res => setTimeout(res, 500));
       if (loadCart) await loadCart();
-    };
-    loadOrderAndClearCart();
+    }
+    clearAndReload();
   }, [clearCart, loadCart, order]);
 
   return (
