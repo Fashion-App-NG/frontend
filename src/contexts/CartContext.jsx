@@ -4,6 +4,13 @@ import cartService from "../services/cartService";
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
+  const providerId = useRef(Math.random());
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEBUG] CartProvider mounted, id:', providerId.current);
+    }
+  }, []);
+
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -13,22 +20,25 @@ export const CartProvider = ({ children }) => {
   const debounceTimeout = useRef();
 
   // Debounced loadCart
-  const loadCart = useCallback(() => {
-    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-    debounceTimeout.current = setTimeout(async () => {
-      setIsLoading(true);
-      try {
-        const response = await cartService.getCart();
-        setCartItems(response.cart?.items || []);
-        setCartCount(response.cart?.itemCount || 0);
-        setError(null);
-      } catch (err) {
-        setError("Failed to fetch cart: " + err?.message);
-      } finally {
-        setIsLoading(false);
+const loadCart = useCallback(() => {
+  if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+  debounceTimeout.current = setTimeout(async () => {
+    setIsLoading(true);
+    try {
+      const response = await cartService.getCart();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG] loadCart response:', response);
       }
-    }, 400); // 400ms debounce
-  }, []);
+      setCartItems(response.cart?.items || []);
+      setCartCount(response.cart?.itemCount || 0);
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch cart: " + err?.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, 400); // 400ms debounce
+}, []);
 
   useEffect(() => {
     loadCart();
@@ -108,26 +118,36 @@ export const CartProvider = ({ children }) => {
 
   // --- Clear Cart ---
   const clearCart = useCallback(async () => {
+    console.log('[DEBUG] clearCart called');
     setIsLoading(true);
     setError(null);
     try {
       const response = await cartService.clearCart();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG] cartService.clearCart response:', response);
+      }
       if (response.success) {
         setCartItems([]);
         setCartCount(0);
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Cart cleared');
+          console.log('[DEBUG] clearCart called: cartItems should now be [] and cartCount 0');
+          setTimeout(() => {
+            console.log('[DEBUG] After clearCart, cartItems:', cartItems, 'cartCount:', cartCount);
+          }, 100); // allow state to update
         }
       }
     } catch (err) {
       setError(err.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[DEBUG] cartService.clearCart error:', err);
+      }
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to clear cart:', err);
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [cartCount, cartItems]);
 
   // --- Merge Guest Cart (after login) ---
   const mergeGuestCart = useCallback(async (userJwt, guestSessionId) => {

@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
+import { useCart } from '../contexts/CartContext';
 import checkoutService from '../services/checkoutService';
 
 export const useCheckoutSession = () => {
+  const { clearCart } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [cart, setCart] = useState(null);
   const [shippingInfo, setShippingInfo] = useState(null);
@@ -74,6 +76,7 @@ export const useCheckoutSession = () => {
     reviewCart,
     saveShipping,
     confirmOrder,
-    setCurrentStep
+    setCurrentStep,
+    clearCart
   };
 };

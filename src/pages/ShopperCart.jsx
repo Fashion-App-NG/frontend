@@ -14,6 +14,10 @@ const ShopperCart = () => {
     error
   } = useCart();
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
+  }
+
   // ✅ DEBUG: Log cart data in ShopperCart component
   useEffect(() => {
     console.log('🔍 SHOPPER CART DEBUG:', {
@@ -33,6 +37,12 @@ const ShopperCart = () => {
       cartTotal: getCartTotal()
     });
   }, [cartItems, cartCount, getCartTotal]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEBUG] ShopperCart useEffect: cartItems changed:', cartItems);
+    }
+  }, [cartItems]);
 
   const formatPrice = (price) => {
     console.log('🔍 FORMAT PRICE DEBUG:', {
@@ -191,7 +201,12 @@ const ShopperCart = () => {
           </div>
           <div className="flex space-x-4 mt-4">
             <button
-              onClick={clearCart}
+              onClick={async () => {
+                await clearCart();
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('[DEBUG] clearCart awaited in button click');
+                }
+              }}
               className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Clear Cart

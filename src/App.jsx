@@ -1,6 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext'; // Import as named or default
+import { CartProvider } from './contexts/CartContext';
 import FavoritesProvider from './contexts/FavoritesContext';
 
 // Import header component
@@ -74,22 +74,8 @@ function App() {
               {/* Home and public routes */}
               <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
               <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
-              <Route
-                path="/browse"
-                element={
-                  <CartProvider>
-                    <GuestBrowsePage />
-                  </CartProvider>
-                }
-              />
-              <Route
-                path="/product/:id"
-                element={
-                  <CartProvider>
-                    <ProductDetailPage />
-                  </CartProvider>
-                }
-              />
+              <Route path="/browse" element={<GuestBrowsePage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/products" element={<Navigate to="/browse" replace />} />
               <Route path="/explore" element={<GuestBrowsePage />} />
 
@@ -136,7 +122,6 @@ function App() {
                 <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="cart" element={<ShopperCart />} />
-                {/* ✅ ADD: Checkout route */}
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ShopperProfile />} />
                 <Route path="favorites" element={<FavouritesPage />} />
@@ -151,7 +136,7 @@ function App() {
               <Route path="/orders" element={<OrdersPage />} />
 
               {/* Vendor routes */}
-              <Route path="/vendor" element={<VendorLayout />}>
+              <Route path="/vendor/*" element={<VendorLayout />}>
                 <Route index element={<VendorDashboardPage />} />
                 <Route path="dashboard" element={<VendorDashboardPage />} />
                 <Route path="products" element={<VendorProductListPage />} />
