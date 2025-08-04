@@ -48,12 +48,32 @@ class CheckoutService {
   }
 
   async getOrders({ page = 1, limit = 20, status, paymentStatus } = {}) {
-    const params = new URLSearchParams({ page, limit, status, paymentStatus });
+    const params = new URLSearchParams();
+    params.append('page', page);
+    params.append('limit', limit);
+    if (status) params.append('status', status);
+    if (paymentStatus) params.append('paymentStatus', paymentStatus);
+
     const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: this.getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch orders');
-    return response.json();
+    return await response.json();
+  }
+
+  async getOrderById(orderId) {
+    const response = await fetch(`${this.baseURL}/api/checkout/orders/${orderId}`, {
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch order');
+    return await response.json();
+  }
+
+  getAuthHeaders() {
+    return {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/json'
+    };
   }
 }
 

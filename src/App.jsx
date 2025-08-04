@@ -63,6 +63,9 @@ import ShopperProductListPage from './pages/ShopperProductListPage';
 // ✅ ADD: Import checkout page
 import CheckoutPage from './pages/checkout/CheckoutPage';
 
+// Import order details page
+import ShopperOrderDetails from './pages/ShopperOrderDetails';
+
 function App() {
   return (
     <AuthProvider>
@@ -121,6 +124,7 @@ function App() {
                 <Route path="browse" element={<ShopperProductListPage />} />
                 <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
+                <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
                 <Route path="cart" element={<ShopperCart />} />
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ShopperProfile />} />
