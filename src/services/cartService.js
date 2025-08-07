@@ -4,6 +4,8 @@ class CartService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api`;
     this.activeRequests = new Set();
+    this.apiCallLog = [];
+    this.rateLimitWarningShown = false;
     if (process.env.NODE_ENV === 'development') {
       console.log('🛒 Cart Service Base URL:', this.baseURL);
     }
@@ -165,6 +167,30 @@ class CartService {
   }
 
   async clearCart() {
+    const timestamp = new Date().toISOString();
+    const callId = Math.random().toString(36).substr(2, 6);
+    
+    // Track API calls
+    this.apiCallLog.push({ method: 'clearCart', timestamp, callId });
+    
+    // Keep only last 20 calls
+    this.apiCallLog = this.apiCallLog.slice(-20);
+    
+    console.log(`[API-RATE-LIMIT-TEST] clearCart API call ${callId} at ${timestamp}`);
+    console.log(`[API-RATE-LIMIT-TEST] Recent API calls:`, this.apiCallLog);
+    
+    // Check for rapid calls (more than 5 in last 30 seconds)
+    const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
+    const recentCalls = this.apiCallLog.filter(call => call.timestamp > thirtySecondsAgo);
+    
+    if (recentCalls.length > 5 && !this.rateLimitWarningShown) {
+      console.warn(`[API-RATE-LIMIT-TEST] ⚠️ ${recentCalls.length} clearCart calls in 30 seconds!`);
+      console.warn(`[API-RATE-LIMIT-TEST] Call timestamps:`, recentCalls.map(c => c.timestamp));
+      this.rateLimitWarningShown = true;
+      
+      setTimeout(() => { this.rateLimitWarningShown = false; }, 60000);
+    }
+    
     try {
       const headers = this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/cart/clear`, {
@@ -181,7 +207,7 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to clear cart:', error);
+      console.error(`[API-RATE-LIMIT-TEST] clearCart ${callId} failed:`, error);
       throw error;
     }
   }

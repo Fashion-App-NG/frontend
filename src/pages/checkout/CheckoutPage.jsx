@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
@@ -27,6 +27,20 @@ const CheckoutPage = () => {
     clearCart,
     loadCart
   } = useCheckoutSession();
+
+  const componentId = useRef(Math.random().toString(36).substr(2, 6));
+
+  useEffect(() => {
+    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} MOUNTED`);
+
+    return () => {
+      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} UNMOUNTED`);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} cartItems changed:`, cartItems.length);
+  }, [cartItems]);
 
   // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {

@@ -77,7 +77,6 @@ function App() {
               {/* Home and public routes */}
               <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
               <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
-              <Route path="/browse" element={<GuestBrowsePage />} />
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/products" element={<Navigate to="/browse" replace />} />
               <Route path="/explore" element={<GuestBrowsePage />} />
@@ -96,15 +95,26 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<PasswordResetPage />} />
 
+              {/*Browse route with CartProvider */}
+              <Route
+                path="/browse"
+                element={
+                  <CartProvider key="browse-provider">
+                    {console.log('[ROUTE-PROVIDER] /browse CartProvider created')}
+                    <GuestBrowsePage />
+                  </CartProvider>
+                }
+              />
+
               {/* Guest routes with CartProvider */}
               <Route
                 path="/guest/*"
                 element={
-                  <CartProvider>
+                  <CartProvider key="guest-provider">
+                    {console.log('[ROUTE-PROVIDER] /guest/* CartProvider created')}
                     <Routes>
                       <Route path="browse" element={<GuestBrowsePage />} />
                       <Route path="cart" element={<ShopperCart />} />
-                      {/* ...other guest routes... */}
                     </Routes>
                   </CartProvider>
                 }
@@ -114,7 +124,8 @@ function App() {
               <Route
                 path="/shopper/*"
                 element={
-                  <CartProvider>
+                  <CartProvider key="shopper-provider">
+                    {console.log('[ROUTE-PROVIDER] /shopper/* CartProvider created')}
                     <ShopperLayout />
                   </CartProvider>
                 }

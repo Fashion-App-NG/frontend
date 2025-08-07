@@ -4,11 +4,21 @@ import cartService from "../services/cartService";
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const providerId = useRef(Math.random());
+  const providerId = useRef(Math.random().toString(36).substr(2, 9)); // More unique ID
+  
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] CartProvider mounted, id:', providerId.current);
-    }
+    console.log(`[MULTI-PROVIDER-TEST] CartProvider-${providerId.current} MOUNTED`);
+    console.log(`[MULTI-PROVIDER-TEST] Active providers:`, window.activeCartProviders || 0);
+    
+    // Track active providers globally
+    if (!window.activeCartProviders) window.activeCartProviders = 0;
+    window.activeCartProviders++;
+    
+    return () => {
+      window.activeCartProviders--;
+      console.log(`[MULTI-PROVIDER-TEST] CartProvider-${providerId.current} UNMOUNTED`);
+      console.log(`[MULTI-PROVIDER-TEST] Remaining providers:`, window.activeCartProviders);
+    };
   }, []);
 
   const [cartItems, setCartItems] = useState([]);
@@ -20,25 +30,36 @@ export const CartProvider = ({ children }) => {
   const debounceTimeout = useRef();
 
   // Debounced loadCart
-const loadCart = useCallback(() => {
-  if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-  debounceTimeout.current = setTimeout(async () => {
-    setIsLoading(true);
-    try {
-      const response = await cartService.getCart();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] loadCart response:', response);
-      }
-      setCartItems(response.cart?.items || []);
-      setCartCount(response.cart?.itemCount || 0);
-      setError(null);
-    } catch (err) {
-      setError("Failed to fetch cart: " + err?.message);
-    } finally {
-      setIsLoading(false);
+  const loadCartCallCount = useRef(0);
+  const loadCart = useCallback(() => {
+    const callId = ++loadCartCallCount.current;
+    console.log(`[LOAD-CART-DEBOUNCE-TEST] loadCart called #${callId} - Provider: ${providerId.current}`);
+    console.log(`[LOAD-CART-DEBOUNCE-TEST] Current timeout:`, !!debounceTimeout.current);
+    
+    if (debounceTimeout.current) {
+      console.log(`[LOAD-CART-DEBOUNCE-TEST] Clearing previous timeout for call #${callId}`);
+      clearTimeout(debounceTimeout.current);
     }
-  }, 400); // 400ms debounce
-}, []);
+    
+    debounceTimeout.current = setTimeout(async () => {
+      console.log(`[LOAD-CART-DEBOUNCE-TEST] Executing debounced call #${callId}`);
+      setIsLoading(true);
+      
+      try {
+        const response = await cartService.getCart();
+        console.log(`[LOAD-CART-DEBOUNCE-TEST] API response for call #${callId}:`, response);
+        
+        setCartItems(response.cart?.items || []);
+        setCartCount(response.cart?.itemCount || 0);
+        setError(null);
+      } catch (err) {
+        console.error(`[LOAD-CART-DEBOUNCE-TEST] Error in call #${callId}:`, err);
+        setError("Failed to fetch cart: " + err?.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 400);
+  }, [providerId]); // Add providerId to track which instance
 
   useEffect(() => {
     loadCart();
@@ -116,8 +137,29 @@ const loadCart = useCallback(() => {
     }
   }, []);
 
+  // Add this BEFORE the existing clearCart definition
+  const clearCartCallCount = useRef(0);
+  const lastClearCartCall = useRef(0);
+
   // --- Clear Cart ---
-  const clearCart = useCallback(async () => {
+  const clearCart = useCallback(async (isCheckoutComplete = false) => {
+    const callId = ++clearCartCallCount.current;
+    const now = Date.now();
+    const timeSinceLastCall = now - lastClearCartCall.current;
+    
+    console.log(`[CLEAR-CART-LOOP-TEST] Call #${callId} - Provider: ${providerId.current}`);
+    console.log(`[CLEAR-CART-LOOP-TEST] Time since last call: ${timeSinceLastCall}ms`);
+    console.log(`[CLEAR-CART-LOOP-TEST] Current dependencies - cartCount: ${cartCount}, cartItems: ${cartItems.length}`);
+    console.log(`[CLEAR-CART-LOOP-TEST] isCheckoutComplete: ${isCheckoutComplete}`);
+    
+    lastClearCartCall.current = now;
+    
+    // If called too frequently, log warning
+    if (timeSinceLastCall < 1000 && callId > 1) {
+      console.warn(`[CLEAR-CART-LOOP-TEST] ⚠️ Rapid calls detected! ${timeSinceLastCall}ms gap`);
+      console.trace('[CLEAR-CART-LOOP-TEST] Call stack trace:');
+    }
+    
     console.log('[DEBUG] clearCart called');
     setIsLoading(true);
     setError(null);
@@ -147,7 +189,7 @@ const loadCart = useCallback(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [cartCount, cartItems]);
+  }, []); // TEMPORARILY REMOVE ALL DEPENDENCIES TO TEST
 
   // --- Merge Guest Cart (after login) ---
   const mergeGuestCart = useCallback(async (userJwt, guestSessionId) => {
