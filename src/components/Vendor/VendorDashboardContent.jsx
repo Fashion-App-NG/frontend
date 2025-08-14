@@ -1,8 +1,113 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import vendorAnalyticsService from '../../services/vendorAnalyticsService';
+import VendorAnalyticsVerification from './VendorAnalyticsVerification';
 
 // React Component: Main vendor dashboard content matching design
 export const VendorDashboardContent = () => {
   const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]); // ✅ Always initialize as array
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // ✅ Add error state
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setLoading(true);
+      setError(null); // ✅ Reset error state
+      
+      try {
+        // Load dashboard summary and order history concurrently
+        const [summaryData, historyData] = await Promise.all([
+          vendorAnalyticsService.getDashboardSummary(),
+          vendorAnalyticsService.getOrderHistory()
+        ]);
+
+        console.log('📊 RAW API RESPONSES:', { 
+          summaryData, 
+          historyData,
+          summaryType: typeof summaryData,
+          historyType: typeof historyData,
+          historyIsArray: Array.isArray(historyData)
+        });
+
+        // ✅ ENHANCED: Better data validation
+        setDashboardData(summaryData || null);
+        
+        // ✅ ENHANCED: Multiple fallback layers for orderHistory
+        let processedOrderHistory = [];
+        
+        if (Array.isArray(historyData)) {
+          processedOrderHistory = historyData;
+        } else if (historyData && typeof historyData === 'object') {
+          // Try to extract array from nested object
+          if (historyData.orders && Array.isArray(historyData.orders)) {
+            processedOrderHistory = historyData.orders;
+          } else if (historyData.data && Array.isArray(historyData.data)) {
+            processedOrderHistory = historyData.data;
+          } else {
+            // Look for any array property
+            const arrayValues = Object.values(historyData).filter(val => Array.isArray(val));
+            if (arrayValues.length > 0) {
+              processedOrderHistory = arrayValues[0];
+            }
+          }
+        }
+        
+        setOrderHistory(processedOrderHistory);
+        
+        console.log('📊 PROCESSED DATA:', { 
+          dashboardData: summaryData,
+          orderHistoryLength: processedOrderHistory.length,
+          firstOrder: processedOrderHistory[0]
+        });
+        
+      } catch (error) {
+        console.error('❌ Failed to load dashboard data:', error);
+        setError(error.message);
+        // ✅ ENHANCED: Ensure fallback data on error
+        setDashboardData(null);
+        setOrderHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.id) {
+      loadDashboardData();
+    }
+  }, [user?.id]);
+
+  // ✅ ENHANCED: Safe formatNumber function
+  const formatNumber = (num) => {
+    // Handle undefined, null, or invalid numbers
+    if (num === undefined || num === null || isNaN(num)) {
+      return '0';
+    }
+    
+    const numValue = typeof num === 'string' ? parseFloat(num) : num;
+    
+    if (isNaN(numValue)) {
+      return '0';
+    }
+    
+    if (numValue >= 1000) {
+      return (numValue / 1000).toFixed(1) + 'K';
+    }
+    
+    return numValue.toLocaleString();
+  };
+
+  // ✅ ENHANCED: Safe formatCurrency function
+  const formatCurrency = (amount) => {
+    return `₦${formatNumber(amount)}`;
+  };
+
+  // ✅ ADD: Safe order data extraction
+  const getSafeOrderData = (order, field, fallback = '') => {
+    if (!order || typeof order !== 'object') return fallback;
+    return order[field] !== undefined ? order[field] : fallback;
+  };
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
@@ -45,65 +150,102 @@ export const VendorDashboardContent = () => {
         </div>
       </header>
 
-      {/* Stats Cards */}
+      {/* ✅ Analytics Verification Panel (Development Only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="px-6 pt-5">
+          <VendorAnalyticsVerification />
+        </div>
+      )}
+
+      {/* ✅ Enhanced Error Display */}
+      {error && (
+        <div className="px-6 pt-5">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+            <h4 className="font-medium text-red-800 mb-2">⚠️ Error Loading Dashboard Data</h4>
+            <p className="text-red-700 text-sm">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ UPDATED: Dynamic Stats Cards */}
       <div className="px-6 py-5">
         <div className="bg-[#f9f9f9] border border-[#e6edff] rounded-[5px] p-5">
-          <div className="grid grid-cols-4 gap-[38px]">
-            {/* Total Orders */}
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="text-[28px] font-bold leading-[150%] text-black">89,935</div>
-                <div className="text-[16px] leading-[150%] text-black">Total orders</div>
-              </div>
-              <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5">📈</div>
-                  <span>10.2</span>
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading dashboard data...</div>
+          ) : (
+            <div className="grid grid-cols-4 gap-[38px]">
+              {/* Total Orders */}
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="text-[28px] font-bold leading-[150%] text-black">
+                    {formatNumber(dashboardData?.totalOrders?.value)}
+                  </div>
+                  <div className="text-[16px] leading-[150%] text-black">Total orders</div>
                 </div>
-                <span>+1.01% this week</span>
+                <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5">
+                      {dashboardData?.totalOrders?.trend === 'up' ? '📈' : '📉'}
+                    </div>
+                    <span>10.2</span>
+                  </div>
+                  <span>{dashboardData?.totalOrders?.change || '+0%'} {dashboardData?.totalOrders?.period || 'this week'}</span>
+                </div>
+              </div>
+
+              <div className="w-px bg-[#e6edff] h-[103px] -ml-[19px]"></div>
+
+              {/* Active Orders */}
+              <div className="flex flex-col gap-3 -ml-[19px]">
+                <div>
+                  <div className="text-[28px] font-bold leading-[150%] text-black">
+                    {formatNumber(dashboardData?.activeOrders?.value)}
+                  </div>
+                  <div className="text-[16px] leading-[150%] text-black">Active orders</div>
+                </div>
+                <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5">
+                      {dashboardData?.activeOrders?.trend === 'up' ? '📈' : '📉'}
+                    </div>
+                    <span>3.1</span>
+                  </div>
+                  <span>{dashboardData?.activeOrders?.change || '+0%'} {dashboardData?.activeOrders?.period || 'this week'}</span>
+                </div>
+              </div>
+
+              <div className="w-px bg-[#e6edff] h-[103px] -ml-[19px]"></div>
+
+              {/* Completed Orders */}
+              <div className="flex flex-col gap-3 -ml-[19px]">
+                <div>
+                  <div className="text-[28px] font-bold leading-[150%] text-black">
+                    {formatNumber(dashboardData?.completedOrders?.value)}
+                  </div>
+                  <div className="text-[16px] leading-[150%] text-black">Completed orders</div>
+                </div>
+                <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5">
+                      {dashboardData?.completedOrders?.trend === 'up' ? '📈' : '📉'}
+                    </div>
+                    <span>2.56</span>
+                  </div>
+                  <span>{dashboardData?.completedOrders?.change || '+0%'} {dashboardData?.completedOrders?.period || 'this week'}</span>
+                </div>
               </div>
             </div>
-
-            {/* Divider */}
-            <div className="w-px bg-[#e6edff] h-[103px] -ml-[19px]"></div>
-
-            {/* Active Orders */}
-            <div className="flex flex-col gap-3 -ml-[19px]">
-              <div>
-                <div className="text-[28px] font-bold leading-[150%] text-black">23,283.5</div>
-                <div className="text-[16px] leading-[150%] text-black">Active orders</div>
-              </div>
-              <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5">📈</div>
-                  <span>3.1</span>
-                </div>
-                <span>+0.49% this week</span>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px bg-[#e6edff] h-[103px] -ml-[19px]"></div>
-
-            {/* Completed Orders */}
-            <div className="flex flex-col gap-3 -ml-[19px]">
-              <div>
-                <div className="text-[28px] font-bold leading-[150%] text-black">46,827</div>
-                <div className="text-[16px] leading-[150%] text-black">Completed orders</div>
-              </div>
-              <div className="flex items-center gap-3 text-[14px] text-[#7c8db5]">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5">📉</div>
-                  <span>2.56</span>
-                </div>
-                <span>-0.91% this week</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Charts Section */}
+      {/* Charts Section - Keep existing placeholder for now */}
       <div className="px-6 pb-6">
         <div className="grid grid-cols-3 gap-6">
           {/* Order Analytics Chart */}
@@ -161,7 +303,7 @@ export const VendorDashboardContent = () => {
         </div>
       </div>
 
-      {/* Order List */}
+      {/* ✅ UPDATED: Dynamic Order List */}
       <div className="px-6 pb-6">
         <div className="bg-[#f9f9f9] border border-[#e6edff] rounded-t-[10px] p-5">
           <div className="flex items-center justify-between mb-6">
@@ -186,48 +328,107 @@ export const VendorDashboardContent = () => {
             <div>Action</div>
           </div>
 
-          {/* Sample Order Rows */}
-          {[1, 2, 3].map((num) => (
-            <div key={num} className="grid grid-cols-8 gap-4 py-4 border-b border-black/8 text-[12px] text-[#111]">
-              <div className="text-center font-medium">{num}</div>
-              <div className="font-medium">#23459</div>
-              <div>Dec 2, 2025</div>
-              <div className="font-medium">
-                {num === 1 ? "Favour Joseph" : num === 2 ? "Peace Esemezie" : "Remilekun omoyeni"}
+          {/* ✅ BULLETPROOF: Order Rows with Multiple Safety Checks */}
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading orders...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-500">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚠️</span>
               </div>
-              <div>
-                {num === 1 ? "9 Euba street" : num === 2 ? "Bessie Esiaba," : "9 Euba street"}
-              </div>
-              <div className="flex items-center gap-1">
-                <span>₦</span>
-                <span className="font-medium">
-                  {num === 1 ? "100,000" : num === 2 ? "500,000" : "100,000"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  num === 1 ? "bg-[#34c759]" : num === 2 ? "bg-[#cd0000]" : "bg-[#ff9500]"
-                }`}></div>
-                <span className="bg-white px-3 py-1 rounded-lg shadow-sm text-[#2e2e2e]">
-                  {num === 1 ? "New Order" : num === 2 ? "Cancelled" : "In Progress"}
-                </span>
-              </div>
-              <div className="text-center">
-                <button className="w-8 h-8 hover:bg-gray-100 rounded">⋯</button>
-              </div>
+              <p>Failed to load orders</p>
+              <p className="text-sm">{error}</p>
             </div>
-          ))}
-
-          {/* Empty state when no orders */}
-          <div className="text-center py-12 text-gray-500">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">📦</span>
+          ) : !Array.isArray(orderHistory) ? (
+            <div className="text-center py-12 text-yellow-600">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🔧</span>
+              </div>
+              <p>Invalid order data format</p>
+              <p className="text-sm">Order data is not an array: {typeof orderHistory}</p>
             </div>
-            <p>No orders yet</p>
-            <p className="text-sm">Orders will appear here once customers start purchasing</p>
-          </div>
+          ) : orderHistory.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📦</span>
+              </div>
+              <p>No orders yet</p>
+              <p className="text-sm">Orders will appear here once customers start purchasing</p>
+            </div>
+          ) : (
+            orderHistory.map((order, index) => (
+              <div key={getSafeOrderData(order, 'id', `order-${index}`)} className="grid grid-cols-8 gap-4 py-4 border-b border-black/8 text-[12px] text-[#111]">
+                <div className="text-center font-medium">{index + 1}</div>
+                <div className="font-medium">{getSafeOrderData(order, 'id', 'N/A')}</div>
+                <div>{getSafeOrderData(order, 'date', 'N/A')}</div>
+                <div className="font-medium">{getSafeOrderData(order, 'customerName', 'Unknown Customer')}</div>
+                <div>{getSafeOrderData(order, 'location', 'N/A')}</div>
+                <div className="flex items-center gap-1">
+                  <span>₦</span>
+                  <span className="font-medium">{formatNumber(getSafeOrderData(order, 'amount', 0))}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    getSafeOrderData(order, 'statusColor', 'gray') === 'green' ? "bg-[#34c759]" : 
+                    getSafeOrderData(order, 'statusColor', 'gray') === 'red' ? "bg-[#cd0000]" : "bg-[#ff9500]"
+                  }`}></div>
+                  <span className="bg-white px-3 py-1 rounded-lg shadow-sm text-[#2e2e2e]">
+                    {getSafeOrderData(order, 'status', 'Unknown')}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <button className="w-8 h-8 hover:bg-gray-100 rounded">⋯</button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {/* ✅ Enhanced Debug Panel */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="px-6 pt-2">
+          <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+            <h4 className="font-medium text-green-800 mb-2">🔍 ORDER HISTORY DEBUG:</h4>
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div>
+                <p><strong>Order History Type:</strong> {typeof orderHistory}</p>
+                <p><strong>Is Array:</strong> {Array.isArray(orderHistory) ? '✅' : '❌'}</p>
+                <p><strong>Length:</strong> {Array.isArray(orderHistory) ? orderHistory.length : 'N/A'}</p>
+                <p><strong>Has Error:</strong> {error ? '❌ ' + error : '✅'}</p>
+              </div>
+              <div>
+                <p><strong>Dashboard Data Type:</strong> {typeof dashboardData}</p>
+                <p><strong>Has Dashboard Data:</strong> {dashboardData ? '✅' : '❌'}</p>
+                <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+              </div>
+              <div>
+                <p><strong>User ID:</strong> {user?.id || 'Not found'}</p>
+                <p><strong>User Role:</strong> {user?.role || 'Not found'}</p>
+                <p><strong>Store Name:</strong> {user?.storeName || 'Not found'}</p>
+              </div>
+            </div>
+            
+            {orderHistory && !Array.isArray(orderHistory) && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-green-600 text-sm">⚠️ Non-Array Order History Structure</summary>
+                <pre className="mt-1 p-2 bg-green-100 rounded text-xs overflow-auto max-h-40">
+                  {JSON.stringify(orderHistory, null, 2)}
+                </pre>
+              </details>
+            )}
+            
+            {Array.isArray(orderHistory) && orderHistory.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-green-600 text-sm">📋 First Order Sample</summary>
+                <pre className="mt-1 p-2 bg-green-100 rounded text-xs overflow-auto max-h-40">
+                  {JSON.stringify(orderHistory[0], null, 2)}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
