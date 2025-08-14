@@ -66,14 +66,45 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
     setOrderConfirmed(true);
 
     try {
-      // Replace confirmOrder with onSubmit
-      await onSubmit({
+      console.log('💳 PAYMENT SUCCESS DEBUG:', {
+        reference: reference.reference,
+        timestamp: new Date().toISOString(),
+        paymentDetails: reference,
+        expectedOrderStatusAfterPayment: 'Should this be PROCESSING or stay PENDING?',
+        expectedPaymentStatusAfterPayment: 'Should this be PAID?'
+      });
+
+      const orderResponse = await onSubmit({
         shippingAddress,
         customerInfo,
-        paymentDetails: { reference: reference.reference },
+        paymentDetails: { 
+          reference: reference.reference,
+          status: 'success',
+          amount: reference.amount,
+          channel: reference.channel,
+          paid_at: reference.paid_at,
+          created_at: reference.created_at
+        },
         reservationDuration: 30
       });
+
+      console.log('📋 ORDER CREATION RESPONSE:', {
+        success: orderResponse.success,
+        orderStatus: orderResponse.order?.status,
+        paymentStatus: orderResponse.order?.paymentStatus,
+        vendorOrderStatus: orderResponse.order?.vendorOrderStatus,
+        message: 'Does backend automatically change payment status after payment?',
+        fullResponse: orderResponse
+      });
+
+      // ✅ ADD: Check if payment status was updated
+      if (orderResponse.order?.paymentStatus === 'PENDING') {
+        console.warn('⚠️ PAYMENT STATUS ISSUE: Payment succeeded but status is still PENDING');
+        console.warn('🔧 INVESTIGATION NEEDED: Check backend payment confirmation logic');
+      }
+
     } catch (error) {
+      console.error('❌ Order confirmation error:', error);
       setOrderConfirmed(false);
       alert(`Order confirmation failed: ${error.message}`);
     } finally {

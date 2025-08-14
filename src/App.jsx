@@ -35,6 +35,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import VendorDashboardPage from './pages/VendorDashboardPage';
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 import VendorNotificationsPage from './pages/VendorNotificationsPage';
+import VendorOrderDetailsPage from './pages/VendorOrderDetailsPage';
 import VendorOrdersPage from './pages/VendorOrdersPage';
 import VendorProductDetailPage from './pages/VendorProductDetailPage';
 import VendorProductEditPage from './pages/VendorProductEditPage';
@@ -160,6 +161,7 @@ function App() {
                 <Route path="upload" element={<VendorProductUploadPage />} />
                 <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
                 <Route path="orders" element={<VendorOrdersPage />} />
+                <Route path="orders/:orderId" element={<VendorOrderDetailsPage />} />
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />

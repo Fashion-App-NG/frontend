@@ -44,22 +44,36 @@ export const useCheckoutSession = () => {
   const confirmOrder = useCallback(async (paymentDetails, reservationDuration = 30) => {
     setLoading(true);
     setError(null);
+    
+    console.log('🔄 CHECKOUT SESSION CONFIRM ORDER:', {
+      paymentDetails,
+      shippingInfo,
+      reservationDuration,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      console.log('Confirming order with:', {
-        shippingAddress: shippingInfo.shippingAddress,
-        customerInfo: shippingInfo.customerInfo,
-        paymentDetails,
-        reservationDuration
-      });
       const data = await checkoutService.confirmOrder({
         shippingAddress: shippingInfo.shippingAddress,
         customerInfo: shippingInfo.customerInfo,
         paymentDetails,
         reservationDuration
       });
+
+      console.log('📋 CHECKOUT SESSION ORDER RESPONSE:', {
+        orderCreated: !!data.order,
+        orderStatus: data.order?.status,
+        paymentStatus: data.order?.paymentStatus,
+        isPaymentPaid: data.order?.paymentStatus === 'PAID',
+        isPaymentPending: data.order?.paymentStatus === 'PENDING',
+        paymentReference: paymentDetails.reference,
+        backendProcessedPayment: data.order?.paymentStatus !== 'PENDING'
+      });
+
       setOrder(data.order);
       setCurrentStep(4); // Move to confirmation step
     } catch (err) {
+      console.error('❌ CHECKOUT SESSION ERROR:', err);
       setError(err.message);
     } finally {
       setLoading(false);

@@ -378,5 +378,53 @@ class AuthService {
   }
 }
 
+/**
+ * Authenticated fetch wrapper
+ * @param {string} url - API endpoint URL
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Object>} Response data
+ */
+export const authFetch = async (url, options = {}) => {
+  const token = authServiceInstance.getAuthToken();
+  
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers
+    }
+  };
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔄 AuthFetch request:', { url, method: config.method || 'GET' });
+  }
+
+  try {
+    const response = await fetch(url, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Handle authentication errors
+      if (response.status === 401) {
+        authServiceInstance.logout();
+        throw new Error('Authentication required');
+      }
+      throw new Error(data.message || `HTTP ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ AuthFetch error:', error);
+    }
+    throw error;
+  }
+};
+
 const authServiceInstance = new AuthService();
 export default authServiceInstance;
