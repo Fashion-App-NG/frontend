@@ -165,32 +165,6 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
     }).format(price || 0);
   };
 
-  const handlePayment = async (paymentDetails) => {
-    setProcessingPayment(true);
-    try {
-      // For development: simulate successful payment processing
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔵 [PAYMENT] Simulating payment processing...');
-        setTimeout(() => {
-          handlePaymentSuccess({
-            reference: 'test_ref_' + Date.now(),
-            status: 'success'
-          });
-        }, 1000);
-        return;
-      }
-
-      // Production: Integrate with actual payment gateway
-      // Example for Paystack:
-      // const response = await paystackPaymentGateway(paymentDetails);
-      // handlePaymentSuccess(response);
-    } catch (error) {
-      console.error('❌ [PAYMENT] Payment processing error:', error);
-      alert('Payment processing error. Please try again.');
-      setProcessingPayment(false);
-    }
-  };
-
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
@@ -415,24 +389,6 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
           </div>
         </form>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-between mt-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Back to Shipping
-        </button>
-        <button
-          type="button"
-          onClick={() => handlePayment(/* paymentDetails */)}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Confirm & Place Order
-        </button>
-      </div>
     </div>
   );
 };

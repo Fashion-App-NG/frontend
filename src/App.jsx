@@ -63,8 +63,10 @@ import ShopperProductListPage from './pages/ShopperProductListPage';
 
 // ✅ ADD: Import checkout page
 import CheckoutPage from './pages/checkout/CheckoutPage';
+import GuestCheckoutPage from './pages/checkout/GuestCheckoutPage';
 
 // Import order details page
+import GuestCartPage from './pages/GuestCartPage';
 import ShopperOrderDetails from './pages/ShopperOrderDetails';
 
 function App() {
@@ -115,7 +117,8 @@ function App() {
                     {console.log('[ROUTE-PROVIDER] /guest/* CartProvider created')}
                     <Routes>
                       <Route path="browse" element={<GuestBrowsePage />} />
-                      <Route path="cart" element={<ShopperCart />} />
+                      <Route path="cart" element={<GuestCartPage />} />
+                      <Route path="checkout" element={<GuestCheckoutPage />} />  {/* ✅ Add checkout route */}
                     </Routes>
                   </CartProvider>
                 }

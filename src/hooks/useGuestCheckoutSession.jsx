@@ -1,0 +1,95 @@
+import { useCallback, useState } from 'react';
+import { useCart } from '../contexts/CartContext';
+import guestCheckoutService from '../services/guestCheckoutService';
+
+export const useGuestCheckoutSession = () => {
+  const { clearCart } = useCart();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [cart, setCart] = useState(null);
+  const [shippingInfo, setShippingInfo] = useState(null);
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Step 1: Review Cart (same as shopper)
+  const reviewCart = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await guestCheckoutService.reviewCart();
+      setCart(data.cart);
+      setCurrentStep(1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Step 2: Save Shipping (guest needs to collect info)
+  const saveShipping = useCallback(async (shippingAddress, customerInfo) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // ✅ Guest-specific: Store customer info for order
+      setShippingInfo({ shippingAddress, customerInfo });
+      setCurrentStep(3); // Move to payment step
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Step 3: Confirm Order (with guest token)
+  const confirmOrder = useCallback(async (paymentDetails, reservationDuration = 30) => {
+    setLoading(true);
+    setError(null);
+    
+    console.log('🔄 GUEST CHECKOUT SESSION CONFIRM ORDER:', {
+      paymentDetails,
+      shippingInfo,
+      cart
+    });
+    
+    try {
+      // ✅ Guest-specific: Use guest token and customer info
+      const orderData = {
+        cartId: cart.id,
+        shippingAddress: shippingInfo.shippingAddress,
+        customerInfo: shippingInfo.customerInfo, // ✅ Guest customer info
+        paymentDetails,
+        reservationDuration,
+        guestCheckout: true // ✅ Flag for backend
+      };
+      
+      const data = await guestCheckoutService.confirmOrder(orderData);
+      setOrder(data.order);
+      setCurrentStep(4); // Move to confirmation
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [cart, shippingInfo]);
+
+  const loadCart = useCallback(async () => {
+    // Guest cart loading handled by CartContext
+    console.log('🔄 Guest cart reload triggered');
+  }, []);
+
+  return {
+    currentStep,
+    loading,
+    error,
+    cart,
+    order,
+    reviewCart,
+    saveShipping,
+    confirmOrder,
+    setCurrentStep,
+    shippingInfo,
+    clearCart,
+    loadCart
+  };
+};
