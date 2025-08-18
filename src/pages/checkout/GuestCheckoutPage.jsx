@@ -10,8 +10,8 @@ import CartReviewStep from './steps/CartReviewStep';
 import PaymentMethodStep from './steps/PaymentMethodStep';
 
 // ✅ Guest-specific components - Fix import
-import GuestShippingInfoStep from './steps/GuestShippingInfoStep';
 import GuestOrderConfirmationStep from './steps/GuestOrderConfirmationStep'; // ✅ Add missing import
+import GuestShippingInfoStep from './steps/GuestShippingInfoStep';
 
 const GuestCheckoutPage = () => {
   const navigate = useNavigate();
