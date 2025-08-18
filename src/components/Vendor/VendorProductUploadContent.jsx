@@ -88,7 +88,7 @@ export const VendorProductUploadContent = () => {
         return {
           file: file, // ✅ Preserve original File object for upload
           preview: compressedPreview, // For UI display
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).slice(2, 9),
           name: file.name,
           size: file.size
         };

@@ -28,13 +28,15 @@ const CheckoutPage = () => {
     loadCart
   } = useCheckoutSession();
 
-  const componentId = useRef(Math.random().toString(36).substr(2, 6));
+  const componentId = useRef(Math.random().toString(36).slice(2, 6));
 
   useEffect(() => {
-    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} MOUNTED`);
+    // ✅ Fix: Copy ref value to variable to avoid stale closure
+    const id = componentId.current;
+    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} MOUNTED`);
 
     return () => {
-      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} UNMOUNTED`);
+      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} UNMOUNTED`);
     };
   }, []);
 

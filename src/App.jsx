@@ -103,7 +103,6 @@ function App() {
                 path="/browse"
                 element={
                   <CartProvider key="browse-provider">
-                    {console.log('[ROUTE-PROVIDER] /browse CartProvider created')}
                     <GuestBrowsePage />
                   </CartProvider>
                 }
@@ -114,7 +113,6 @@ function App() {
                 path="/guest/*"
                 element={
                   <CartProvider key="guest-provider">
-                    {console.log('[ROUTE-PROVIDER] /guest/* CartProvider created')}
                     <Routes>
                       <Route path="browse" element={<GuestBrowsePage />} />
                       <Route path="cart" element={<GuestCartPage />} />
@@ -129,7 +127,6 @@ function App() {
                 path="/shopper/*"
                 element={
                   <CartProvider key="shopper-provider">
-                    {console.log('[ROUTE-PROVIDER] /shopper/* CartProvider created')}
                     <ShopperLayout />
                   </CartProvider>
                 }

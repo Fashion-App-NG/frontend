@@ -7,7 +7,7 @@ export const VendorDashboardContent = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  //const [error, setError] = useState(null);
   
   // ✅ ADD: Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,7 +16,7 @@ export const VendorDashboardContent = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true);
-      setError(null);
+      //setError(null);
       
       try {
         // ✅ FIX: Load sequentially to avoid 429 rate limiting
@@ -77,7 +77,7 @@ export const VendorDashboardContent = () => {
         
       } catch (error) {
         console.error('❌ Failed to load dashboard data:', error);
-        setError(error.message);
+        //setError(error.message);
         setDashboardData(null);
         setOrderHistory([]);
       } finally {

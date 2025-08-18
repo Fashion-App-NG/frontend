@@ -2,16 +2,12 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useGuestCheckoutSession } from '../../hooks/useGuestCheckoutSession';
-
-// ✅ Reuse existing components
 import CheckoutProgressBar from './components/CheckoutProgressBar';
 import OrderSummaryCard from './components/OrderSummaryCard';
 import CartReviewStep from './steps/CartReviewStep';
-import PaymentMethodStep from './steps/PaymentMethodStep';
-
-// ✅ Guest-specific components - Fix import
-import GuestOrderConfirmationStep from './steps/GuestOrderConfirmationStep'; // ✅ Add missing import
+import GuestOrderConfirmationStep from './steps/GuestOrderConfirmationStep';
 import GuestShippingInfoStep from './steps/GuestShippingInfoStep';
+import PaymentMethodStep from './steps/PaymentMethodStep';
 
 const GuestCheckoutPage = () => {
   const navigate = useNavigate();
@@ -31,17 +27,22 @@ const GuestCheckoutPage = () => {
     loadCart
   } = useGuestCheckoutSession();
 
-  const componentId = useRef(Math.random().toString(36).substr(2, 6));
+  // ✅ Fixed: Use slice() instead of deprecated substr()
+  const componentId = useRef(Math.random().toString(36).slice(2, 8));
 
   useEffect(() => {
-    // ✅ Fix: Copy ref value to variable to avoid stale closure
     const id = componentId.current;
-    console.log(`[GUEST-CHECKOUT-LIFECYCLE] GuestCheckoutPage-${id} MOUNTED`);
+    // ✅ Remove in production or wrap in development check
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[GUEST-CHECKOUT-LIFECYCLE] GuestCheckoutPage-${id} MOUNTED`);
+    }
 
     return () => {
-      console.log(`[GUEST-CHECKOUT-LIFECYCLE] GuestCheckoutPage-${id} UNMOUNTED`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[GUEST-CHECKOUT-LIFECYCLE] GuestCheckoutPage-${id} UNMOUNTED`);
+      }
     };
-  }, []); // ✅ Empty dependency array is correct here
+  }, []);
 
   // ✅ Guest-specific: Redirect to guest cart if empty
   useEffect(() => {
