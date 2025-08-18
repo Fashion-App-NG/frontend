@@ -34,27 +34,44 @@ export const CartProvider = ({ children }) => {
   const loadCart = useCallback(() => {
     const callId = ++loadCartCallCount.current;
     console.log(`[LOAD-CART-DEBOUNCE-TEST] loadCart called #${callId} - Provider: ${providerId.current}`);
-    console.log(`[LOAD-CART-DEBOUNCE-TEST] Current timeout:`, !!debounceTimeout.current);
     
     if (debounceTimeout.current) {
-      console.log(`[LOAD-CART-DEBOUNCE-TEST] Clearing previous timeout for call #${callId}`);
       clearTimeout(debounceTimeout.current);
     }
     
     debounceTimeout.current = setTimeout(async () => {
       console.log(`[LOAD-CART-DEBOUNCE-TEST] Executing debounced call #${callId}`);
       setIsLoading(true);
-      
+      setError(null); // Clear previous errors
+    
       try {
         const response = await cartService.getCart();
         console.log(`[LOAD-CART-DEBOUNCE-TEST] API response for call #${callId}:`, response);
         
-        setCartItems(response.cart?.items || []);
-        setCartCount(response.cart?.itemCount || 0);
-        setError(null);
+        if (response && response.cart) {
+          setCartItems(response.cart.items || []);
+          setCartCount(response.cart.itemCount || 0);
+          setError(null);
+          console.log('✅ Cart loaded successfully');
+        } else {
+          console.warn('⚠️ Invalid cart response, using empty cart');
+          setCartItems([]);
+          setCartCount(0);
+          setError(null);
+        }
+        
       } catch (err) {
         console.error(`[LOAD-CART-DEBOUNCE-TEST] Error in call #${callId}:`, err);
-        setError("Failed to fetch cart: " + err?.message);
+        
+        // ✅ GRACEFUL ERROR HANDLING: Don't show errors to users for auth issues
+        if (err.message.includes('401') || err.message.includes('Authentication')) {
+          console.log('🔄 Auth error - using empty cart silently');
+          setCartItems([]);
+          setCartCount(0);
+          setError(null); // Don't show auth errors
+        } else {
+          setError("Cart temporarily unavailable");
+        }
       } finally {
         setIsLoading(false);
       }

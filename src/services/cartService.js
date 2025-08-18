@@ -48,25 +48,105 @@ class CartService {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Fetching cart contents...');
       }
-      if (!this.getAuthToken() && !this.getGuestSessionToken()) {
-        await this.createGuestSession();
-      }
+      
+      // ✅ ENHANCED: Ensure valid token before request
+      await this.ensureValidAuth();
+      
       const headers = this.getAuthHeaders();
-      const response = await fetch(`${this.baseURL}/cart`, { method: 'GET', headers });
+      console.log('🔍 Cart request headers:', {
+        hasAuth: !!headers.Authorization,
+        authType: headers.Authorization ? (headers.Authorization.includes('Bearer') ? 'Bearer' : 'Other') : 'None'
+      });
+      
+      const response = await fetch(`${this.baseURL}/cart`, { 
+        method: 'GET', 
+        headers 
+      });
+      
+      // ✅ ENHANCED: Better 401 handling with recovery
+      if (response.status === 401) {
+        console.warn('🔒 Cart API returned 401 - attempting token recovery...');
+        
+        const userToken = this.getAuthToken();
+        if (userToken) {
+          console.error('🚨 User token rejected - auth system issue');
+          throw new Error('Authentication failed - please log in again');
+        }
+        
+        // ✅ GUEST SESSION RECOVERY
+        console.log('🔄 Recovering guest session...');
+        try {
+          // Clear invalid token
+          localStorage.removeItem('guestSessionToken');
+          
+          // Force create new guest session
+          await this.createGuestSession();
+          
+          // Retry request with new token
+          const newHeaders = this.getAuthHeaders();
+          const retryResponse = await fetch(`${this.baseURL}/cart`, { 
+            method: 'GET', 
+            headers: newHeaders 
+          });
+          
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            console.log('✅ Cart recovered successfully:', retryData.cart);
+            return retryData;
+          } else if (retryResponse.status === 404) {
+            return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
+          }
+          
+          throw new Error(`Recovery failed: ${retryResponse.status}`);
+          
+        } catch (recoveryError) {
+          console.error('❌ Guest session recovery failed:', recoveryError);
+          // ✅ GRACEFUL FALLBACK: Return empty cart
+          return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
+        }
+      }
+      
       if (!response.ok) {
         if (response.status === 404) {
           return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
         }
         throw new Error(`Failed to fetch cart: ${response.status}`);
       }
+      
       const data = await response.json();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Cart fetched:', data.cart);
-      }
+      console.log('✅ Cart fetched successfully:', data.cart);
       return data;
+      
     } catch (error) {
       console.error('❌ Failed to fetch cart:', error);
-      throw error;
+      
+      // ✅ GRACEFUL FALLBACK: Don't throw errors for cart failures
+      console.log('🔄 Returning empty cart as fallback');
+      return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
+    }
+  }
+
+  // ✅ NEW: Ensure valid authentication before requests
+  async ensureValidAuth() {
+    const userToken = this.getAuthToken();
+    const guestToken = this.getGuestSessionToken();
+    
+    if (!userToken && !guestToken) {
+      console.log('🔄 No tokens found, creating guest session...');
+      await this.createGuestSession();
+      return;
+    }
+    
+    // Validate guest token if no user token
+    if (!userToken && guestToken) {
+      const guestSessionService = (await import('./guestSessionService')).default;
+      const isValid = await guestSessionService.validateToken(guestToken);
+      
+      if (!isValid) {
+        console.log('🔄 Guest token expired, creating new session...');
+        localStorage.removeItem('guestSessionToken');
+        await this.createGuestSession();
+      }
     }
   }
 
