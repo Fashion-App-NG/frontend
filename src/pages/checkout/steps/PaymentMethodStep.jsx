@@ -1,12 +1,15 @@
 import { CreditCard, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { PaystackButton } from 'react-paystack';
+import { useNavigate } from 'react-router-dom';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
 
 // In PaymentMethodStep.jsx
 const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, cart }) => {
+  const navigate = useNavigate(); // ✅ Initialize navigate
+
   if (process.env.NODE_ENV === 'development') {
     console.log('Dev - [PAGE] PaymentMethodStep rendered');
   }
@@ -66,18 +69,20 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
     setOrderConfirmed(true);
 
     try {
-      console.log('💳 PAYMENT SUCCESS DEBUG:', {
-        reference: reference.reference,
-        timestamp: new Date().toISOString(),
-        paymentDetails: reference,
-        expectedOrderStatusAfterPayment: 'Should this be PROCESSING or stay PENDING?',
-        expectedPaymentStatusAfterPayment: 'Should this be PAID?'
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('💳 PAYMENT SUCCESS DEBUG:', {
+          reference: reference.reference,
+          timestamp: new Date().toISOString(),
+          paymentDetails: reference,
+          expectedOrderStatusAfterPayment: 'Should this be PROCESSING or stay PENDING?',
+          expectedPaymentStatusAfterPayment: 'Should this be PAID?'
+        })
+      };
 
       const orderResponse = await onSubmit({
         shippingAddress,
         customerInfo,
-        paymentDetails: { 
+        paymentDetails: {
           reference: reference.reference,
           status: 'success',
           amount: reference.amount,
@@ -88,45 +93,56 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
         reservationDuration: 30
       });
 
-      console.log('📋 ORDER CREATION RESPONSE:', {
-        success: orderResponse.success,
-        orderStatus: orderResponse.order?.status,
-        paymentStatus: orderResponse.order?.paymentStatus,
-        vendorOrderStatus: orderResponse.order?.vendorOrderStatus,
-        message: 'Does backend automatically change payment status after payment?',
-        fullResponse: orderResponse
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📋 ORDER CREATION RESPONSE:', {
+          success: orderResponse.success,
+          orderStatus: orderResponse.order?.status,
+          paymentStatus: orderResponse.order?.paymentStatus,
+          vendorOrderStatus: orderResponse.order?.vendorOrderStatus,
+          message: 'Does backend automatically change payment status after payment?',
+          fullResponse: orderResponse
+        });
+      }
 
       // ✅ CHECK: What happens after successful order creation?
-      console.log('🎯 POST-ORDER SUCCESS ACTIONS:', {
-        orderResponseExists: !!orderResponse,
-        orderExists: !!orderResponse?.order,
-        successField: orderResponse?.success,
-        aboutToNavigateToSuccess: true
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎯 POST-ORDER SUCCESS ACTIONS:', {
+          orderResponseExists: !!orderResponse,
+          orderExists: !!orderResponse?.order,
+          successField: orderResponse?.success,
+          aboutToNavigateToSuccess: true
+        })
+      };
 
       // ✅ ADD: Explicit success check before navigation
       if (orderResponse && orderResponse.success && orderResponse.order) {
-        console.log('✅ ORDER CONFIRMED - About to navigate to success page');
-        // Navigation or success handling should happen here
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ ORDER CONFIRMED - About to navigate to success page');
+        }
+        // Navigate to success page or update UI
+        navigate('/checkout/success', { state: { order: orderResponse.order } });
       } else {
-        console.error('❌ ORDER RESPONSE INVALID:', orderResponse);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ ORDER RESPONSE INVALID:', orderResponse);
+        }
         throw new Error('Invalid order response structure');
       }
 
       // ✅ ADD: Check if payment status was updated
-      if (orderResponse.order?.paymentStatus === 'PENDING') {
+      if (orderResponse.order?.paymentStatus === 'PENDING' && process.env.NODE_ENV === 'development') {
         console.warn('⚠️ PAYMENT STATUS ISSUE: Payment succeeded but status is still PENDING');
         console.warn('🔧 INVESTIGATION NEEDED: Check backend payment confirmation logic');
       }
 
     } catch (error) {
-      console.error('❌ Order confirmation error DETAILS:', {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        errorName: error.name,
-        fullError: error
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Order confirmation error DETAILS:', {
+          errorMessage: error.message,
+          errorStack: error.stack,
+          errorName: error.name,
+          fullError: error
+        })
+      };
       setOrderConfirmed(false);
       alert(`Order confirmation failed: ${error.message}`);
     } finally {

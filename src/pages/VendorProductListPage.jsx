@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import ProductCard from '../components/Product/ProductCard';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
+import ProductCard from '../components/Product/VendorProductCard';
 import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
 import { RestockModal } from '../components/Vendor/RestockModal';
 import { useAuth } from '../contexts/AuthContext';

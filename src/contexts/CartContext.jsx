@@ -3,25 +3,24 @@ import cartService from "../services/cartService";
 
 const CartContext = createContext();
 
+// Move this to module scope, outside CartProvider
+let activeCartProviders = 0;
+
 export const CartProvider = ({ children }) => {
-  const providerId = useRef(Math.random().toString(36).slice(2, 11));
+  const providerId = useRef(
+  window.crypto && window.crypto.randomUUID
+    ? window.crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 11)
+);
   
   useEffect(() => {
-    // ✅ Fix: Copy ref value to variable to avoid stale closure
-    const id = providerId.current;
-    console.log(`[MULTI-PROVIDER-TEST] CartProvider-${id} MOUNTED`);
-    console.log(`[MULTI-PROVIDER-TEST] Active providers:`, window.activeCartProviders || 0);
-    
-    // Track active providers globally
-    if (!window.activeCartProviders) window.activeCartProviders = 0;
-    window.activeCartProviders++;
-    
+    activeCartProviders++;
+    console.log(`[MULTI-PROVIDER-TEST] Active providers:`, activeCartProviders);
     return () => {
-      window.activeCartProviders--;
-      console.log(`[MULTI-PROVIDER-TEST] CartProvider-${id} UNMOUNTED`);
-      console.log(`[MULTI-PROVIDER-TEST] Remaining providers:`, window.activeCartProviders);
+      activeCartProviders--;
+      console.log(`[MULTI-PROVIDER-TEST] Remaining providers:`, activeCartProviders);
     };
-  }, []);
+  }, []); // No warning, safe to use empty array
 
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
@@ -180,7 +179,7 @@ export const CartProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [setError, setIsLoading, setCartItems, setCartCount]);
+  }, []);
 
   // --- Merge Guest Cart (after login) ---
   const mergeGuestCart = useCallback(async (userJwt, guestSessionId) => {

@@ -31,11 +31,24 @@ export const useGuestCheckoutSession = () => {
     setLoading(true);
     setError(null);
     try {
-      // ✅ Guest-specific: Store customer info for order
+      // Basic validation for required fields
+      if (!shippingAddress) {
+        throw new Error('Shipping address is required.');
+      }
+      if (!customerInfo) {
+        throw new Error('Customer information is required.');
+      }
       setShippingInfo({ shippingAddress, customerInfo });
       setCurrentStep(3); // Move to payment step
     } catch (err) {
-      setError(err.message);
+      if (
+        err.message === 'Shipping address is required.' ||
+        err.message === 'Customer information is required.'
+      ) {
+        setError(`Validation error: ${err.message}`);
+      } else {
+        setError(`Unexpected error in saveShipping: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }

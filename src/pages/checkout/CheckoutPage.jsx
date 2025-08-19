@@ -28,7 +28,11 @@ const CheckoutPage = () => {
     loadCart
   } = useCheckoutSession();
 
-  const componentId = useRef(Math.random().toString(36).slice(2, 6));
+  const componentId = useRef(
+    window.crypto && window.crypto.randomUUID
+      ? window.crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10)
+  );
 
   useEffect(() => {
     // ✅ Fix: Copy ref value to variable to avoid stale closure

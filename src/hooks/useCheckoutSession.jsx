@@ -44,13 +44,13 @@ export const useCheckoutSession = () => {
   const confirmOrder = useCallback(async (paymentDetails, reservationDuration = 30) => {
     setLoading(true);
     setError(null);
-    
+    if(process.env.NODE_ENV === 'development') {
     console.log('🔄 CHECKOUT SESSION CONFIRM ORDER:', {
       paymentDetails,
       shippingInfo,
       reservationDuration,
       timestamp: new Date().toISOString()
-    });
+    })};
 
     try {
       const data = await checkoutService.confirmOrder({
@@ -60,6 +60,7 @@ export const useCheckoutSession = () => {
         reservationDuration
       });
 
+      if (process.env.NODE_ENV === 'development') {
       console.log('📋 CHECKOUT SESSION ORDER RESPONSE:', {
         orderCreated: !!data.order,
         orderStatus: data.order?.status,
@@ -68,17 +69,21 @@ export const useCheckoutSession = () => {
         isPaymentPending: data.order?.paymentStatus === 'PENDING',
         paymentReference: paymentDetails.reference,
         backendProcessedPayment: data.order?.paymentStatus !== 'PENDING'
-      });
+      })};
 
       setOrder(data.order);
       setCurrentStep(4); // Move to confirmation step
 
       // ✅ CRITICAL: Return the data
-      console.log('✅ SHOPPER HOOK: Returning response to PaymentMethodStep:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ SHOPPER HOOK: Returning response to PaymentMethodStep:', data);
+      }
       return data;
       
     } catch (err) {
-      console.error('❌ CHECKOUT SESSION ERROR:', err);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ CHECKOUT SESSION CONFIRM ORDER ERROR:', err);
+      }
       setError(err.message);
       throw err;
     } finally {

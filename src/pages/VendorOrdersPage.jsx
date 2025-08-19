@@ -424,39 +424,6 @@ export const VendorOrdersPage = () => {
 
           {/* Pagination would go here if needed */}
         </div>
-
-        {/* ✅ Add this temporary debug section in your render (remove after testing) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-            <h4 className="font-medium text-yellow-800 mb-3">🔧 Debug Info:</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p><strong>Vendor ID:</strong> {user?.id || 'Not found'}</p>
-                <p><strong>Vendor Email:</strong> {user?.email || 'Not found'}</p>
-                <p><strong>Store Name:</strong> {user?.storeName || 'Not found'}</p>
-                <p><strong>First Name:</strong> {user?.firstName || 'Not found'}</p>
-                <p><strong>Last Name:</strong> {user?.lastName || 'Not found'}</p>
-                <p><strong>User Role:</strong> {user?.role || 'Not found'}</p>
-              </div>
-              <div>
-                <p><strong>Orders Count:</strong> {orders.length}</p>
-                <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-                <p><strong>Error:</strong> {error || 'None'}</p>
-                <p><strong>API BASE URL:</strong> {process.env.REACT_APP_API_BASE_URL || 'Not set'}</p>
-                <p><strong>NODE_ENV:</strong> {process.env.NODE_ENV}</p>
-                <p><strong>Auth Token:</strong> {localStorage.getItem('token') ? 'Present' : 'Missing'}</p>
-              </div>
-            </div>
-            
-            {/* Show actual user object */}
-            <details className="mt-3">
-              <summary className="cursor-pointer text-yellow-700 font-medium">📋 Raw User Object</summary>
-              <pre className="mt-2 p-2 bg-yellow-100 rounded text-xs overflow-auto">
-                {JSON.stringify(user, null, 2)}
-              </pre>
-            </details>
-          </div>
-        )}
       </div>
     </div>
   );

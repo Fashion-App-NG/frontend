@@ -341,5 +341,4 @@ class VendorAnalyticsService {
 }
 
 // ✅ FIX: Export warning
-const vendorAnalyticsServiceInstance = new VendorAnalyticsService();
-export default vendorAnalyticsServiceInstance;
+export default VendorAnalyticsService; // Export the class, not an instance

@@ -53,11 +53,13 @@ class CartService {
       await this.ensureValidAuth();
       
       const headers = this.getAuthHeaders();
-      console.log('🔍 Cart request headers:', {
-        hasAuth: !!headers.Authorization,
-        authType: headers.Authorization ? (headers.Authorization.includes('Bearer') ? 'Bearer' : 'Other') : 'None'
-      });
-      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Cart request headers:', {
+          hasAuth: !!headers.Authorization,
+          authType: headers.Authorization ? (headers.Authorization.includes('Bearer') ? 'Bearer' : 'Other') : 'None'
+        });
+      }
+
       const response = await fetch(`${this.baseURL}/cart`, { 
         method: 'GET', 
         headers 
@@ -65,16 +67,22 @@ class CartService {
       
       // ✅ ENHANCED: Better 401 handling with recovery
       if (response.status === 401) {
-        console.warn('🔒 Cart API returned 401 - attempting token recovery...');
-        
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('🔒 Cart API returned 401 - attempting token recovery...');
+        }
+
         const userToken = this.getAuthToken();
         if (userToken) {
-          console.error('🚨 User token rejected - auth system issue');
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('🚨 User token rejected - auth system issue');
+          }
           throw new Error('Authentication failed - please log in again');
         }
         
         // ✅ GUEST SESSION RECOVERY
-        console.log('🔄 Recovering guest session...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Recovering guest session...');
+        }
         try {
           // Clear invalid token
           localStorage.removeItem('guestSessionToken');
@@ -91,7 +99,9 @@ class CartService {
           
           if (retryResponse.ok) {
             const retryData = await retryResponse.json();
-            console.log('✅ Cart recovered successfully:', retryData.cart);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Cart recovered successfully:', retryData.cart);
+            }
             return retryData;
           } else if (retryResponse.status === 404) {
             return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
@@ -100,7 +110,9 @@ class CartService {
           throw new Error(`Recovery failed: ${retryResponse.status}`);
           
         } catch (recoveryError) {
-          console.error('❌ Guest session recovery failed:', recoveryError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Guest session recovery failed:', recoveryError);
+          }
           // ✅ GRACEFUL FALLBACK: Return empty cart
           return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
         }
@@ -114,14 +126,18 @@ class CartService {
       }
       
       const data = await response.json();
-      console.log('✅ Cart fetched successfully:', data.cart);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Cart fetched successfully:', data.cart);
+      }
       return data;
       
     } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
       console.error('❌ Failed to fetch cart:', error);
       
       // ✅ GRACEFUL FALLBACK: Don't throw errors for cart failures
       console.log('🔄 Returning empty cart as fallback');
+      }
       return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
     }
   }
@@ -132,7 +148,9 @@ class CartService {
     const guestToken = this.getGuestSessionToken();
     
     if (!userToken && !guestToken) {
-      console.log('🔄 No tokens found, creating guest session...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 No tokens found, creating guest session...');
+      }
       await this.createGuestSession();
       return;
     }
@@ -143,7 +161,9 @@ class CartService {
       const isValid = await guestSessionService.validateToken(guestToken);
       
       if (!isValid) {
-        console.log('🔄 Guest token expired, creating new session...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Guest token expired, creating new session...');
+        }
         localStorage.removeItem('guestSessionToken');
         await this.createGuestSession();
       }
@@ -193,7 +213,9 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to add item to cart:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to add item to cart:', error);
+      }
       throw error;
     } finally {
       this.activeRequests.delete(requestKey);
@@ -219,7 +241,9 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to update cart item:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to update cart item:', error);
+      }
       throw error;
     }
   }
@@ -241,7 +265,9 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to remove item from cart:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to remove item from cart:', error);
+      }
       throw error;
     }
   }
@@ -263,7 +289,9 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to clear cart:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to clear cart:', error);
+      }
       throw error;
     }
   }
@@ -291,7 +319,9 @@ class CartService {
       }
       return data;
     } catch (error) {
-      console.error('❌ Failed to merge guest cart:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to merge guest cart:', error);
+      }
       throw error;
     }
   }

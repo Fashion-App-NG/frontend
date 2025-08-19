@@ -28,7 +28,7 @@ const GuestCheckoutPage = () => {
   } = useGuestCheckoutSession();
 
   // ✅ Fixed: Use slice() instead of deprecated substr()
-  const componentId = useRef(Math.random().toString(36).slice(2, 8));
+  const componentId = useRef(crypto.randomUUID());
 
   useEffect(() => {
     const id = componentId.current;

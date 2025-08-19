@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+if (!API_BASE_URL) {
+  throw new Error('REACT_APP_API_BASE_URL environment variable is not set. Please configure it for your environment.');
+}
 
 class GuestCheckoutService {
   constructor() {
