@@ -63,7 +63,7 @@ const VIEW_MODES = {
 
 // ✅ Enhanced ShopperProductListPage
 export const ShopperProductListPage = () => {
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, isInCart, cartCount } = useCart(); // ✅ Add cartCount here
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
@@ -337,13 +337,20 @@ export const ShopperProductListPage = () => {
             <div className="flex items-center space-x-3 ml-4">
               <Link 
                 to="/shopper/cart"
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                className="relative px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0h8m-8 0a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
                 </svg>
                 Cart
+                {/* ✅ ADD: Cart count badge */}
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center font-bold">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
+              
               <Link 
                 to="/shopper/favorites"
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"

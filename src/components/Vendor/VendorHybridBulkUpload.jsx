@@ -403,7 +403,7 @@ export const VendorHybridBulkUpload = () => {
         const imageObj = {
           file: file,
           preview: URL.createObjectURL(file),
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).slice(2, 9),
           name: file.name,
           size: file.size,
           type: file.type,
@@ -540,7 +540,7 @@ export const VendorHybridBulkUpload = () => {
             const matchedImage = {
               file: matchedFile,
               preview: URL.createObjectURL(matchedFile),
-              id: Math.random().toString(36).substr(2, 9),
+              id: Math.random().toString(36).slice(2, 9),
               name: imageName,
               size: matchedFile.size,
               type: matchedFile.type

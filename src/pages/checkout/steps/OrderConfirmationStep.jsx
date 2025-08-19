@@ -5,22 +5,35 @@ const OrderConfirmationStep = ({ order, clearCart, loadCart }) => {
   if (process.env.NODE_ENV === 'development') {
     console.log('[PAGE] OrderConfirmationStep rendered');
   }
+  
+  // ✅ Single useEffect to handle cart clearing
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[OrderConfirmationStep] Mounted. order:', order);
-    }
-    async function clearAndReload() {
-      if (clearCart) {
-        console.log('[DEBUG] About to call clearCart in OrderConfirmationStep');
-        console.log('[DEBUG] clearCart in OrderConfirmationStep:', clearCart);
-        await clearCart();
+    let hasRun = false; // Prevent double execution in StrictMode
+    
+    async function clearCartOnce() {
+      if (hasRun) {
+        console.log('[ORDER-CONFIRMATION] Skipping duplicate StrictMode call');
+        return;
       }
-      // TEMP: Add delay to test for race condition
-      await new Promise(res => setTimeout(res, 500));
-      if (loadCart) await loadCart();
+      hasRun = true;
+      
+      if (clearCart && loadCart) {
+        try {
+          console.log('🔄 Order confirmed, clearing cart...');
+          await clearCart();
+          await loadCart(); // Refresh to confirm empty state
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Cart cleared after successful order');
+          }
+        } catch (error) {
+          console.error('❌ Failed to clear cart after order:', error);
+          // Don't throw - order was successful even if cart clear failed
+        }
+      }
     }
-    clearAndReload();
-  }, [clearCart, loadCart, order]);
+    
+    clearCartOnce();
+  }, [order?.id, clearCart, loadCart]); // ✅ Include all dependencies
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">

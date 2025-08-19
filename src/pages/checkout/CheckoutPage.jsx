@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
@@ -27,6 +27,26 @@ const CheckoutPage = () => {
     clearCart,
     loadCart
   } = useCheckoutSession();
+
+  const componentId = useRef(
+    window.crypto && window.crypto.randomUUID
+      ? window.crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10)
+  );
+
+  useEffect(() => {
+    // ✅ Fix: Copy ref value to variable to avoid stale closure
+    const id = componentId.current;
+    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} MOUNTED`);
+
+    return () => {
+      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} UNMOUNTED`);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} cartItems changed:`, cartItems.length);
+  }, [cartItems]);
 
   // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {

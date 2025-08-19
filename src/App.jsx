@@ -35,6 +35,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import VendorDashboardPage from './pages/VendorDashboardPage';
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 import VendorNotificationsPage from './pages/VendorNotificationsPage';
+import VendorOrderDetailsPage from './pages/VendorOrderDetailsPage';
 import VendorOrdersPage from './pages/VendorOrdersPage';
 import VendorProductDetailPage from './pages/VendorProductDetailPage';
 import VendorProductEditPage from './pages/VendorProductEditPage';
@@ -62,6 +63,11 @@ import ShopperProductListPage from './pages/ShopperProductListPage';
 
 // ✅ ADD: Import checkout page
 import CheckoutPage from './pages/checkout/CheckoutPage';
+import GuestCheckoutPage from './pages/checkout/GuestCheckoutPage';
+
+// Import order details page
+import GuestCartPage from './pages/GuestCartPage';
+import ShopperOrderDetails from './pages/ShopperOrderDetails';
 
 function App() {
   return (
@@ -74,7 +80,6 @@ function App() {
               {/* Home and public routes */}
               <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
               <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
-              <Route path="/browse" element={<GuestBrowsePage />} />
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/products" element={<Navigate to="/browse" replace />} />
               <Route path="/explore" element={<GuestBrowsePage />} />
@@ -93,15 +98,25 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<PasswordResetPage />} />
 
+              {/*Browse route with CartProvider */}
+              <Route
+                path="/browse"
+                element={
+                  <CartProvider key="browse-provider">
+                    <GuestBrowsePage />
+                  </CartProvider>
+                }
+              />
+
               {/* Guest routes with CartProvider */}
               <Route
                 path="/guest/*"
                 element={
-                  <CartProvider>
+                  <CartProvider key="guest-provider">
                     <Routes>
                       <Route path="browse" element={<GuestBrowsePage />} />
-                      <Route path="cart" element={<ShopperCart />} />
-                      {/* ...other guest routes... */}
+                      <Route path="cart" element={<GuestCartPage />} />
+                      <Route path="checkout" element={<GuestCheckoutPage />} />  {/* ✅ Add checkout route */}
                     </Routes>
                   </CartProvider>
                 }
@@ -111,7 +126,7 @@ function App() {
               <Route
                 path="/shopper/*"
                 element={
-                  <CartProvider>
+                  <CartProvider key="shopper-provider">
                     <ShopperLayout />
                   </CartProvider>
                 }
@@ -121,6 +136,7 @@ function App() {
                 <Route path="browse" element={<ShopperProductListPage />} />
                 <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
+                <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
                 <Route path="cart" element={<ShopperCart />} />
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ShopperProfile />} />
@@ -145,6 +161,7 @@ function App() {
                 <Route path="upload" element={<VendorProductUploadPage />} />
                 <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
                 <Route path="orders" element={<VendorOrdersPage />} />
+                <Route path="orders/:orderId" element={<VendorOrderDetailsPage />} />
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />

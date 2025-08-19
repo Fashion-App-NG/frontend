@@ -3,13 +3,24 @@ import cartService from "../services/cartService";
 
 const CartContext = createContext();
 
+// Move this to module scope, outside CartProvider
+let activeCartProviders = 0;
+
 export const CartProvider = ({ children }) => {
-  const providerId = useRef(Math.random());
+  const providerId = useRef(
+  window.crypto && window.crypto.randomUUID
+    ? window.crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 11)
+);
+  
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] CartProvider mounted, id:', providerId.current);
-    }
-  }, []);
+    activeCartProviders++;
+    console.log(`[MULTI-PROVIDER-TEST] Active providers:`, activeCartProviders);
+    return () => {
+      activeCartProviders--;
+      console.log(`[MULTI-PROVIDER-TEST] Remaining providers:`, activeCartProviders);
+    };
+  }, []); // No warning, safe to use empty array
 
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
@@ -20,25 +31,53 @@ export const CartProvider = ({ children }) => {
   const debounceTimeout = useRef();
 
   // Debounced loadCart
-const loadCart = useCallback(() => {
-  if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-  debounceTimeout.current = setTimeout(async () => {
-    setIsLoading(true);
-    try {
-      const response = await cartService.getCart();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] loadCart response:', response);
-      }
-      setCartItems(response.cart?.items || []);
-      setCartCount(response.cart?.itemCount || 0);
-      setError(null);
-    } catch (err) {
-      setError("Failed to fetch cart: " + err?.message);
-    } finally {
-      setIsLoading(false);
+  const loadCartCallCount = useRef(0);
+  const loadCart = useCallback(() => {
+    const callId = ++loadCartCallCount.current;
+    const id = providerId.current; // ✅ Copy ref value
+    console.log(`[LOAD-CART-DEBOUNCE-TEST] loadCart called #${callId} - Provider: ${id}`);
+    
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
     }
-  }, 400); // 400ms debounce
-}, []);
+    
+    debounceTimeout.current = setTimeout(async () => {
+      console.log(`[LOAD-CART-DEBOUNCE-TEST] Executing debounced call #${callId}`);
+      setIsLoading(true);
+      setError(null);
+    
+      try {
+        const response = await cartService.getCart();
+        console.log(`[LOAD-CART-DEBOUNCE-TEST] API response for call #${callId}:`, response);
+        
+        if (response && response.cart) {
+          setCartItems(response.cart.items || []);
+          setCartCount(response.cart.itemCount || 0);
+          setError(null);
+          console.log('✅ Cart loaded successfully');
+        } else {
+          console.warn('⚠️ Invalid cart response, using empty cart');
+          setCartItems([]);
+          setCartCount(0);
+          setError(null);
+        }
+        
+      } catch (err) {
+        console.error(`[LOAD-CART-DEBOUNCE-TEST] Error in call #${callId}:`, err);
+        
+        if (err.message.includes('401') || err.message.includes('Authentication')) {
+          console.log('🔄 Auth error - using empty cart silently');
+          setCartItems([]);
+          setCartCount(0);
+          setError(null);
+        } else {
+          setError("Cart temporarily unavailable");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }, 400);
+  }, []); // ✅ Remove providerId dependency to fix stale closure
 
   useEffect(() => {
     loadCart();
@@ -118,10 +157,8 @@ const loadCart = useCallback(() => {
 
   // --- Clear Cart ---
   const clearCart = useCallback(async () => {
-    console.log('[DEBUG] clearCart called');
-    setIsLoading(true);
-    setError(null);
     try {
+      setIsLoading(false);
       const response = await cartService.clearCart();
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] cartService.clearCart response:', response);
@@ -131,23 +168,18 @@ const loadCart = useCallback(() => {
         setCartCount(0);
         if (process.env.NODE_ENV === 'development') {
           console.log('[DEBUG] clearCart called: cartItems should now be [] and cartCount 0');
-          setTimeout(() => {
-            console.log('[DEBUG] After clearCart, cartItems:', cartItems, 'cartCount:', cartCount);
-          }, 100); // allow state to update
         }
       }
     } catch (err) {
       setError(err.message);
       if (process.env.NODE_ENV === 'development') {
         console.error('[DEBUG] cartService.clearCart error:', err);
-      }
-      if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to clear cart:', err);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [cartCount, cartItems]);
+  }, []);
 
   // --- Merge Guest Cart (after login) ---
   const mergeGuestCart = useCallback(async (userJwt, guestSessionId) => {
@@ -185,7 +217,7 @@ const loadCart = useCallback(() => {
       const quantity = item.quantity || 1;
       return total + price * quantity;
     }, 0);
-  }, [cartItems]);
+  }, [cartItems]); // ✅ Dependencies are correct - only cartItems needed
 
   // --- Context Value ---
   const value = {
