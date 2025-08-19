@@ -63,6 +63,7 @@ import ShopperProductListPage from './pages/ShopperProductListPage';
 
 // ✅ ADD: Import checkout page
 import CheckoutPage from './pages/checkout/CheckoutPage';
+import CheckoutSuccessPage from './pages/checkout/CheckoutSuccessPage';
 import GuestCheckoutPage from './pages/checkout/GuestCheckoutPage';
 
 // Import order details page
@@ -97,6 +98,8 @@ function App() {
               <Route path="/verify-otp" element={<OTPPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<PasswordResetPage />} />
+
+              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
               {/*Browse route with CartProvider */}
               <Route
