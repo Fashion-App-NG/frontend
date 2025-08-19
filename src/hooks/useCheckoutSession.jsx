@@ -72,9 +72,15 @@ export const useCheckoutSession = () => {
 
       setOrder(data.order);
       setCurrentStep(4); // Move to confirmation step
+
+      // ✅ CRITICAL: Return the data
+      console.log('✅ SHOPPER HOOK: Returning response to PaymentMethodStep:', data);
+      return data;
+      
     } catch (err) {
       console.error('❌ CHECKOUT SESSION ERROR:', err);
       setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }

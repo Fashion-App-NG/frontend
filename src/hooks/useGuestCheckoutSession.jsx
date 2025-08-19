@@ -53,21 +53,27 @@ export const useGuestCheckoutSession = () => {
     });
     
     try {
-      // ✅ Guest-specific: Use guest token and customer info
       const orderData = {
         cartId: cart.id,
         shippingAddress: shippingInfo.shippingAddress,
-        customerInfo: shippingInfo.customerInfo, // ✅ Guest customer info
+        customerInfo: shippingInfo.customerInfo,
         paymentDetails,
         reservationDuration,
-        guestCheckout: true // ✅ Flag for backend
+        guestCheckout: true
       };
       
       const data = await guestCheckoutService.confirmOrder(orderData);
       setOrder(data.order);
       setCurrentStep(4); // Move to confirmation
+      
+      // ✅ FIX: Return the response so PaymentMethodStep can access it
+      console.log('✅ GUEST HOOK: Returning response to PaymentMethodStep:', data);
+      return data;
+      
     } catch (err) {
+      console.error('❌ GUEST HOOK ERROR:', err);
       setError(err.message);
+      throw err; // Re-throw so PaymentMethodStep can catch it
     } finally {
       setLoading(false);
     }

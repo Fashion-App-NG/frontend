@@ -97,6 +97,23 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
         fullResponse: orderResponse
       });
 
+      // ✅ CHECK: What happens after successful order creation?
+      console.log('🎯 POST-ORDER SUCCESS ACTIONS:', {
+        orderResponseExists: !!orderResponse,
+        orderExists: !!orderResponse?.order,
+        successField: orderResponse?.success,
+        aboutToNavigateToSuccess: true
+      });
+
+      // ✅ ADD: Explicit success check before navigation
+      if (orderResponse && orderResponse.success && orderResponse.order) {
+        console.log('✅ ORDER CONFIRMED - About to navigate to success page');
+        // Navigation or success handling should happen here
+      } else {
+        console.error('❌ ORDER RESPONSE INVALID:', orderResponse);
+        throw new Error('Invalid order response structure');
+      }
+
       // ✅ ADD: Check if payment status was updated
       if (orderResponse.order?.paymentStatus === 'PENDING') {
         console.warn('⚠️ PAYMENT STATUS ISSUE: Payment succeeded but status is still PENDING');
@@ -104,7 +121,12 @@ const PaymentMethodStep = ({ onSubmit, onBack, shippingAddress, customerInfo, ca
       }
 
     } catch (error) {
-      console.error('❌ Order confirmation error:', error);
+      console.error('❌ Order confirmation error DETAILS:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorName: error.name,
+        fullError: error
+      });
       setOrderConfirmed(false);
       alert(`Order confirmation failed: ${error.message}`);
     } finally {

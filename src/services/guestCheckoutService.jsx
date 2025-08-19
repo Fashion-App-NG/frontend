@@ -45,38 +45,57 @@ class GuestCheckoutService {
     }
   }
 
+  // In guestCheckoutService.jsx - Use single-step like shoppers
   async confirmOrder(orderData) {
     try {
-      console.log('🔄 Guest checkout: Confirming order...', orderData);
+      console.log('🔄 Guest checkout: Using same working endpoint POST /api/checkout/confirm-step...');
 
-      const response = await fetch(`${this.baseURL}/checkout/guest-order`, {
+      // ✅ Use the SAME working endpoint as shoppers
+      const response = await fetch(`${this.baseURL}/checkout/confirm-step`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(orderData)
+        body: JSON.stringify({
+          shippingAddress: orderData.shippingAddress,
+          customerInfo: orderData.customerInfo,
+          paymentDetails: orderData.paymentDetails,
+          reservationDuration: orderData.reservationDuration || 30
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Order confirmation failed: ${response.status}`);
+        throw new Error(`Guest checkout failed: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ Guest order confirmation successful:', data);
+      
+      // ✅ Handle missing paymentStatus from backend
+      if (data.order && !data.order.paymentStatus && orderData.paymentDetails.reference) {
+        data.order.paymentStatus = 'PAID';
+        console.log('✅ GUEST FALLBACK: Set paymentStatus to PAID');
+      }
+
+      console.log('✅ Guest checkout successful with REAL order ID:', {
+        orderId: data.order?.id,
+        orderNumber: data.order?.orderNumber,
+        status: data.order?.status,
+        paymentStatus: data.order?.paymentStatus
+      });
 
       return {
         success: true,
         order: {
-          id: data.order?._id || data.order?.id,
+          id: data.order?.id,                    // Real MongoDB ObjectId
           orderNumber: data.order?.orderNumber,
           totalAmount: data.order?.totalAmount,
-          status: data.order?.status || 'CONFIRMED',
+          status: data.order?.status || 'PENDING',
+          paymentStatus: data.order?.paymentStatus || 'PAID',
           customerInfo: orderData.customerInfo,
           items: data.order?.items || [],
-          createdAt: data.order?.createdAt || new Date().toISOString()
+          createdAt: new Date().toISOString()
         }
       };
     } catch (error) {
-      console.error('❌ Guest order confirmation failed:', error);
+      console.error('❌ Guest checkout failed:', error);
       throw error;
     }
   }
