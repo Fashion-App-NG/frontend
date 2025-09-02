@@ -93,9 +93,10 @@ class CheckoutService {
 
   async confirmOrder({ shippingAddress, customerInfo, paymentDetails, reservationDuration }) {
     try {
-      console.log('🔄 SHOPPER checkout: Using correct working endpoint POST /api/checkout/confirm-step...');
-
-      // ✅ Use the ACTUAL working endpoint with REAL order ID creation
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 SHOPPER checkout: Using correct working endpoint POST /api/checkout/confirm-step...');
+      }
+      
       const response = await fetch(`${this.baseURL}/api/checkout/confirm-step`, {
         method: 'POST',
         headers: {
@@ -110,34 +111,51 @@ class CheckoutService {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Checkout failed: ${response.status}`);
+      // Extract HTTP status for better error reporting
+      const statusCode = response.status;
+      
+      // Handle HTTP errors like rate limiting (429)
+      if (statusCode === 429) {
+        const rateLimitError = {
+          success: false,
+          message: 'Too many requests. Please wait a moment and try again.',
+          statusCode: 429
+        };
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.error('⚠️ RATE LIMITING DETECTED:', rateLimitError);
+        }
+        
+        throw rateLimitError;
       }
-
+      
       const data = await response.json();
       
-      // ✅ Handle missing paymentStatus from backend
-      if (data.order && !data.order.paymentStatus && paymentDetails.reference) {
-        // Backend verified payment but didn't set paymentStatus field
-        data.order.paymentStatus = 'PAID';
-        console.log('✅ FRONTEND FALLBACK: Set paymentStatus to PAID (backend verification successful)');
+      // Add status code to the response object for downstream handling
+      data.statusCode = statusCode;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📋 SHOPPER CONFIRM-STEP RESPONSE:', data);
+        
+        // Log payment specific errors
+        if (data.payment && data.payment.error) {
+          console.log('⚠️ Payment processing issue:', data.payment.error);
+        }
       }
       
-      console.log('📋 SHOPPER CONFIRM-STEP RESPONSE:', {
-        success: data.success,
-        step: data.step,
-        realOrderId: data.order?.id,              // Real MongoDB ObjectId!
-        orderStatus: data.order?.status,          // Will be "PENDING"
-        paymentStatus: data.order?.paymentStatus, // Will be undefined from backend
-        backendMessage: data.message,
-        fullResponse: data
-      });
-
       return data;
-      
     } catch (error) {
-      console.error('❌ Shopper checkout failed:', error);
-      throw error;
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ CONFIRM ORDER ERROR:', error);
+      }
+      
+      // Pass through any structured errors from above
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Handle network/fetch errors
+      throw new Error(error.message || 'Failed to confirm order. Please try again.');
     }
   }
 

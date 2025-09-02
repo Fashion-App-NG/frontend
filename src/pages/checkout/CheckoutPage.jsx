@@ -25,7 +25,10 @@ const CheckoutPage = () => {
     setCurrentStep,
     shippingInfo,
     clearCart,
-    loadCart
+    loadCart,
+    paymentError,
+    clearPaymentError,
+    isProcessingPayment
   } = useCheckoutSession();
 
   const componentId = useRef(
@@ -35,7 +38,7 @@ const CheckoutPage = () => {
   );
 
   useEffect(() => {
-    // ✅ Fix: Copy ref value to variable to avoid stale closure
+    // Fix: Copy ref value to variable to avoid stale closure
     const id = componentId.current;
     console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} MOUNTED`);
 
@@ -47,6 +50,13 @@ const CheckoutPage = () => {
   useEffect(() => {
     console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} cartItems changed:`, cartItems.length);
   }, [cartItems]);
+
+  // Debug payment error state
+  useEffect(() => {
+    if (paymentError) {
+      console.log(`[CHECKOUT-ERROR] Payment error in parent:`, paymentError);
+    }
+  }, [paymentError]);
 
   // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {
@@ -95,19 +105,35 @@ const CheckoutPage = () => {
             />
           )}
           {currentStep === 3 && (
-            <PaymentMethodStep
-              onSubmit={({ paymentDetails, reservationDuration }) =>
-                confirmOrder(paymentDetails, reservationDuration)
-              }
-              onBack={() => setCurrentStep(2)}
-              shippingAddress={shippingInfo?.shippingAddress}
-              customerInfo={shippingInfo?.customerInfo}
-              cart={cart}
-            />
+            <>
+              {/* Debugging log */}
+              {process.env.NODE_ENV === 'development' && (
+                <div>
+                  {console.log('[DEBUG] Rendering PaymentMethodStep with shippingInfo:', shippingInfo)}
+                  {paymentError && console.log('[DEBUG] Payment error present:', paymentError)}
+                </div>
+              )}
+              <PaymentMethodStep
+                onSubmit={({ paymentDetails, reservationDuration }) =>
+                  confirmOrder(paymentDetails, reservationDuration)
+                }
+                onBack={() => setCurrentStep(2)}
+                shippingAddress={shippingInfo?.shippingAddress}
+                customerInfo={shippingInfo?.customerInfo}
+                cart={shippingInfo?.cart || cart}
+                paymentError={paymentError}
+                clearPaymentError={clearPaymentError}
+                isProcessingPayment={isProcessingPayment}
+              />
+            </>
           )}
         </div>
         <div className="lg:col-span-1">
-          <OrderSummaryCard cart={cart} order={order} currentStep={currentStep} />
+          <OrderSummaryCard
+            cart={currentStep === 3 && shippingInfo?.cart ? shippingInfo.cart : cart}
+            order={order}
+            currentStep={currentStep}
+          />
         </div>
       </div>
     </div>

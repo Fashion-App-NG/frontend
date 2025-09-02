@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useGuestCheckoutSession } from '../../hooks/useGuestCheckoutSession';
+import checkoutService from '../../services/checkoutService';
 import CheckoutProgressBar from './components/CheckoutProgressBar';
 import OrderSummaryCard from './components/OrderSummaryCard';
 import CartReviewStep from './steps/CartReviewStep';
@@ -19,13 +20,12 @@ const GuestCheckoutPage = () => {
     cart,
     order,
     reviewCart,
-    saveShipping,
     confirmOrder,
     setCurrentStep,
-    shippingInfo,
     clearCart,
     loadCart
   } = useGuestCheckoutSession();
+  const [shippingInfo, setShippingInfo] = useState(null);
 
   // ✅ Fixed: Use slice() instead of deprecated substr()
   const componentId = useRef(crypto.randomUUID());
@@ -55,6 +55,16 @@ const GuestCheckoutPage = () => {
   useEffect(() => {
     reviewCart();
   }, [reviewCart]);
+
+  const saveShipping = async (shippingAddress, customerInfo) => {
+    try {
+      const response = await checkoutService.saveShippingInfo(shippingAddress, customerInfo);
+      // Save the full response, not just address/info
+      setShippingInfo(response); // response contains all fields: cart, shippingCost, taxAmount, etc.
+    } catch (err) {
+      // ...existing error handling...
+    }
+  };
 
   if (loading) {
     return (
@@ -140,13 +150,17 @@ const GuestCheckoutPage = () => {
               onBack={() => setCurrentStep(2)}
               shippingAddress={shippingInfo?.shippingAddress}
               customerInfo={shippingInfo?.customerInfo}
-              cart={cart}
+              cart={shippingInfo?.cart || cart}
             />
           )}
         </div>
         
         <div className="lg:col-span-1">
-          <OrderSummaryCard cart={cart} order={order} currentStep={currentStep} />
+          <OrderSummaryCard
+            cart={currentStep === 3 && shippingInfo?.cart ? shippingInfo.cart : cart}
+            order={order}
+            currentStep={currentStep}
+          />
         </div>
       </div>
     </div>
