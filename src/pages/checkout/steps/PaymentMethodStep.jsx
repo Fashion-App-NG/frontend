@@ -11,25 +11,26 @@ const PaymentMethodStep = ({
   shippingAddress, 
   customerInfo, 
   cart,
-  // Add these new props to connect with parent error state
   paymentError: paymentErrorProp,
   clearPaymentError,
   isProcessingPayment: isProcessingPaymentProp
 }) => {
+  // Only log in development environment
   if (process.env.NODE_ENV === 'development') {
     console.log('Dev - [PAGE] PaymentMethodStep rendered');
   }
 
-  // Component mount/unmount debugging
+  // Component mount/unmount debugging - only in development
   useEffect(() => {
-    console.log("PaymentMethodStep mounted with ID:", Math.random());
-    return () => console.log("PaymentMethodStep unmounted");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("PaymentMethodStep mounted with ID:", Math.random());
+      return () => console.log("PaymentMethodStep unmounted");
+    }
   }, []);
 
   const { user } = useAuth();
   const { getCartTotal } = useCart();
   
-  // Keep local state for internal component use
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
   const [paymentError, setPaymentError] = useState(null);
@@ -49,7 +50,7 @@ const PaymentMethodStep = ({
     }
   });
 
-  // IMPORTANT: Sync parent error state to local state
+  // Sync parent error state to local state
   useEffect(() => {
     if (paymentErrorProp) {
       setPaymentError(paymentErrorProp);
@@ -63,9 +64,9 @@ const PaymentMethodStep = ({
     }
   }, [isProcessingPaymentProp]);
 
-  // Error debug logging
+  // Error debug logging - only in development
   useEffect(() => {
-    if (paymentError) {
+    if (paymentError && process.env.NODE_ENV === 'development') {
       console.log('[DEBUG-ERROR] Payment error state set:', {
         message: paymentError,
         timestamp: new Date().toISOString(),
@@ -90,6 +91,30 @@ const PaymentMethodStep = ({
   const deliveryFee = cart ? cart.shippingCost : 3000;
   const tax = cart ? cart.taxAmount : Math.round(subtotal * 0.075); // 7.5% VAT
   const total = cart ? cart.totalWithShipping : subtotal + deliveryFee + tax;
+
+  // Format payment error message for production
+  const formatErrorForDisplay = (error) => {
+    if (!error) return '';
+    
+    // Common technical errors that need user-friendly messages
+    const errorMap = {
+      'Payment reference is required': 'We couldn\'t process your payment. Please try again.',
+      'Payment amount does not match expected amount': 'There was a price discrepancy. Please refresh and try again.',
+      'Invalid transaction reference': 'Payment verification failed. Please try a different payment method.',
+      'Too many requests': 'Please wait a moment before trying again.',
+      'Invalid card': 'Your card was declined. Please try another card or payment method.'
+    };
+
+    // Check if the error message contains any of our mapped errors
+    for (const [technical, friendly] of Object.entries(errorMap)) {
+      if (error.includes(technical)) {
+        return friendly;
+      }
+    }
+
+    // Default user-friendly message if we don't have a specific mapping
+    return 'There was an issue processing your payment. Please try again.';
+  };
 
   // Paystack configuration
   const paystackProps = {
@@ -116,7 +141,7 @@ const PaymentMethodStep = ({
     onClose: handlePaymentClose,
   };
 
-  // ✅ Handle successful payment
+  // Handle successful payment
   async function handlePaymentSuccess(reference) {
     if (orderConfirmed) return;
     setOrderConfirmed(true);
@@ -127,13 +152,15 @@ const PaymentMethodStep = ({
     if (clearPaymentError) clearPaymentError();
 
     try {
-      console.log('💳 PAYMENT SUCCESS DEBUG:', {
-        reference: reference.reference,
-        timestamp: new Date().toISOString(),
-        paymentDetails: reference,
-      });
+      // Log payment details in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log('💳 PAYMENT SUCCESS DEBUG:', {
+          reference: reference.reference,
+          timestamp: new Date().toISOString(),
+          paymentDetails: reference,
+        });
+      }
 
-      // CRITICAL FIX: Ensure reference is properly passed in the proper format
       const orderResponse = await onSubmit({
         paymentDetails: { 
           reference: reference.reference,
@@ -146,36 +173,45 @@ const PaymentMethodStep = ({
         reservationDuration: 30
       });
 
-      console.log('📋 ORDER CREATION RESPONSE:', orderResponse);
+      // Log order response in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📋 ORDER CREATION RESPONSE:', orderResponse);
+      }
 
       // Success handling
       if (orderResponse && orderResponse.success && orderResponse.order) {
-        console.log('✅ ORDER CONFIRMED');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ ORDER CONFIRMED');
+        }
         // Navigation or success handling happens in the parent component
       } else {
-        // IMPORTANT FIX: Show error from backend even if success=true but there's a nested payment error
+        // Handle errors from backend
         if (orderResponse.payment && orderResponse.payment.error) {
           const errorMsg = orderResponse.payment.error;
           setPaymentError(errorMsg);
-          // Also notify parent about the error
-          if (clearPaymentError) clearPaymentError();
           setOrderConfirmed(false); // Allow retry
-          console.error('❌ PAYMENT ERROR:', errorMsg);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ PAYMENT ERROR:', errorMsg);
+          }
         } else if (orderResponse.message && orderResponse.message.includes('failed')) {
           const errorMsg = orderResponse.message;
           setPaymentError(errorMsg);
-          // Also notify parent about the error
-          if (clearPaymentError) clearPaymentError();
           setOrderConfirmed(false); // Allow retry
-          console.error('❌ ORDER ERROR MESSAGE:', errorMsg);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ ORDER ERROR MESSAGE:', errorMsg);
+          }
         } else {
-          console.error('❌ ORDER RESPONSE INVALID:', orderResponse);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ ORDER RESPONSE INVALID:', orderResponse);
+          }
           setPaymentError('Something went wrong with your payment. Please try again.');
           setOrderConfirmed(false); // Allow retry
         }
       }
     } catch (error) {
-      console.error('❌ Order confirmation error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Order confirmation error:', error);
+      }
       const errorMsg = error.message || 'Order confirmation failed';
       setPaymentError(errorMsg);
       setOrderConfirmed(false); // Allow retry
@@ -184,7 +220,7 @@ const PaymentMethodStep = ({
     }
   }
 
-  // ✅ Handle payment popup close
+  // Handle payment popup close
   function handlePaymentClose() {
     if (process.env.NODE_ENV === 'development') {
       console.log('💳 Payment popup closed');
@@ -198,15 +234,13 @@ const PaymentMethodStep = ({
     if (clearPaymentError) clearPaymentError();
   }
 
-  // ✅ Handle manual card form submission (fallback)
+  // Handle manual card form submission
   const handleManualPayment = async (e) => {
     e.preventDefault();
     if (process.env.NODE_ENV === 'development') {
       console.log('💳 Manual payment data:', paymentData);
-    }
-
-    // For development: simulate payment success
-    if (process.env.NODE_ENV === 'development') {
+      
+      // Simulate payment success in development
       handlePaymentSuccess({
         reference: 'test_ref_' + Date.now(),
         status: 'success'
@@ -234,11 +268,18 @@ const PaymentMethodStep = ({
     }
   };
 
+  const handleRetryPayment = () => {
+    // Clear any errors and reset state to allow new payment attempt
+    setPaymentError(null);
+    if (clearPaymentError) clearPaymentError();
+    setOrderConfirmed(false);
+  };
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
 
-      {/* IMPORTANT: Payment Error Display with dismiss button */}
+      {/* Payment Error Display with dismiss button - improved for production */}
       {paymentError && (
         <div 
           className="payment-error-message bg-red-100 border-2 border-red-500 text-red-700 rounded px-4 py-3 mb-6"
@@ -253,9 +294,11 @@ const PaymentMethodStep = ({
               <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              <span>{process.env.NODE_ENV === 'development' 
-                ? `Payment Error: ${paymentError}` 
-                : paymentError.replace(/technical terms|error codes/g, 'payment issue')}
+              <span>
+                {process.env.NODE_ENV === 'development' 
+                  ? `Payment Error: ${paymentError}` 
+                  : formatErrorForDisplay(paymentError)
+                }
               </span>
             </div>
             <button 
@@ -268,6 +311,18 @@ const PaymentMethodStep = ({
               </svg>
             </button>
           </div>
+
+          {/* Added for production: retry button */}
+          {paymentError && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={handleRetryPayment}
+                className="text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1 rounded transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -476,7 +531,7 @@ const PaymentMethodStep = ({
         </form>
       )}
 
-      {/* Development Testing Tools */}
+      {/* Development Testing Tools - only shown in development */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-8 pt-4 border-t border-gray-200">
           <h4 className="text-sm font-medium text-gray-600 mb-2">Development Testing Tools</h4>
@@ -486,7 +541,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200"
               onClick={() => {
                 setPaymentError("Payment amount does not match expected amount");
-                // Clear any parent component error state too
                 if (clearPaymentError) clearPaymentError();
               }}
             >
@@ -497,7 +551,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200"
               onClick={() => {
                 setPaymentError("Too many requests. Please wait a moment and try again.");
-                // Clear any parent component error state too
                 if (clearPaymentError) clearPaymentError();
               }}
             >

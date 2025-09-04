@@ -4,15 +4,16 @@ class CheckoutService {
     this.shippingService = require('./shippingService').default;
   }
 
-  // ✅ FIXED: Update getShopperOrders to use the correct endpoint
   async getShopperOrders(userId, { page = 1, limit = 20, status, paymentStatus } = {}) {
-    console.log('🔍 GETTING SHOPPER ORDERS FROM CHECKOUT ENDPOINT:', {
-      userId,
-      endpoint: `/api/checkout/orders`,
-      params: { page, limit, status, paymentStatus }
-    });
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 GETTING SHOPPER ORDERS FROM CHECKOUT ENDPOINT:', {
+        userId,
+        endpoint: `/api/checkout/orders`,
+        params: { page, limit, status, paymentStatus }
+      });
+    }
 
-    // ✅ Use /api/checkout/orders instead of /api/user/{userId}
     const params = new URLSearchParams();
     if (page) params.append('page', page);
     if (limit) params.append('limit', limit);
@@ -27,9 +28,10 @@ class CheckoutService {
     
     const data = await response.json();
     
-    console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+    }
     
-    // ✅ FIXED: Return data in expected format (orders at root level)
     return {
       success: data.success,
       orders: data.orders || [],
@@ -37,7 +39,6 @@ class CheckoutService {
     };
   }
 
-  // Keep existing method for backward compatibility
   async getOrders({ page = 1, limit = 20, status, paymentStatus } = {}) {
     const params = new URLSearchParams();
     params.append('page', page);
@@ -45,10 +46,12 @@ class CheckoutService {
     if (status) params.append('status', status);
     if (paymentStatus) params.append('paymentStatus', paymentStatus);
 
-    console.log('🔍 CHECKOUT SERVICE getOrders:', {
-      endpoint: `/api/checkout/orders`,
-      params: Object.fromEntries(params)
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT SERVICE getOrders:', {
+        endpoint: `/api/checkout/orders`,
+        params: Object.fromEntries(params)
+      });
+    }
 
     const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
       headers: this.getAuthHeaders(),
@@ -57,11 +60,13 @@ class CheckoutService {
     if (!response.ok) throw new Error('Failed to fetch orders');
     const data = await response.json();
     
-    console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+    }
+    
     return data;
   }
 
-  // Always prefix with /api
   async reviewCart() {
     const response = await fetch(`${this.baseURL}/api/checkout/review`, {
       method: 'GET',
@@ -72,9 +77,16 @@ class CheckoutService {
   }
 
   async saveShippingInfo(shippingAddress, customerInfo) {
-    console.log('Validating address:', shippingAddress);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Validating address:', shippingAddress);
+    }
+    
     const validationResult = await this.shippingService.validateAddress(shippingAddress);
-    console.log('Validation result:', validationResult);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Validation result:', validationResult);
+    }
+    
     if (!validationResult.success) {
       throw new Error('Invalid address.');
     }
@@ -87,6 +99,7 @@ class CheckoutService {
       },
       body: JSON.stringify({ shippingAddress, customerInfo })
     });
+    
     if (!response.ok) throw new Error('Failed to save shipping info');
     return response.json();
   }
@@ -167,8 +180,10 @@ class CheckoutService {
     return await response.json();
   }
 
-  // ✅ Add this method to verify the actual endpoint behavior
+  // Development-only verification method
   async verifyCheckoutOrdersEndpoint() {
+    if (process.env.NODE_ENV !== 'development') return;
+    
     console.log('🔍 VERIFYING ACTUAL ENDPOINT BEHAVIOR:');
     
     try {
@@ -194,7 +209,7 @@ class CheckoutService {
         console.log('❌ BASIC CALL FAILED:', response1.status, response1.statusText);
       }
 
-      // Test 2: Call with query parameters (as per Swagger)
+      // Test 2: Call with query parameters
       console.log('📋 TEST 2: Call with query parameters');
       const params = new URLSearchParams({ page: '1', limit: '5' });
       const response2 = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {

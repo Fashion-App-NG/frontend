@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCart } from '../contexts/CartContext';
 import checkoutService from '../services/checkoutService';
 
@@ -50,10 +50,13 @@ export const useCheckoutSession = () => {
     try {
       // Call backend and get full response
       const response = await checkoutService.saveShippingInfo(shippingAddress, customerInfo);
-      setShippingInfo(response); // <-- Use full response, not just address/info
+      setShippingInfo(response);
+      
+      // Only log in development environment
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] setShippingInfo called with:', response);
       }
+      
       setCurrentStep(3); // Move to payment step
     } catch (err) {
       setError(err.message);
@@ -83,8 +86,12 @@ export const useCheckoutSession = () => {
     try {
       // Make sure payment reference is always included and properly formatted
       if (!paymentDetails || !paymentDetails.reference) {
-        console.error('❌ Missing payment reference:', paymentDetails);
         const refError = 'Payment reference is required';
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Missing payment reference:', paymentDetails);
+        }
+        
         setPaymentError(refError);
         throw new Error(refError);
       }
