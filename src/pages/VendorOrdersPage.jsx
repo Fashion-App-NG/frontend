@@ -1,20 +1,21 @@
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const ORDER_STATUSES = [
   { key: "ALL", label: "All" },
-  { key: "PENDING", label: "Pending" },
   { key: "CONFIRMED", label: "Confirmed" },
   { key: "PROCESSING", label: "Processing" },
   { key: "SHIPPED", label: "Shipped" },
   { key: "DELIVERED", label: "Delivered" },
   { key: "CANCELLED", label: "Cancelled" },
   { key: "EXPIRED", label: "Expired" }
+  // PENDING removed from display but still processed in the backend
 ];
 
 const STATUS_STYLES = {
-  "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" },
+  "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" }, // Keep style for existing data
   "CONFIRMED": { bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-400" },
   "PROCESSING": { bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-400" },
   "SHIPPED": { bg: "bg-indigo-100", text: "text-indigo-700", dot: "bg-indigo-400" },
@@ -67,13 +68,23 @@ const PaymentBadge = ({ status }) => {
   );
 };
 
-const ActionMenu = ({ onDispatch, onCancel }) => {
+// Updated ActionMenu with conditional action availability
+const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading }) => {
   const [open, setOpen] = useState(false);
+  
+  // Determine if actions are available based on status
+  const canSchedulePickup = order.status === "CONFIRMED" && order.paymentStatus === "PAID";
+  const canCancel = ["CONFIRMED", "PROCESSING"].includes(order.status);
+  
+  // If no actions are available, disable the entire menu
+  const anyActionsAvailable = canSchedulePickup || canCancel;
+
   return (
     <div className="relative">
       <button
-        className="p-2 rounded-lg hover:bg-gray-100"
-        onClick={() => setOpen((v) => !v)}
+        className={`p-2 rounded-lg ${anyActionsAvailable ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+        onClick={() => anyActionsAvailable && setOpen((v) => !v)}
+        disabled={!anyActionsAvailable}
       >
         <svg width={20} height={20} fill="currentColor" className="text-gray-500">
           <circle cx="4" cy="10" r="2" />
@@ -82,19 +93,65 @@ const ActionMenu = ({ onDispatch, onCancel }) => {
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-10">
+        <div className="absolute right-0 mt-2 w-44 bg-white border rounded shadow-lg z-10">
+          {canSchedulePickup && (
           <button
-            className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-green-700"
-            onClick={() => { setOpen(false); onDispatch(); }}
-          >
-            Dispatch
+              className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-blue-700 relative"
+              onClick={() => { 
+                setOpen(false); 
+                onSchedulePickup(order.id, productId); 
+              }}
+              disabled={isLoading}
+            >
+              {isLoading && (
+                <span className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
+                  <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+              )}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Schedule Pickup
           </button>
+          )}
+          
+          {!canSchedulePickup && (
+            <div className="block w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Schedule Pickup
+              <div className="text-xs mt-1">Requires confirmed order with payment</div>
+            </div>
+          )}
+          
+          {canCancel && (
           <button
             className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-700"
-            onClick={() => { setOpen(false); onCancel(); }}
+              onClick={() => { 
+                setOpen(false); 
+                onCancel(order.id, productId); 
+              }}
           >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             Cancel
           </button>
+          )}
+          
+          {!canCancel && (
+            <div className="block w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+              <div className="text-xs mt-1">Only for confirmed or processing orders</div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -116,20 +173,26 @@ export default function VendorOrdersPage() {
     totalPages: 1,
     totalOrders: 0
   });
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
+  // Fetch all orders including those with PENDING status
   useEffect(() => {
     if (!user?.id || !isAuthenticated) return;
     setLoading(true);
     const token = localStorage.getItem("token");
-    axios.get(
-      `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    
+    // Remove payment status filter to include all orders
+    const apiUrl = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+    
+    axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        setOrders(res.data.orders || []);
+        // Don't filter by payment status anymore
+        const receivedOrders = res.data.orders || [];
+        
+        setOrders(receivedOrders);
         setPagination({
           totalPages: res.data.pagination?.totalPages || 1,
-          totalOrders: res.data.pagination?.totalOrders || 0
+          totalOrders: receivedOrders.length || 0
         });
         setLoading(false);
       })
@@ -170,14 +233,163 @@ export default function VendorOrdersPage() {
   const orderStats = useMemo(() => {
     return {
       totalOrders: pagination.totalOrders, // overall orders
-      activeOrders: filteredOrders.filter(o => ["PENDING", "PROCESSING", "SHIPPED"].includes(o.status)).length,
+      activeOrders: filteredOrders.filter(o => ["CONFIRMED", "PROCESSING", "SHIPPED"].includes(o.status)).length,
       completedOrders: filteredOrders.filter(o => o.status === "DELIVERED").length,
       cancelledOrders: filteredOrders.filter(o => o.status === "CANCELLED").length,
       itemsOnPage,
     };
   }, [filteredOrders, pagination.totalOrders, itemsOnPage]);
 
-  // Add this function before your return statement
+  /// Update the handleSchedulePickup function
+
+const handleSchedulePickup = async (orderId, productId) => {
+  if (!user?.id) return;
+  
+  try {
+    // First check if the product is already in PROCESSING state to avoid errors
+    const orderToUpdate = orders.find(order => order.id === orderId);
+    const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
+    
+    if (productToUpdate?.status === "PROCESSING") {
+      alert("This item is already scheduled for pickup.");
+      return;
+    }
+    
+    // Show loading indicator before API call
+    setLoading(true);
+    setIsActionLoading(true);
+    
+    const token = localStorage.getItem("token");
+    
+    // Add explicit timeout handling for the API call
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    try {
+      const response = await axios.put(
+        `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
+        { status: "PROCESSING" },
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        }
+      );
+      
+      clearTimeout(timeoutId);
+      
+      // Check if the response is valid
+      if (!response || !response.data) {
+        throw new Error("Invalid response from server");
+      }
+      
+      // Update the local state to reflect the change - move this AFTER the API call completes
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.id === orderId) {
+            // Update the status of the specific product
+            const updatedItems = order.items.map(item => {
+              if (item.productId === productId) {
+                return { ...item, status: "PROCESSING" };
+              }
+              return item;
+            });
+            
+            // Determine the overall order status based on the items
+            const allProcessing = updatedItems.every(item => 
+              ["PROCESSING", "SHIPPED", "DELIVERED"].includes(item.status)
+            );
+            const anyProcessing = updatedItems.some(item => item.status === "PROCESSING");
+            
+            let newStatus = order.status;
+            if (allProcessing) {
+              newStatus = "PROCESSING";
+            } else if (anyProcessing && order.status === "CONFIRMED") {
+              newStatus = "PROCESSING";
+            }
+            
+            return { ...order, items: updatedItems, status: newStatus };
+          }
+          return order;
+        })
+      );
+      
+      // Show success message
+      alert("Item scheduled for pickup successfully!");
+    } catch (networkError) {
+      if (networkError.name === 'AbortError') {
+        console.error("Request timed out");
+        alert("Request timed out. Please try again.");
+      } else {
+        throw networkError; // pass to outer catch
+      }
+    }
+  } catch (error) {
+    console.error("Failed to schedule pickup:", error);
+    alert(`Failed to schedule pickup: ${error.response?.data?.message || error.message}`);
+  } finally {
+    setLoading(false);
+    setIsActionLoading(false);
+  }
+};
+
+  // Update item status to CANCELLED
+  const handleCancel = async (orderId, productId) => {
+    if (!user?.id) return;
+    
+    // Get the current order and check statuses
+    const orderToCancel = orders.find(order => order.id === orderId);
+    if (!orderToCancel || !["CONFIRMED", "PROCESSING"].includes(orderToCancel.status)) {
+      alert("Only confirmed or processing orders can be cancelled.");
+      return;
+    }
+    
+    // Confirm cancellation
+    if (!window.confirm("Are you sure you want to cancel this item?")) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
+        { status: "CANCELLED" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Update the local state to reflect the change
+      setOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.id === orderId) {
+            // Update the status of the specific product
+            const updatedItems = order.items.map(item => {
+              if (item.productId === productId) {
+                return { ...item, status: "CANCELLED" };
+              }
+              return item;
+            });
+            
+            // Determine the overall order status based on the items
+            const allCancelled = updatedItems.every(item => item.status === "CANCELLED");
+            
+            let newStatus = order.status;
+            if (allCancelled) {
+              newStatus = "CANCELLED";
+            }
+            
+            return { ...order, items: updatedItems, status: newStatus };
+          }
+          return order;
+        })
+      );
+      
+      // Show success message
+      alert("Item cancelled successfully!");
+    } catch (error) {
+      console.error("Failed to cancel item:", error);
+      alert(`Failed to cancel item: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   function handleSort(field) {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -187,7 +399,6 @@ export default function VendorOrdersPage() {
     }
   }
 
-  // Table rows: show orders, not items
   if (!isAuthenticated) return <div>Please log in.</div>;
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -286,9 +497,11 @@ export default function VendorOrdersPage() {
               </tr>
             ) : (
               filteredOrders.map((order) => (
-                <tr key={order.id}>
+                <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
+                    <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
                     {order.orderNumber} <span className="text-xs text-gray-500 font-semibold">({order.items?.length || 0})</span>
+                    </Link>
                   </td>
                   <td className="px-6 py-4">{formatDate(order.createdAt)}</td>
                   <td className="px-6 py-4">{order.customerInfo?.name || order.customerInfo?.email}</td>
@@ -297,10 +510,23 @@ export default function VendorOrdersPage() {
                   <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
                   <td className="px-6 py-4"><PaymentBadge status={order.paymentStatus} /></td>
                   <td className="px-6 py-4">
+                    {/* Display dropdown menu with options for each item */}
+                    <div className="flex items-center space-x-2">
+                      <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </Link>
+                      {/* Pass the entire order object to ActionMenu for better status checks */}
                     <ActionMenu
-                      onDispatch={() => {/* TODO: API call to dispatch order */}}
-                      onCancel={() => {/* TODO: API call to cancel order */}}
+                        order={order}
+                        productId={order.items?.[0]?.productId} 
+                        onSchedulePickup={handleSchedulePickup}
+                        onCancel={handleCancel}
+                        isLoading={isActionLoading}
                     />
+                    </div>
                   </td>
                 </tr>
               ))
