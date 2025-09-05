@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -15,7 +15,7 @@ const ORDER_STATUSES = [
 ];
 
 const STATUS_STYLES = {
-  "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" }, // Keep style for existing data
+  "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" }, 
   "CONFIRMED": { bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-400" },
   "PROCESSING": { bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-400" },
   "SHIPPED": { bg: "bg-indigo-100", text: "text-indigo-700", dot: "bg-indigo-400" },
@@ -29,6 +29,18 @@ const PAYMENT_STYLES = {
   "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" },
   "REFUNDED": { bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-400" },
   "FAILED": { bg: "bg-red-100", text: "text-red-700", dot: "bg-red-400" }
+};
+
+// Generate background colors for orders (light pastel colors)
+const getOrderBackgroundColor = (orderId) => {
+  const colors = [
+    'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-yellow-50', 
+    'bg-pink-50', 'bg-indigo-50', 'bg-red-50', 'bg-orange-50'
+  ];
+  
+  // Use the last character of the orderId as a simple hash
+  const hash = parseInt(orderId.slice(-1), 16) % colors.length;
+  return colors[hash];
 };
 
 function formatDate(dateStr) {
@@ -68,13 +80,13 @@ const PaymentBadge = ({ status }) => {
   );
 };
 
-// Updated ActionMenu with conditional action availability
-const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading }) => {
+// Updated ActionMenu to operate on specific item
+const ActionMenu = ({ order, item, onSchedulePickup, onCancel, isLoading }) => {
   const [open, setOpen] = useState(false);
   
   // Determine if actions are available based on status
-  const canSchedulePickup = order.status === "CONFIRMED" && order.paymentStatus === "PAID";
-  const canCancel = ["CONFIRMED", "PROCESSING"].includes(order.status);
+  const canSchedulePickup = order.paymentStatus === "PAID" && item.status === "CONFIRMED";
+  const canCancel = ["CONFIRMED", "PROCESSING"].includes(item.status);
   
   // If no actions are available, disable the entire menu
   const anyActionsAvailable = canSchedulePickup || canCancel;
@@ -99,7 +111,7 @@ const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading })
               className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-blue-700 relative"
               onClick={() => { 
                 setOpen(false); 
-                onSchedulePickup(order.id, productId); 
+                onSchedulePickup(order.id, item.productId); 
               }}
               disabled={isLoading}
             >
@@ -124,7 +136,7 @@ const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading })
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
               Schedule Pickup
-              <div className="text-xs mt-1">Requires confirmed order with payment</div>
+              <div className="text-xs mt-1">Requires confirmed item with payment</div>
             </div>
           )}
           
@@ -133,7 +145,7 @@ const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading })
             className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-700"
               onClick={() => { 
                 setOpen(false); 
-                onCancel(order.id, productId); 
+                onCancel(order.id, item.productId); 
               }}
           >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,7 +161,7 @@ const ActionMenu = ({ order, productId, onSchedulePickup, onCancel, isLoading })
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
               Cancel
-              <div className="text-xs mt-1">Only for confirmed or processing orders</div>
+              <div className="text-xs mt-1">Only for confirmed or processing items</div>
             </div>
           )}
         </div>
@@ -174,6 +186,8 @@ export default function VendorOrdersPage() {
     totalOrders: 0
   });
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [processingItemId, setProcessingItemId] = useState(null); // Track which item is being processed
+  const [expandedOrders, setExpandedOrders] = useState({});
 
   // Fetch all orders including those with PENDING status
   useEffect(() => {
@@ -181,13 +195,18 @@ export default function VendorOrdersPage() {
     setLoading(true);
     const token = localStorage.getItem("token");
     
-    // Remove payment status filter to include all orders
     const apiUrl = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
     
     axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        // Don't filter by payment status anymore
         const receivedOrders = res.data.orders || [];
+        
+        // Initialize expanded state for all orders
+        const newExpandedState = {};
+        receivedOrders.forEach(order => {
+          newExpandedState[order.id] = true; // All orders expanded by default
+        });
+        setExpandedOrders(newExpandedState);
         
         setOrders(receivedOrders);
         setPagination({
@@ -205,12 +224,26 @@ export default function VendorOrdersPage() {
   // Filter orders by tab and search
   const filteredOrders = useMemo(() => {
     let filtered = orders;
+    
+    // Apply status filter at the item level
     if (activeTab !== "ALL") {
-      filtered = filtered.filter(order => order.status === activeTab);
+      filtered = filtered.filter(order => {
+        // Keep orders that have at least one item matching the active tab status
+        return order.items?.some(item => item.status === activeTab);
+      });
     }
+    
+    // Apply search filter
     if (search.trim()) {
-      filtered = filtered.filter(order => order.orderNumber?.toLowerCase().includes(search.trim().toLowerCase()));
+      filtered = filtered.filter(order => 
+        order.orderNumber?.toLowerCase().includes(search.trim().toLowerCase()) ||
+        order.items?.some(item => 
+          item.name?.toLowerCase().includes(search.trim().toLowerCase())
+        )
+      );
     }
+    
+    // Apply sorting
     filtered = [...filtered].sort((a, b) => {
       let aVal = a[sortBy], bVal = b[sortBy];
       if (sortBy === "createdAt") {
@@ -221,6 +254,7 @@ export default function VendorOrdersPage() {
       if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
       return 0;
     });
+    
     return filtered;
   }, [orders, activeTab, search, sortBy, sortOrder]);
 
@@ -229,134 +263,155 @@ export default function VendorOrdersPage() {
     return filteredOrders.reduce((sum, order) => sum + (order.items?.length || 0), 0);
   }, [filteredOrders]);
 
-  // Update summary stats to use filteredOrders (orders on current page)
+  // Update summary stats
   const orderStats = useMemo(() => {
+    // Count items by their status
+    const itemsByStatus = filteredOrders.reduce((counts, order) => {
+      order.items?.forEach(item => {
+        counts[item.status] = (counts[item.status] || 0) + 1;
+      });
+      return counts;
+    }, {});
+
     return {
-      totalOrders: pagination.totalOrders, // overall orders
-      activeOrders: filteredOrders.filter(o => ["CONFIRMED", "PROCESSING", "SHIPPED"].includes(o.status)).length,
-      completedOrders: filteredOrders.filter(o => o.status === "DELIVERED").length,
-      cancelledOrders: filteredOrders.filter(o => o.status === "CANCELLED").length,
+      totalOrders: pagination.totalOrders,
+      activeItems: (itemsByStatus["CONFIRMED"] || 0) + (itemsByStatus["PROCESSING"] || 0) + (itemsByStatus["SHIPPED"] || 0),
+      completedItems: itemsByStatus["DELIVERED"] || 0,
+      cancelledItems: itemsByStatus["CANCELLED"] || 0,
       itemsOnPage,
     };
   }, [filteredOrders, pagination.totalOrders, itemsOnPage]);
 
-  /// Update the handleSchedulePickup function
+  // Toggle order expansion
+  const toggleOrderExpansion = (orderId) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
 
-const handleSchedulePickup = async (orderId, productId) => {
-  if (!user?.id) return;
-  
-  try {
-    // First check if the product is already in PROCESSING state to avoid errors
-    const orderToUpdate = orders.find(order => order.id === orderId);
-    const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
-    
-    if (productToUpdate?.status === "PROCESSING") {
-      alert("This item is already scheduled for pickup.");
-      return;
-    }
-    
-    // Show loading indicator before API call
-    setLoading(true);
-    setIsActionLoading(true);
-    
-    const token = localStorage.getItem("token");
-    
-    // Add explicit timeout handling for the API call
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const handleSchedulePickup = async (orderId, productId) => {
+    if (!user?.id) return;
     
     try {
-      const response = await axios.put(
-        `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
-        { status: "PROCESSING" },
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal
-        }
-      );
+      // Find the item
+      const orderToUpdate = orders.find(order => order.id === orderId);
+      const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
       
-      clearTimeout(timeoutId);
-      
-      // Check if the response is valid
-      if (!response || !response.data) {
-        throw new Error("Invalid response from server");
+      if (productToUpdate?.status === "PROCESSING") {
+        alert("This item is already scheduled for pickup.");
+        return;
       }
       
-      // Update the local state to reflect the change - move this AFTER the API call completes
-      setOrders(prevOrders => 
-        prevOrders.map(order => {
-          if (order.id === orderId) {
-            // Update the status of the specific product
-            const updatedItems = order.items.map(item => {
-              if (item.productId === productId) {
-                return { ...item, status: "PROCESSING" };
-              }
-              return item;
-            });
-            
-            // Determine the overall order status based on the items
-            const allProcessing = updatedItems.every(item => 
-              ["PROCESSING", "SHIPPED", "DELIVERED"].includes(item.status)
-            );
-            const anyProcessing = updatedItems.some(item => item.status === "PROCESSING");
-            
-            let newStatus = order.status;
-            if (allProcessing) {
-              newStatus = "PROCESSING";
-            } else if (anyProcessing && order.status === "CONFIRMED") {
-              newStatus = "PROCESSING";
-            }
-            
-            return { ...order, items: updatedItems, status: newStatus };
+      // Show loading indicator and track which item is being processed
+      setIsActionLoading(true);
+      setProcessingItemId(`${orderId}-${productId}`);
+      
+      const token = localStorage.getItem("token");
+      
+      // Add timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      try {
+        const response = await axios.put(
+          `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
+          { status: "PROCESSING" },
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal
           }
-          return order;
-        })
-      );
-      
-      // Show success message
-      alert("Item scheduled for pickup successfully!");
-    } catch (networkError) {
-      if (networkError.name === 'AbortError') {
-        console.error("Request timed out");
-        alert("Request timed out. Please try again.");
-      } else {
-        throw networkError; // pass to outer catch
+        );
+        
+        clearTimeout(timeoutId);
+        
+        // Check response
+        if (!response || !response.data) {
+          throw new Error("Invalid response from server");
+        }
+        
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => {
+            if (order.id === orderId) {
+              // Update the status of the specific product
+              const updatedItems = order.items.map(item => {
+                if (item.productId === productId) {
+                  return { ...item, status: "PROCESSING" };
+                }
+                return item;
+              });
+              
+              // Derive order status based on items
+              const allProcessing = updatedItems.every(item => 
+                ["PROCESSING", "SHIPPED", "DELIVERED"].includes(item.status)
+              );
+              const anyProcessing = updatedItems.some(item => item.status === "PROCESSING");
+              
+              let newStatus = order.status;
+              if (allProcessing) {
+                newStatus = "PROCESSING";
+              } else if (anyProcessing && order.status === "CONFIRMED") {
+                newStatus = "PROCESSING";
+              }
+              
+              return { ...order, items: updatedItems, status: newStatus };
+            }
+            return order;
+          })
+        );
+        
+        // Show success message
+        alert("Item scheduled for pickup successfully!");
+      } catch (networkError) {
+        if (networkError.name === 'AbortError') {
+          console.error("Request timed out");
+          alert("Request timed out. Please try again.");
+        } else {
+          throw networkError;
+        }
       }
+    } catch (error) {
+      console.error("Failed to schedule pickup:", error);
+      alert(`Failed to schedule pickup: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsActionLoading(false);
+      setProcessingItemId(null);
     }
-  } catch (error) {
-    console.error("Failed to schedule pickup:", error);
-    alert(`Failed to schedule pickup: ${error.response?.data?.message || error.message}`);
-  } finally {
-    setLoading(false);
-    setIsActionLoading(false);
-  }
-};
+  };
 
-  // Update item status to CANCELLED
   const handleCancel = async (orderId, productId) => {
     if (!user?.id) return;
     
-    // Get the current order and check statuses
-    const orderToCancel = orders.find(order => order.id === orderId);
-    if (!orderToCancel || !["CONFIRMED", "PROCESSING"].includes(orderToCancel.status)) {
-      alert("Only confirmed or processing orders can be cancelled.");
-      return;
-    }
-    
-    // Confirm cancellation
-    if (!window.confirm("Are you sure you want to cancel this item?")) {
-      return;
-    }
-    
     try {
+      // Find the item
+      const orderToUpdate = orders.find(order => order.id === orderId);
+      const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
+      
+      if (!["CONFIRMED", "PROCESSING"].includes(productToUpdate?.status)) {
+        alert("Only confirmed or processing items can be cancelled.");
+        return;
+      }
+      
+      // Confirm cancellation
+      if (!window.confirm("Are you sure you want to cancel this item?")) {
+        return;
+      }
+      
+      // Show loading indicator
+      setIsActionLoading(true);
+      setProcessingItemId(`${orderId}-${productId}`);
+      
       const token = localStorage.getItem("token");
+      
+      // Remove unused variable by not storing the response or use it
       await axios.put(
         `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
         { status: "CANCELLED" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      // Update the local state to reflect the change
+      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => {
           if (order.id === orderId) {
@@ -368,7 +423,7 @@ const handleSchedulePickup = async (orderId, productId) => {
               return item;
             });
             
-            // Determine the overall order status based on the items
+            // Derive order status based on items
             const allCancelled = updatedItems.every(item => item.status === "CANCELLED");
             
             let newStatus = order.status;
@@ -387,6 +442,9 @@ const handleSchedulePickup = async (orderId, productId) => {
     } catch (error) {
       console.error("Failed to cancel item:", error);
       alert(`Failed to cancel item: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsActionLoading(false);
+      setProcessingItemId(null);
     }
   };
 
@@ -413,20 +471,20 @@ const handleSchedulePickup = async (orderId, productId) => {
           <div className="text-xs text-gray-400 mt-1">Page {page} of {pagination.totalPages}</div>
         </div>
         <div className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.itemsOnPage}</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{itemsOnPage}</div>
           <div className="text-gray-500 text-sm">Items (this page)</div>
         </div>
         <div className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.activeOrders}</div>
-          <div className="text-gray-500 text-sm">Active Orders (this page)</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.activeItems}</div>
+          <div className="text-gray-500 text-sm">Active Items</div>
         </div>
         <div className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.completedOrders}</div>
-          <div className="text-gray-500 text-sm">Completed Orders (this page)</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.completedItems}</div>
+          <div className="text-gray-500 text-sm">Completed Items</div>
         </div>
         <div className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.cancelledOrders}</div>
-          <div className="text-gray-500 text-sm">Cancelled Orders (this page)</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{orderStats.cancelledItems}</div>
+          <div className="text-gray-500 text-sm">Cancelled Items</div>
         </div>
       </div>
 
@@ -435,7 +493,7 @@ const handleSchedulePickup = async (orderId, productId) => {
         <div className="flex gap-2 items-center">
           <input
             type="text"
-            placeholder="Search order id…"
+            placeholder="Search order id or item name…"
             className="w-full md:w-80 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -463,81 +521,149 @@ const handleSchedulePickup = async (orderId, productId) => {
           ))}
         </div>
       </div>
-      {/* Orders Table */}
+      
+      {/* Item-centric Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         <table className="min-w-full">
           <thead>
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" onClick={() => handleSort("orderNumber")}>
-                ID {sortBy === "orderNumber" && (sortOrder === "asc" ? "▲" : "▼")}
+                Order ID {sortBy === "orderNumber" && (sortOrder === "asc" ? "▲" : "▼")}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Item
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Qty
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" onClick={() => handleSort("createdAt")}>
                 Date {sortBy === "createdAt" && (sortOrder === "asc" ? "▲" : "▼")}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" onClick={() => handleSort("totalAmount")}>
-                Amount {sortBy === "totalAmount" && (sortOrder === "asc" ? "▲" : "▼")}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Customer
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" onClick={() => handleSort("status")}>
-                Order Status {sortBy === "status" && (sortOrder === "asc" ? "▲" : "▼")}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Payment
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer" onClick={() => handleSort("paymentStatus")}>
-                Payment Status {sortBy === "paymentStatus" && (sortOrder === "asc" ? "▲" : "▼")}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
             </tr>
           </thead>
           <tbody>
             {filteredOrders.length === 0 ? (
               <tr>
                 <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                  No orders found for this status.
+                  No orders found.
                 </td>
               </tr>
             ) : (
-              filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
-                    {order.orderNumber} <span className="text-xs text-gray-500 font-semibold">({order.items?.length || 0})</span>
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">{formatDate(order.createdAt)}</td>
-                  <td className="px-6 py-4">{order.customerInfo?.name || order.customerInfo?.email}</td>
-                  <td className="px-6 py-4">{order.shippingAddress?.city}, {order.shippingAddress?.state}</td>
-                  <td className="px-6 py-4 font-semibold">₦{order.totalAmount?.toLocaleString()}</td>
-                  <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
-                  <td className="px-6 py-4"><PaymentBadge status={order.paymentStatus} /></td>
-                  <td className="px-6 py-4">
-                    {/* Display dropdown menu with options for each item */}
-                    <div className="flex items-center space-x-2">
-                      <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </Link>
-                      {/* Pass the entire order object to ActionMenu for better status checks */}
-                    <ActionMenu
-                        order={order}
-                        productId={order.items?.[0]?.productId} 
-                        onSchedulePickup={handleSchedulePickup}
-                        onCancel={handleCancel}
-                        isLoading={isActionLoading}
-                    />
-                    </div>
-                  </td>
-                </tr>
-              ))
+              // Render orders with their items
+              filteredOrders.map((order) => {
+                const isExpanded = expandedOrders[order.id];
+                const rowBgColor = getOrderBackgroundColor(order.id);
+                
+                // Filter items based on active tab
+                let visibleItems = order.items || [];
+                if (activeTab !== "ALL") {
+                  visibleItems = visibleItems.filter(item => item.status === activeTab);
+                }
+                
+                if (visibleItems.length === 0) {
+                  return null; // Skip orders with no visible items
+                }
+                
+                return (
+                  <React.Fragment key={order.id}>
+                    {/* Order header row */}
+                    <tr className={`group border-t-2 border-gray-200 ${rowBgColor}`}>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center">
+                          <button 
+                            onClick={() => toggleOrderExpansion(order.id)}
+                            className="mr-2 focus:outline-none"
+                          >
+                            <svg 
+                              className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                          <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
+                            {order.orderNumber}
+                          </Link>
+                          <span className="ml-2 text-xs text-gray-500 font-semibold">({visibleItems.length} items)</span>
+                        </div>
+                      </td>
+                      <td colSpan="7" className="px-6 py-3 text-sm text-gray-500">
+                        Order Total: <span className="font-medium">₦{order.totalAmount?.toLocaleString()}</span> | 
+                        Location: <span className="font-medium">{order.shippingAddress?.city}, {order.shippingAddress?.state}</span> | 
+                        Date: <span className="font-medium">{formatDate(order.createdAt)}</span>
+                      </td>
+                    </tr>
+                    
+                    {/* Item rows - only visible when order is expanded */}
+                    {isExpanded && visibleItems.map((item, idx) => (
+                      <tr key={`${order.id}-${item.productId}`} className={rowBgColor}>
+                        <td className="px-6 py-3 pl-14 border-b border-gray-100"></td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {item.materialType} | {item.pattern}
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          {item.quantity} {item.quantity > 1 ? 'yards' : 'yard'}
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          {order.customerInfo?.name || order.customerInfo?.email}
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          <PaymentBadge status={order.paymentStatus} />
+                        </td>
+                        <td className="px-6 py-3 border-b border-gray-100">
+                          <div className="flex items-center space-x-2">
+                            <Link to={`/vendor/orders/${order.id}`} className="text-blue-600 hover:text-blue-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </Link>
+                            <ActionMenu
+                              order={order}
+                              item={item}
+                              onSchedulePickup={handleSchedulePickup}
+                              onCancel={handleCancel}
+                              isLoading={isActionLoading && processingItemId === `${order.id}-${item.productId}`}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+      
       {/* Pagination Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mt-6 gap-2">
         <div className="text-sm text-gray-600">
-          Showing {filteredOrders.length} of {pagination.totalOrders} total orders
+          Showing {filteredOrders.length} orders with {itemsOnPage} items
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm">Rows per page:</span>
