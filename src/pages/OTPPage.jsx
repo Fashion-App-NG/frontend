@@ -1,5 +1,5 @@
 import React from 'react';
-import { OTPInput } from '../components/Auth/OTPInput';
+import { OTPInput } from '../components/Auth-Designer/OTPInput';
 
 const OTPPage = () => {
   return (
