@@ -541,7 +541,10 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200"
               onClick={() => {
                 setPaymentError("Payment amount does not match expected amount");
-                if (clearPaymentError) clearPaymentError();
+                // Add a timeout before clearing the error
+                setTimeout(() => {
+                  if (clearPaymentError) clearPaymentError();
+                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Payment Mismatch Error
@@ -551,7 +554,10 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200"
               onClick={() => {
                 setPaymentError("Too many requests. Please wait a moment and try again.");
-                if (clearPaymentError) clearPaymentError();
+                // Add a timeout before clearing the error
+                setTimeout(() => {
+                  if (clearPaymentError) clearPaymentError();
+                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Rate Limit Error

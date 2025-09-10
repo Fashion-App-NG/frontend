@@ -33,6 +33,7 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
       <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
       {shippingError && (
         <div className="bg-yellow-50 text-yellow-700 text-sm rounded px-2 py-1 mb-2">
+          Unable to calculate shipping. Please check your address or try again.
         </div>
       )}
       <div className="space-y-2 text-sm">

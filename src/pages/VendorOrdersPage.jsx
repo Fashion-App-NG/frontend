@@ -122,98 +122,6 @@ const PaymentBadge = ({ status }) => {
   );
 };
 
-// Updated ActionMenu to operate on specific item
-const ActionMenu = ({ order, item, onSchedulePickup, onCancel, isLoading }) => {
-  const [open, setOpen] = useState(false);
-  
-  // Determine if actions are available based on status
-  // Allow PENDING to be treated as CONFIRMED
-  const displayStatus = item.status === "PENDING" ? "CONFIRMED" : item.status;
-  const canSchedulePickup = order.paymentStatus === "PAID" && displayStatus === "CONFIRMED";
-  const canCancel = ["CONFIRMED", "PROCESSING"].includes(displayStatus);
-  
-  // If no actions are available, disable the entire menu
-  const anyActionsAvailable = canSchedulePickup || canCancel;
-
-  return (
-    <div className="relative">
-      <button
-        className={`p-2 rounded-lg ${anyActionsAvailable ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-        onClick={() => anyActionsAvailable && setOpen((v) => !v)}
-        disabled={!anyActionsAvailable}
-      >
-        <svg width={20} height={20} fill="currentColor" className="text-gray-500">
-          <circle cx="4" cy="10" r="2" />
-          <circle cx="10" cy="10" r="2" />
-          <circle cx="16" cy="10" r="2" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-44 bg-white border rounded shadow-lg z-10">
-          {canSchedulePickup && (
-          <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-blue-700 relative"
-              onClick={() => { 
-                setOpen(false); 
-                onSchedulePickup(order.id, item.productId); 
-              }}
-              disabled={isLoading}
-            >
-              {isLoading && (
-                <span className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
-                  <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </span>
-              )}
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              Schedule Pickup
-          </button>
-          )}
-          
-          {!canSchedulePickup && (
-            <div className="block w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              Schedule Pickup
-              <div className="text-xs mt-1">Requires confirmed item with payment</div>
-            </div>
-          )}
-          
-          {canCancel && (
-          <button
-            className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-700"
-              onClick={() => { 
-                setOpen(false); 
-                onCancel(order.id, item.productId); 
-              }}
-          >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            Cancel
-          </button>
-          )}
-          
-          {!canCancel && (
-            <div className="block w-full text-left px-4 py-2 text-gray-400 cursor-not-allowed">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Cancel
-              <div className="text-xs mt-1">Only for confirmed or processing items</div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Add this new component for order-level actions
 const OrderActionMenu = ({ order, onProcessOrder, onCancelOrder, isLoading }) => {
   const [open, setOpen] = useState(false);
@@ -376,8 +284,6 @@ export default function VendorOrdersPage() {
     totalPages: 1,
     totalOrders: 0
   });
-  const [isActionLoading, setIsActionLoading] = useState(false);
-  const [processingItemId, setProcessingItemId] = useState(null); // Track which item is being processed
   const [processingOrderId, setProcessingOrderId] = useState(null); // Track which order is being processed
   const [expandedOrders, setExpandedOrders] = useState({});
 
@@ -500,165 +406,6 @@ export default function VendorOrdersPage() {
     }));
   };
 
-  const handleSchedulePickup = async (orderId, productId) => {
-    if (!user?.id) return;
-    
-    try {
-      // Find the item
-      const orderToUpdate = orders.find(order => order.id === orderId);
-      const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
-      
-      if (productToUpdate?.status === "PROCESSING") {
-        alert("This item is already scheduled for pickup.");
-        return;
-      }
-      
-      // Show loading indicator and track which item is being processed
-      setIsActionLoading(true);
-      setProcessingItemId(`${orderId}-${productId}`);
-      
-      const token = localStorage.getItem("token");
-      
-      // Add timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      try {
-        const response = await axios.put(
-          `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
-          { status: "PROCESSING" },
-          { 
-            headers: { Authorization: `Bearer ${token}` },
-            signal: controller.signal
-          }
-        );
-        
-        clearTimeout(timeoutId);
-        
-        // Check response
-        if (!response || !response.data) {
-          throw new Error("Invalid response from server");
-        }
-        
-        // Update local state
-        setOrders(prevOrders => 
-          prevOrders.map(order => {
-            if (order.id === orderId) {
-              // Update the status of the specific product
-              const updatedItems = order.items.map(item => {
-                if (item.productId === productId) {
-                  return { ...item, status: "PROCESSING" };
-                }
-                return item;
-              });
-              
-              // Derive the new order status based on all items
-              const derivedStatus = deriveOrderStatus(updatedItems);
-              
-              return { 
-                ...order, 
-                items: updatedItems, 
-                status: derivedStatus
-              };
-            }
-            return order;
-          })
-        );
-        
-        // Show success message
-        alert("Item scheduled for pickup successfully!");
-      } catch (networkError) {
-        if (networkError.name === 'AbortError') {
-          console.error("Request timed out");
-          alert("Request timed out. Please try again.");
-        } else {
-          throw networkError;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to schedule pickup:", error);
-      alert(`Failed to schedule pickup: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setIsActionLoading(false);
-      setProcessingItemId(null);
-      
-      // Refresh data to ensure everything is up to date
-      await refreshOrderData();
-    }
-  };
-
-  const handleCancel = async (orderId, productId) => {
-    if (!user?.id) return;
-    
-    try {
-      // Find the item
-      const orderToUpdate = orders.find(order => order.id === orderId);
-      const productToUpdate = orderToUpdate?.items?.find(item => item.productId === productId);
-      
-      // Map PENDING to CONFIRMED for status checking purposes
-      const displayStatus = productToUpdate?.status === "PENDING" ? "CONFIRMED" : productToUpdate?.status;
-      
-      if (!["CONFIRMED", "PROCESSING"].includes(displayStatus)) {
-        alert("Only confirmed or processing items can be cancelled.");
-        return;
-      }
-      
-      // Confirm cancellation
-      if (!window.confirm("Are you sure you want to cancel this item?")) {
-        return;
-      }
-      
-      // Show loading indicator
-      setIsActionLoading(true);
-      setProcessingItemId(`${orderId}-${productId}`);
-      
-      const token = localStorage.getItem("token");
-      
-      await axios.put(
-        `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${productId}/status`,
-        { status: "CANCELLED" },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Update local state
-      setOrders(prevOrders => 
-        prevOrders.map(order => {
-          if (order.id === orderId) {
-            // Update the status of the specific product
-            const updatedItems = order.items.map(item => {
-              if (item.productId === productId) {
-                return { ...item, status: "CANCELLED" };
-              }
-              return item;
-            });
-            
-            // Derive the new order status based on all items
-            const derivedStatus = deriveOrderStatus(updatedItems);
-            
-            return { 
-              ...order, 
-              items: updatedItems, 
-              status: derivedStatus
-            };
-          }
-          return order;
-        })
-      );
-      
-      // Show success message
-      alert("Item cancelled successfully!");
-    } catch (error) {
-      console.error("Failed to cancel item:", error);
-      alert(`Failed to cancel item: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setIsActionLoading(false);
-      setProcessingItemId(null);
-      
-      // Refresh data to ensure everything is up to date
-      await refreshOrderData();
-    }
-  };
-
   // Update handleProcessOrder function to support both individual and batch endpoints
 
   const handleProcessOrder = async (orderId) => {
@@ -667,8 +414,6 @@ export default function VendorOrdersPage() {
     try {
       // Find the order
       const orderToUpdate = orders.find(order => order.id === orderId);
-      console.log("Starting batch update for order:", orderId);
-      console.log("Items to process:", orderToUpdate?.items?.length);
       
       if (orderToUpdate?.status === "PROCESSING") {
         alert("These items are already scheduled for pickup.");
@@ -676,7 +421,6 @@ export default function VendorOrdersPage() {
       }
       
       // Show loading indicator
-      setIsActionLoading(true);
       setProcessingOrderId(orderId);
       
       const token = localStorage.getItem("token");
@@ -691,8 +435,6 @@ export default function VendorOrdersPage() {
           { status: "PROCESSING" },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        
-        console.log("Batch update completed successfully");
         
         // Update local state for all items
         setOrders(prevOrders => 
@@ -723,7 +465,9 @@ export default function VendorOrdersPage() {
         }
         
         // IMPORTANT: Add a console.log with very distinct text to see if this code runs
-        console.log("🔴🔴🔴 SEQUENTIAL ITEM UPDATE LOGIC IS RUNNING 🔴🔴🔴");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("🔴🔴🔴 SEQUENTIAL ITEM UPDATE LOGIC IS RUNNING 🔴🔴🔴");
+        }
         
         // Process each product SEQUENTIALLY with better error handling and logging
         const successfulUpdates = [];
@@ -737,7 +481,9 @@ export default function VendorOrdersPage() {
           }
           
           const endpoint = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${item.productId}/status`;
-          console.log(`Updating item ${item.productId} to PROCESSING using endpoint: ${endpoint}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Updating item ${item.productId} to PROCESSING using endpoint: ${endpoint}`);
+          }
           
           try {
             // Add a small delay between requests to prevent race conditions
@@ -749,7 +495,9 @@ export default function VendorOrdersPage() {
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
-            console.log(`Successfully updated item ${item.productId}`, result.data);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Successfully updated item ${item.productId}`, result.data);
+            }
             successfulUpdates.push(item.productId);
           } catch (itemError) {
             console.error(`Failed to update item ${item.productId}:`, itemError);
@@ -760,7 +508,9 @@ export default function VendorOrdersPage() {
           }
         }
         
-        console.log(`Completed processing with ${successfulUpdates.length} successes and ${failedUpdates.length} failures`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Completed processing with ${successfulUpdates.length} successes and ${failedUpdates.length} failures`);
+        }
         
         if (failedUpdates.length > 0) {
           console.warn("Failed updates:", failedUpdates);
@@ -800,9 +550,6 @@ export default function VendorOrdersPage() {
       console.error("Failed to schedule items for pickup:", error);
       alert(`Failed to schedule items for pickup: ${error.response?.data?.message || error.message}`);
     } finally {
-      setIsActionLoading(false);
-      setProcessingOrderId(null);
-      
       // Refresh data to ensure everything is up to date
       await refreshOrderData();
     }
@@ -814,9 +561,11 @@ export default function VendorOrdersPage() {
     try {
       // Find the order
       const orderToUpdate = orders.find(order => order.id === orderId);
-      console.log("Starting cancellation for order:", orderId);
-      console.log("Items to cancel:", orderToUpdate?.items?.length);
-      
+      // Wrap other debug logs in the function (around lines 670-725):
+if (process.env.NODE_ENV === 'development') {
+  console.log("Starting batch update for order:", orderId);
+  console.log("Items to process:", orderToUpdate?.items?.length);
+}
       // Map PENDING to CONFIRMED for status checking purposes
       const displayStatus = orderToUpdate?.status === "PENDING" ? "CONFIRMED" : orderToUpdate?.status;
       
@@ -831,7 +580,6 @@ export default function VendorOrdersPage() {
       }
       
       // Show loading indicator
-      setIsActionLoading(true);
       setProcessingOrderId(orderId);
       
       const token = localStorage.getItem("token");
@@ -923,9 +671,6 @@ export default function VendorOrdersPage() {
       console.error("Failed to cancel items:", error);
       alert(`Failed to cancel items: ${error.response?.data?.message || error.message}`);
     } finally {
-      setIsActionLoading(false);
-      setProcessingOrderId(null);
-      
       // Refresh data to ensure everything is up to date
       await refreshOrderData();
     }
@@ -1176,7 +921,7 @@ export default function VendorOrdersPage() {
                             order={order}
                             onProcessOrder={handleProcessOrder}
                             onCancelOrder={handleCancelOrder}
-                            isLoading={isActionLoading && processingOrderId === order.id}
+                            isLoading={processingOrderId === order.id}
                           />
                         </div>
                       </td>
