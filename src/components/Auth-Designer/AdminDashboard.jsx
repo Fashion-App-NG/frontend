@@ -126,7 +126,7 @@ export const AdminDashboard = () => {
           {/* ✅ Only show Create Admin for superadmins */}
           {user?.role === 'superadmin' && (
             <button
-              onClick={() => navigate('/admin/create-admin')}
+              onClick={() => navigate('/admin/create')}
               className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +192,7 @@ export const AdminDashboard = () => {
               {/* ✅ Only show Create Admin button for superadmins */}
               {user?.role === 'superadmin' && (
                 <button 
-                  onClick={() => navigate('/admin/create-admin')}
+                  onClick={() => navigate('/admin/create')}
                   className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition-colors"
                 >
                   Create New Admin
