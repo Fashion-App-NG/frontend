@@ -4,15 +4,16 @@ class CheckoutService {
     this.shippingService = require('./shippingService').default;
   }
 
-  // ✅ FIXED: Update getShopperOrders to use the correct endpoint
   async getShopperOrders(userId, { page = 1, limit = 20, status, paymentStatus } = {}) {
-    console.log('🔍 GETTING SHOPPER ORDERS FROM CHECKOUT ENDPOINT:', {
-      userId,
-      endpoint: `/api/checkout/orders`,
-      params: { page, limit, status, paymentStatus }
-    });
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 GETTING SHOPPER ORDERS FROM CHECKOUT ENDPOINT:', {
+        userId,
+        endpoint: `/api/checkout/orders`,
+        params: { page, limit, status, paymentStatus }
+      });
+    }
 
-    // ✅ Use /api/checkout/orders instead of /api/user/{userId}
     const params = new URLSearchParams();
     if (page) params.append('page', page);
     if (limit) params.append('limit', limit);
@@ -27,9 +28,10 @@ class CheckoutService {
     
     const data = await response.json();
     
-    console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+    }
     
-    // ✅ FIXED: Return data in expected format (orders at root level)
     return {
       success: data.success,
       orders: data.orders || [],
@@ -37,7 +39,6 @@ class CheckoutService {
     };
   }
 
-  // Keep existing method for backward compatibility
   async getOrders({ page = 1, limit = 20, status, paymentStatus } = {}) {
     const params = new URLSearchParams();
     params.append('page', page);
@@ -45,10 +46,12 @@ class CheckoutService {
     if (status) params.append('status', status);
     if (paymentStatus) params.append('paymentStatus', paymentStatus);
 
-    console.log('🔍 CHECKOUT SERVICE getOrders:', {
-      endpoint: `/api/checkout/orders`,
-      params: Object.fromEntries(params)
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT SERVICE getOrders:', {
+        endpoint: `/api/checkout/orders`,
+        params: Object.fromEntries(params)
+      });
+    }
 
     const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
       headers: this.getAuthHeaders(),
@@ -57,11 +60,13 @@ class CheckoutService {
     if (!response.ok) throw new Error('Failed to fetch orders');
     const data = await response.json();
     
-    console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+    }
+    
     return data;
   }
 
-  // Always prefix with /api
   async reviewCart() {
     const response = await fetch(`${this.baseURL}/api/checkout/review`, {
       method: 'GET',
@@ -72,9 +77,16 @@ class CheckoutService {
   }
 
   async saveShippingInfo(shippingAddress, customerInfo) {
-    console.log('Validating address:', shippingAddress);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Validating address:', shippingAddress);
+    }
+    
     const validationResult = await this.shippingService.validateAddress(shippingAddress);
-    console.log('Validation result:', validationResult);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Validation result:', validationResult);
+    }
+    
     if (!validationResult.success) {
       throw new Error('Invalid address.');
     }
@@ -87,15 +99,17 @@ class CheckoutService {
       },
       body: JSON.stringify({ shippingAddress, customerInfo })
     });
+    
     if (!response.ok) throw new Error('Failed to save shipping info');
     return response.json();
   }
 
   async confirmOrder({ shippingAddress, customerInfo, paymentDetails, reservationDuration }) {
     try {
-      console.log('🔄 SHOPPER checkout: Using correct working endpoint POST /api/checkout/confirm-step...');
-
-      // ✅ Use the ACTUAL working endpoint with REAL order ID creation
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 SHOPPER checkout: Using correct working endpoint POST /api/checkout/confirm-step...');
+      }
+      
       const response = await fetch(`${this.baseURL}/api/checkout/confirm-step`, {
         method: 'POST',
         headers: {
@@ -110,34 +124,51 @@ class CheckoutService {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Checkout failed: ${response.status}`);
+      // Extract HTTP status for better error reporting
+      const statusCode = response.status;
+      
+      // Handle HTTP errors like rate limiting (429)
+      if (statusCode === 429) {
+        const rateLimitError = {
+          success: false,
+          message: 'Too many requests. Please wait a moment and try again.',
+          statusCode: 429
+        };
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.error('⚠️ RATE LIMITING DETECTED:', rateLimitError);
+        }
+        
+        throw rateLimitError;
       }
-
+      
       const data = await response.json();
       
-      // ✅ Handle missing paymentStatus from backend
-      if (data.order && !data.order.paymentStatus && paymentDetails.reference) {
-        // Backend verified payment but didn't set paymentStatus field
-        data.order.paymentStatus = 'PAID';
-        console.log('✅ FRONTEND FALLBACK: Set paymentStatus to PAID (backend verification successful)');
+      // Add status code to the response object for downstream handling
+      data.statusCode = statusCode;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📋 SHOPPER CONFIRM-STEP RESPONSE:', data);
+        
+        // Log payment specific errors
+        if (data.payment && data.payment.error) {
+          console.log('⚠️ Payment processing issue:', data.payment.error);
+        }
       }
       
-      console.log('📋 SHOPPER CONFIRM-STEP RESPONSE:', {
-        success: data.success,
-        step: data.step,
-        realOrderId: data.order?.id,              // Real MongoDB ObjectId!
-        orderStatus: data.order?.status,          // Will be "PENDING"
-        paymentStatus: data.order?.paymentStatus, // Will be undefined from backend
-        backendMessage: data.message,
-        fullResponse: data
-      });
-
       return data;
-      
     } catch (error) {
-      console.error('❌ Shopper checkout failed:', error);
-      throw error;
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ CONFIRM ORDER ERROR:', error);
+      }
+      
+      // Pass through any structured errors from above
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Handle network/fetch errors
+      throw new Error(error.message || 'Failed to confirm order. Please try again.');
     }
   }
 
@@ -149,8 +180,10 @@ class CheckoutService {
     return await response.json();
   }
 
-  // ✅ Add this method to verify the actual endpoint behavior
+  // Development-only verification method
   async verifyCheckoutOrdersEndpoint() {
+    if (process.env.NODE_ENV !== 'development') return;
+    
     console.log('🔍 VERIFYING ACTUAL ENDPOINT BEHAVIOR:');
     
     try {
@@ -176,7 +209,7 @@ class CheckoutService {
         console.log('❌ BASIC CALL FAILED:', response1.status, response1.statusText);
       }
 
-      // Test 2: Call with query parameters (as per Swagger)
+      // Test 2: Call with query parameters
       console.log('📋 TEST 2: Call with query parameters');
       const params = new URLSearchParams({ page: '1', limit: '5' });
       const response2 = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {

@@ -25,28 +25,43 @@ const CheckoutPage = () => {
     setCurrentStep,
     shippingInfo,
     clearCart,
-    loadCart
+    loadCart,
+    paymentError,
+    clearPaymentError,
+    isProcessingPayment
   } = useCheckoutSession();
 
+  // Generate a stable ID for component lifecycle tracking
   const componentId = useRef(
     window.crypto && window.crypto.randomUUID
       ? window.crypto.randomUUID()
       : Math.random().toString(36).slice(2, 10)
   );
 
+  // Component lifecycle logging - only in development
   useEffect(() => {
-    // ✅ Fix: Copy ref value to variable to avoid stale closure
-    const id = componentId.current;
-    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} MOUNTED`);
-
-    return () => {
-      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} UNMOUNTED`);
-    };
+    if (process.env.NODE_ENV === 'development') {
+      const id = componentId.current;
+      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} MOUNTED`);
+      return () => {
+        console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${id} UNMOUNTED`);
+      };
+    }
   }, []);
 
+  // Cart change logging - only in development
   useEffect(() => {
-    console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} cartItems changed:`, cartItems.length);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CHECKOUT-LIFECYCLE] CheckoutPage-${componentId.current} cartItems changed:`, cartItems.length);
+    }
   }, [cartItems]);
+
+  // Debug payment error state - only in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && paymentError) {
+      console.log(`[CHECKOUT-ERROR] Payment error in parent:`, paymentError);
+    }
+  }, [paymentError]);
 
   // Redirect if cart is empty (but NOT on confirmation step)
   useEffect(() => {
@@ -61,15 +76,29 @@ const CheckoutPage = () => {
   }, [reviewCart]);
 
   if (loading) {
-    return <div>Loading checkout...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Processing checkout...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div>
-        <h1>Checkout Error</h1>
-        <p>{error}</p>
-        <button onClick={() => navigate('/shopper/cart')}>Return to Cart</button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <h1 className="text-xl font-semibold text-gray-900 mb-4">Checkout Error</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button 
+            onClick={() => navigate('/shopper/cart')}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Return to Cart
+          </button>
+        </div>
       </div>
     );
   }
@@ -95,19 +124,35 @@ const CheckoutPage = () => {
             />
           )}
           {currentStep === 3 && (
-            <PaymentMethodStep
-              onSubmit={({ paymentDetails, reservationDuration }) =>
-                confirmOrder(paymentDetails, reservationDuration)
-              }
-              onBack={() => setCurrentStep(2)}
-              shippingAddress={shippingInfo?.shippingAddress}
-              customerInfo={shippingInfo?.customerInfo}
-              cart={cart}
-            />
+            <>
+              {/* Debugging log - only in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <div style={{ display: 'none' }}>
+                  {console.log('[DEBUG] Rendering PaymentMethodStep with shippingInfo:', shippingInfo)}
+                  {paymentError && console.log('[DEBUG] Payment error present:', paymentError)}
+                </div>
+              )}
+              <PaymentMethodStep
+                onSubmit={({ paymentDetails, reservationDuration }) =>
+                  confirmOrder(paymentDetails, reservationDuration)
+                }
+                onBack={() => setCurrentStep(2)}
+                shippingAddress={shippingInfo?.shippingAddress}
+                customerInfo={shippingInfo?.customerInfo}
+                cart={shippingInfo?.cart || cart}
+                paymentError={paymentError}
+                clearPaymentError={clearPaymentError}
+                isProcessingPayment={isProcessingPayment}
+              />
+            </>
           )}
         </div>
         <div className="lg:col-span-1">
-          <OrderSummaryCard cart={cart} order={order} currentStep={currentStep} />
+          <OrderSummaryCard
+            cart={currentStep === 3 && shippingInfo?.cart ? shippingInfo.cart : cart}
+            order={order}
+            currentStep={currentStep}
+          />
         </div>
       </div>
     </div>
