@@ -410,268 +410,131 @@ export default function VendorOrdersPage() {
 
   const handleProcessOrder = async (orderId) => {
     if (!user?.id) return;
-    
+
     try {
-      // Find the order
       const orderToUpdate = orders.find(order => order.id === orderId);
-      
+
       if (orderToUpdate?.status === "PROCESSING") {
         alert("These items are already scheduled for pickup.");
         return;
       }
-      
-      // Show loading indicator
+
       setProcessingOrderId(orderId);
-      
+
       const token = localStorage.getItem("token");
-      
-      // Check if batch endpoint exists (will be added by backend team)
-      const useBatchEndpoint = false; // Set to true when backend implements the endpoint
-      
-      if (useBatchEndpoint) {
-        // Future implementation - single API call to update all items
-        await axios.put(
-          `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/status`,
-          { status: "PROCESSING" },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        
-        // Update local state for all items
-        setOrders(prevOrders => 
+
+      // Get all productIds for this vendor in the order that are not already PROCESSING
+      const productsToUpdate = orderToUpdate?.items
+        .filter(item => item.vendorId === user.id && item.status !== "PROCESSING")
+        .map(item => item.productId);
+
+      if (productsToUpdate.length === 0) {
+        alert("No items to schedule for pickup.");
+        return;
+      }
+
+      // === MINIMAL CHANGE: Use batch endpoint ===
+      const endpoint = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/status`;
+      const result = await axios.put(
+        endpoint,
+        {
+          productIds: productsToUpdate,
+          status: "PROCESSING"
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (result.data.success) {
+        // Update local state with new statuses
+        setOrders(prevOrders =>
           prevOrders.map(order => {
             if (order.id === orderId) {
-              const updatedItems = order.items.map(item => ({
-                ...item, 
-                status: "PROCESSING"
-              }));
-              
-              return { 
-                ...order, 
-                items: updatedItems, 
-                status: "PROCESSING"
-              };
+              const updatedItems = order.items.map(item => {
+                if (productsToUpdate.includes(item.productId)) {
+                  return { ...item, status: "PROCESSING" };
+                }
+                return item;
+              });
+              return { ...order, items: updatedItems, status: "PROCESSING" };
             }
             return order;
           })
         );
-        
+        alert("All your items have been scheduled for pickup!");
       } else {
-        // Current implementation - update each item individually
-        // Get all products in this order
-        const productsToUpdate = orderToUpdate?.items || [];
-        
-        if (productsToUpdate.length === 0) {
-          throw new Error("No items found in this order");
-        }
-        
-        // IMPORTANT: Add a console.log with very distinct text to see if this code runs
-        if (process.env.NODE_ENV === 'development') {
-          console.log("🔴🔴🔴 SEQUENTIAL ITEM UPDATE LOGIC IS RUNNING 🔴🔴🔴");
-        }
-        
-        // Process each product SEQUENTIALLY with better error handling and logging
-        const successfulUpdates = [];
-        const failedUpdates = [];
-        
-        for (const item of productsToUpdate) {
-          // Skip already processed items
-          if (item.status === "PROCESSING") {
-            console.log(`Skipping already processed item: ${item.productId}`);
-            continue;
-          }
-          
-          const endpoint = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${item.productId}/status`;
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Updating item ${item.productId} to PROCESSING using endpoint: ${endpoint}`);
-          }
-          
-          try {
-            // Add a small delay between requests to prevent race conditions
-            await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay to 500ms
-            
-            const result = await axios.put(
-              endpoint,
-              { status: "PROCESSING" },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`Successfully updated item ${item.productId}`, result.data);
-            }
-            successfulUpdates.push(item.productId);
-          } catch (itemError) {
-            console.error(`Failed to update item ${item.productId}:`, itemError);
-            failedUpdates.push({
-              id: item.productId,
-              error: itemError.response?.data?.message || itemError.message
-            });
-          }
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Completed processing with ${successfulUpdates.length} successes and ${failedUpdates.length} failures`);
-        }
-        
-        if (failedUpdates.length > 0) {
-          console.warn("Failed updates:", failedUpdates);
-        }
-        
-        // Update local state - only if we had at least one successful update
-        if (successfulUpdates.length > 0) {
-          setOrders(prevOrders => 
-            prevOrders.map(order => {
-              if (order.id === orderId) {
-                // Update all item statuses to PROCESSING, but only for those we successfully updated
-                const updatedItems = order.items.map(item => {
-                  if (successfulUpdates.includes(item.productId)) {
-                    return { ...item, status: "PROCESSING" };
-                  }
-                  return item;
-                });
-                
-                // Derive the new status based on updated items
-                const derivedStatus = deriveOrderStatus(updatedItems);
-                
-                return { 
-                  ...order, 
-                  items: updatedItems, 
-                  status: derivedStatus
-                };
-              }
-              return order;
-            })
-          );
-        }
+        alert(result.data.message || "Failed to update item statuses.");
       }
-      
-      // Show success message
-      alert("All your items have been scheduled for pickup!");
     } catch (error) {
       console.error("Failed to schedule items for pickup:", error);
-      alert(`Failed to schedule items for pickup: ${error.response?.data?.message || error.message}`);
+      alert(error.response?.data?.message || error.message);
     } finally {
-      // Refresh data to ensure everything is up to date
       await refreshOrderData();
     }
   };
 
   const handleCancelOrder = async (orderId) => {
     if (!user?.id) return;
-    
+
     try {
-      // Find the order
       const orderToUpdate = orders.find(order => order.id === orderId);
-      // Wrap other debug logs in the function (around lines 670-725):
-if (process.env.NODE_ENV === 'development') {
-  console.log("Starting batch update for order:", orderId);
-  console.log("Items to process:", orderToUpdate?.items?.length);
-}
-      // Map PENDING to CONFIRMED for status checking purposes
-      const displayStatus = orderToUpdate?.status === "PENDING" ? "CONFIRMED" : orderToUpdate?.status;
-      
-      if (!["CONFIRMED", "PROCESSING"].includes(displayStatus)) {
+
+      if (!["CONFIRMED", "PROCESSING"].includes(orderToUpdate?.status === "PENDING" ? "CONFIRMED" : orderToUpdate?.status)) {
         alert("Only confirmed or scheduled items can be cancelled.");
         return;
       }
-      
-      // Confirm cancellation
+
       if (!window.confirm("Are you sure you want to cancel all your items in this order?")) {
         return;
       }
-      
-      // Show loading indicator
+
       setProcessingOrderId(orderId);
-      
+
       const token = localStorage.getItem("token");
-      
-      // Get all products in this order
-      const productsToUpdate = orderToUpdate?.items || [];
-      
+
+      // Get all productIds for this vendor in the order that are not already CANCELLED
+      const productsToUpdate = orderToUpdate?.items
+        .filter(item => item.vendorId === user.id && item.status !== "CANCELLED")
+        .map(item => item.productId);
+
       if (productsToUpdate.length === 0) {
-        throw new Error("No items found in this order");
+        alert("No items to cancel.");
+        return;
       }
-      
-      // Cancel each product SEQUENTIALLY with better logging and error handling
-      const successfulCancellations = [];
-      const failedCancellations = [];
-      
-      for (const item of productsToUpdate) {
-        // Skip already cancelled items
-        if (item.status === "CANCELLED") {
-          console.log(`Skipping already cancelled item: ${item.productId}`);
-          continue;
-        }
-        
-        const endpoint = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/${item.productId}/status`;
-        console.log(`Updating item ${item.productId} to CANCELLED using endpoint: ${endpoint}`);
-        
-        try {
-          // Add a small delay between requests to prevent race conditions
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          const result = await axios.put(
-            endpoint,
-            { status: "CANCELLED" },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          
-          console.log(`Successfully cancelled item ${item.productId}`, result.data);
-          successfulCancellations.push(item.productId);
-        } catch (itemError) {
-          console.error(`Failed to cancel item ${item.productId}:`, itemError);
-          failedCancellations.push({
-            id: item.productId,
-            error: itemError.response?.data?.message || itemError.message
-          });
-        }
-      }
-      
-      console.log(`Completed cancellation with ${successfulCancellations.length} successes and ${failedCancellations.length} failures`);
-      
-      if (failedCancellations.length > 0) {
-        console.warn("Failed cancellations:", failedCancellations);
-      }
-      
-      // Update local state - only if we had at least one successful update
-      if (successfulCancellations.length > 0) {
-        setOrders(prevOrders => 
+
+      // === MINIMAL CHANGE: Use batch endpoint ===
+      const endpoint = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders/${orderId}/products/status`;
+      const result = await axios.put(
+        endpoint,
+        {
+          productIds: productsToUpdate,
+          status: "CANCELLED"
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (result.data.success) {
+        setOrders(prevOrders =>
           prevOrders.map(order => {
             if (order.id === orderId) {
-              // Update all item statuses to CANCELLED, but only for those we successfully updated
               const updatedItems = order.items.map(item => {
-                if (successfulCancellations.includes(item.productId)) {
+                if (productsToUpdate.includes(item.productId)) {
                   return { ...item, status: "CANCELLED" };
                 }
                 return item;
               });
-              
-              // Derive the new status based on updated items
-              const derivedStatus = deriveOrderStatus(updatedItems);
-              
-              return { 
-                ...order, 
-                items: updatedItems, 
-                status: derivedStatus
-              };
+              return { ...order, items: updatedItems, status: "CANCELLED" };
             }
             return order;
           })
         );
-        
-        // Show success message
-        if (failedCancellations.length > 0) {
-          alert(`Cancelled ${successfulCancellations.length} items. ${failedCancellations.length} items failed to cancel.`);
-        } else {
-          alert("All items have been successfully cancelled!");
-        }
+        alert("All your items have been cancelled!");
       } else {
-        alert("Failed to cancel any items. Please try again.");
+        alert(result.data.message || "Failed to cancel items.");
       }
     } catch (error) {
       console.error("Failed to cancel items:", error);
-      alert(`Failed to cancel items: ${error.response?.data?.message || error.message}`);
+      alert(error.response?.data?.message || error.message);
     } finally {
-      // Refresh data to ensure everything is up to date
       await refreshOrderData();
     }
   };

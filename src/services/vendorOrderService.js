@@ -33,20 +33,20 @@ class VendorOrderService {
     }
 }
 
-  async updateOrderStatus(orderId, status) {
+  async updateOrderStatus(vendorId, orderId, productIds, status) {
     const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
-    // ✅ CORRECTED: Use plural 'vendor-orders'
-    const url = `${apiBase}/vendor-orders/orders/${orderId}/status`;
-    
+    // ✅ Correct endpoint for batch product status update
+    const url = `${apiBase}/vendor-orders/${vendorId}/orders/${orderId}/products/status`;
+
     try {
         const response = await authFetch(url, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ productIds, status })
         });
         return response;
     } catch (error) {
-        throw new Error(error.message || 'Failed to update order status');
+        throw new Error(error.message || 'Failed to update product statuses');
     }
 }
 
