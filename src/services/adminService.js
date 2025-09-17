@@ -160,7 +160,7 @@ class AdminService {
                 ...filters
             });
 
-            const response = await fetch(`${API_BASE_URL}/api/admin/material?${queryParams}`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin-materials?${queryParams}`, {
                 method: 'GET',
                 headers: this.getAuthHeaders()
             });
@@ -180,13 +180,13 @@ class AdminService {
     }
 
     // Create a new material
-    async createMaterial(materialData, token) {
+    async createMaterial(materialData) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/material`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin-materials`, {
                 method: 'POST',
                 headers: {
-                    "Consent-Type": "application/json",
-                    Authorization: `Bearer ${token}`,// include token in headers
+                    "Content-Type": "application/json",
+                    ...this.getAuthHeaders(), // include token in headers
                 },
 
                 body: JSON.stringify(materialData),
@@ -195,7 +195,7 @@ class AdminService {
             const data = await response.json();
 
             if (!response.ok) {
-                return data;
+                throw new Error(data.message || "Failed to create material");;
         }
 
         return data;
@@ -209,7 +209,7 @@ class AdminService {
         if (!materialId) throw new Error('Material ID is required');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/material/${materialId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin/materials/${materialId}`, {
                 method: 'GET',
                 headers: this.getAuthHeaders()
             });
@@ -219,6 +219,9 @@ class AdminService {
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to fetch material');
             }
+
+            return data
+
         } catch (error) {
             console.error(`Error fetching material ${materialId}:`, error);
             throw error;    
@@ -229,7 +232,7 @@ class AdminService {
         if (!materialId) throw new Error('Material ID is required');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/material/${materialId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin-materials/${materialId}`, {
                 method: 'PUT',  
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify(updatedData)
@@ -252,7 +255,7 @@ class AdminService {
         if (!materialId) throw new Error('Material ID is required');
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/material/${materialId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin-materials/${materialId}`, {
                 method: 'DELETE',
                 headers: this.getAuthHeaders()
             });
@@ -285,6 +288,27 @@ class AdminService {
             throw error;
         }
     }
+
+    // Create Global, Vendor and Product Fee,
+    async CreateFee(feeData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs`,{
+                method: "POST",
+                headers: {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                },
+                body: JSON.stringify(feeData),
+            });
+
+            return await response.json
+
+        } catch (error) {
+            console.error("Error creating fee config:", error);
+            throw error;
+        }
+    }
+
 }
 
 // Create and export a single instance

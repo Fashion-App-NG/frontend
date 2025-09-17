@@ -60,7 +60,7 @@ const QuickActionsCard = () => {
                 actions={[
                     {
                         text: 'View Materials',
-                        link: '/admin/materials',
+                        link: '/admin/admin-materials',
                         color: 'bg-blue-600',
                         hoverColor: 'bg-blue-700',
                     },
