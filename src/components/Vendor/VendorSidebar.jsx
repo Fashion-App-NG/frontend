@@ -21,6 +21,7 @@ export const VendorSidebar = () => {
     { path: '/vendor/upload', icon: '⬆️', label: 'Add Product' },
     { path: '/vendor/bulk-upload', icon: '📤', label: 'Bulk Upload' },
     { path: '/vendor/sales', icon: '💰', label: 'Sales' },
+    { path: '/vendor/profile', icon: '👤', label: 'Profile' }, // Added new Profile menu item
     { path: '/vendor/notifications', icon: '🔔', label: 'Notifications' },
     { path: '/vendor/settings', icon: '⚙️', label: 'Settings' }
   ];
@@ -32,12 +33,14 @@ export const VendorSidebar = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-semibold">
-              {user?.storeName?.charAt(0)?.toUpperCase() || user?.firstName?.charAt(0)?.toUpperCase() || 'V'}
+              {(user?.vendorProfile?.storeName || user?.storeName)?.charAt(0)?.toUpperCase() || 
+               user?.firstName?.charAt(0)?.toUpperCase() || 
+               'V'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.storeName || `${user?.firstName} ${user?.lastName}` || 'Vendor'}
+              {user?.vendorProfile?.storeName || user?.storeName || 'Vendor'}
             </p>
             <p className="text-xs text-gray-500 truncate">
               {user?.email || 'vendor@example.com'}
@@ -50,7 +53,7 @@ export const VendorSidebar = () => {
           <div className="mt-3 p-2 bg-yellow-50 rounded text-xs">
             <p><strong>ID:</strong> {user?.id || 'N/A'}</p>
             <p><strong>Role:</strong> {user?.role || 'N/A'}</p>
-            <p><strong>Store:</strong> {user?.storeName || 'N/A'}</p>
+            <p><strong>Store:</strong> {user?.vendorProfile?.storeName || user?.storeName || 'N/A'}</p>
           </div>
         )}
       </div>

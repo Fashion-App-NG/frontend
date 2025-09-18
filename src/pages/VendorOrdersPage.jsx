@@ -1,6 +1,9 @@
 import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
+import VendorProfileCheck from '../components/VendorProfileCheck';
 import { useAuth } from "../contexts/AuthContext";
+import userService from '../services/userService'; // Import userService
 
 const ORDER_STATUSES = [
   { key: "ALL", label: "All" },
@@ -269,7 +272,43 @@ const InfoTooltip = ({ text }) => {
   );
 };
 
+// Update the checkProfileCompleteness function
+const checkProfileCompleteness = async (navigate) => {
+  try {
+    const response = await userService.getVendorProfile();
+    
+    if (!response.success || !response.data) {
+      return false;
+    }
+    
+    const profile = response.data.vendorProfile;
+    
+    // Check if required fields are present
+    const hasRequiredFields = 
+      profile.businessInfo?.contactPerson?.name && 
+      profile.businessInfo?.contactPerson?.phone &&
+      profile.businessInfo?.contactPerson?.email &&
+      profile.pickupAddress?.street &&
+      profile.pickupAddress?.city &&
+      profile.pickupAddress?.state &&
+      profile.pickupAddress?.zipCode;
+    
+    if (!hasRequiredFields) {
+      alert('Your profile is incomplete. Please complete your contact information and pickup address before scheduling items for pickup.');
+      navigate('/vendor/profile');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error checking profile:', error);
+    alert('Failed to check profile completeness. Please ensure your profile is complete before scheduling pickups.');
+    return false;
+  }
+};
+
 export default function VendorOrdersPage() {
+  const navigate = useNavigate(); // Add this line
   const { user, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -410,6 +449,12 @@ export default function VendorOrdersPage() {
 
   const handleProcessOrder = async (orderId) => {
     if (!user?.id) return;
+
+    // First check if profile is complete
+    const profileComplete = await checkProfileCompleteness(navigate);
+    if (!profileComplete) {
+      return;
+    }
 
     try {
       const orderToUpdate = orders.find(order => order.id === orderId);
@@ -601,6 +646,7 @@ export default function VendorOrdersPage() {
 
   return (
     <div className="flex-1 ml-[254px] p-8 bg-gray-50 min-h-screen">
+      <VendorProfileCheck />
       {/* Updated Summary cards to focus on revenue-generating statuses */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg p-6 shadow-sm">
