@@ -27,6 +27,8 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminMaterialPage from './pages/AdminMaterialPage';
+import AdminCreateMaterialPage from './pages/AdminCreateMaterialPage';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -175,6 +177,8 @@ function App() {
               <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
+              <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
 
               {/* Legal routes */}
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

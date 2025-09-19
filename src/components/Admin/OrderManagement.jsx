@@ -1,40 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FaTimes, FaEdit, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { adminService } from '../../services/adminService';
+import ItemsTable from './AdminItems';
+import FilterSection from './AdminFilter';
+import Pagination from './AdminPagination';
+import ErrorMessage from './AdminError';
+import UpdateModal from './AdminUpdateModal';
 
-const OrderItems = ({ items, formatCurrency }) => (
-  <div className="mt-4">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="bg-gray-50">
-          <th className="p-2 text-left">Product</th>
-          <th className="p-2 text-left">Vendor</th>
-          <th className="p-2 text-left">Quantity</th>
-          <th className="p-2 text-left">Price/Yard</th>
-          <th className="p-2 text-left">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => (
-          <tr key={item.productId} className="border-b">
-            <td className="p-2">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="font-medium">{item.materialType} - {item.pattern}</p>
-              </div>
-            </td>
-            <td className="p-2">{item.vendorName}</td>
-            <td className="p-2">{item.quantity} yards</td>
-            <td className="p-2">{formatCurrency(item.pricePerYard)}</td>
-            <td className="p-2">{formatCurrency(item.pricePerYard * item.quantity)}</td>
-          </tr>
-        ))}
-      </tbody>  
-    </table>
-  </div>
-);
 
 const OrderManagement = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderStatus, setOrderStatus] = useState('');
   const [orders, setOrders] = useState([]);
@@ -58,6 +33,20 @@ const OrderManagement = () => {
     'EXPIRED'
   ];
 
+  const paymentStatusOptions = [
+    'PAID',
+    'PENDING',
+    'FAILED'
+  ];
+
+  const columns = [
+    { key: "name", label: "Product" },
+    { key: "vendorName", label: "Vendor" },
+    { key: "quantity", label: "Quantity", render: (item) => `${item.quantity} yards` },
+    { key: "pricePerYard", label: "Price/Yard", render: (item) => formatCurrency(item.pricePerYard) },
+    { key: "total", label: "Total", render: (item) => formatCurrency(item.pricePerYard * item.quantity) },
+  ];
+
   const [filters, setFilters] = useState({
     status: '',
     paymentStatus: '',
@@ -66,6 +55,20 @@ const OrderManagement = () => {
     endDate: '',
     search: ''
   });
+
+  const filterConfigs = [
+    { key: "status", type: "select", placeholder: "All Statuses", options: statusOptions },
+    { key: "paymentStatus", type: "select", placeholder: "All Payment Statuses", options: paymentStatusOptions },
+    { key: "startDate", type: "date" },
+    { key: "endDate", type: "date" },
+    { key: "vendorId", type: "text", placeholder: "Filter by Vendor ID" },
+  ];
+
+  // hangle update button
+  const handleUpdateClick = (order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -173,60 +176,14 @@ const OrderManagement = () => {
       </div>
 
       {/* Error Message */}
-      {error && (
-        <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-          <p className="text-red-700">{error}</p>
-        </div>
-      )}
+      <ErrorMessage message={error} />
 
       {/* Search and Filter Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <select
-          value={filters.status}
-          onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        >
-          <option value="">All Statuses</option>
-          {statusOptions.map((status) => (
-            <option key={status} value={status}>{status}</option>
-          ))}
-        </select>
-
-        <select
-          value={filters.paymentStatus}
-          onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        >
-          <option value="">All Payment Statuses</option>
-          <option value="PAID">PAID</option>
-          <option value="PENDING">PENDING</option>
-          <option value="FAILED">FAILED</option>
-        </select>
-
-        <input
-          type="date"
-          value={filters.startDate}
-          onChange={(e) => handleFilterChange('startDate', e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        />
-        <input
-          type="date"
-          value={filters.endDate}
-          onChange={(e) => handleFilterChange('endDate', e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        />
-        <input
-          type="text"
-          placeholder="Filter by Vendor ID"
-          value={filters.vendorId}
-          onChange={(e) => handleFilterChange('vendorId', e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        />
-      </div>
-
-      {/* Reset Button */}
-      <button
-        onClick={() => {
+      <FilterSection 
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        onReset={() => {
           setFilters({
             status: '',
             paymentStatus: '',
@@ -236,11 +193,9 @@ const OrderManagement = () => {
             search: ''
           });
           setPagination((prev) => ({ ...prev, currentPage: 1 }));
-        }}
-        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-gray-300"
-      >
-        Reset Filters
-      </button>
+        }}       
+      />
+
 
 
       {/* Orders Table */}
@@ -297,10 +252,7 @@ const OrderManagement = () => {
                       <td>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setOrderStatus(order.status);
-                            }}
+                            onClick={() => handleUpdateClick(order)} 
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded"
                           >
                             <FaEdit />
@@ -331,9 +283,9 @@ const OrderManagement = () => {
                               <p className="text-sm">Payment Status: {order.paymentStatus}</p>
                             </div>
                           </div>
-                          <OrderItems 
+                          <ItemsTable 
                           items={order.items}
-                          formatCurrency={formatCurrency}
+                          columns={columns}
                           />
                         </td>
                       </tr>
@@ -347,65 +299,33 @@ const OrderManagement = () => {
       </div>
 
       {/* Pagination Controls */}
-      {!loading && orders.length > 0 && (
-        <div className="mt-6 flex justify-between items-center">
-          <span className="text-sm text-gray-500">
-            Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-              disabled={!pagination.hasPrevPage}
-              className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-              disabled={!pagination.hasNextPage}
-              className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination 
+        pagination={pagination}
+        onPageChange={(newPage) =>
+          setPagination((prev) => ({ ...prev, currentPage: newPage }))
+        }
+      />
 
       {/* Status Update Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
-            <select
-              value={orderStatus}
-              onChange={(e) => setOrderStatus(e.target.value)}
-              className="w-full p-2 border rounded mb-4"
-            >
-              <option value="">Select Status</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleStatusUpdate}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Updating...' : 'Update'}
-              </button>
-            </div>
-          </div>
+      {<UpdateModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Update Order"
+        onSubmit={handleStatusUpdate}
+      >
+        {/* Custom form fields */}
+        <div>
+          <select
+            value={orderStatus}
+            onChange={(e) => setOrderStatus(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          >
+            <option value="">Select Status</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}> {status} </option> ))} 
+          </select>
         </div>
-      )}
+      </UpdateModal>}
     </div>
   );
 };
