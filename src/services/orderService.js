@@ -37,6 +37,7 @@ class OrderService {
   }
 }
 
-// Create an instance and then export it (to fix the ESLint warning)
+// Create the instance with a name first
 const orderService = new OrderService();
-export default orderService;
+// Export the named instance
+export { orderService as default };
