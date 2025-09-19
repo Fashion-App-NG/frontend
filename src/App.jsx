@@ -1,4 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import AuthProvider from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import FavoritesProvider from './contexts/FavoritesContext';
@@ -72,6 +74,12 @@ import GuestCheckoutPage from './pages/checkout/GuestCheckoutPage';
 // Import order details page
 import GuestCartPage from './pages/GuestCartPage';
 import ShopperOrderDetails from './pages/ShopperOrderDetails';
+
+// Import the new page
+import VendorProfilePage from './pages/VendorProfilePage';
+
+// Import order tracking component
+import OrderTrackingPage from './pages/OrderTrackingPage';
 
 function App() {
   return (
@@ -171,6 +179,7 @@ function App() {
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />
+                <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
               </Route>
 
               {/* Admin routes */}
@@ -184,9 +193,14 @@ function App() {
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
+              {/* Order tracking route */}
+              <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+              <Route path="/shopper/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+
               {/* 404 route */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            <ToastContainer position="top-right" autoClose={5000} />
           </div>
         </Router>
       </FavoritesProvider>

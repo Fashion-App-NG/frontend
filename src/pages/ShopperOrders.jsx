@@ -245,13 +245,23 @@ const ShopperOrders = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <StatusBadge status={order.status} />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-4 justify-end">
                                             <Link
                                                 to={`/shopper/orders/${order.orderId || order.id}`}
                                                 className="text-blue-600 hover:text-blue-900"
                                             >
                                                 View Details
                                             </Link>
+                                            
+                                            {["CONFIRMED", "PROCESSING", "SHIPPED", "DISPATCHED", "DELIVERED"].includes(order.status) && (
+                                                <Link 
+                                                    to={`/shopper/orders/${order.orderId || order.id}/tracking`}
+                                                    state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
+                                                    className="text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Track
+                                                </Link>
+                                            )}
                                         </td>
                                     </tr>
                                 );

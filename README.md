@@ -531,3 +531,39 @@ This project is proprietary and confidential. All rights reserved.
 6. **View order confirmation** ✅ (Complete order display)
 
 ## 📱 **Demo Capabilities**
+
+# Order Tracking Integration
+
+Currently, the frontend implements a simulated tracking system that generates tracking events based on order status. To integrate with a real tracking API, follow these steps:
+
+## Backend API Requirements
+
+1. Create an endpoint at `/api/shipping/track/{shipmentId}` that returns tracking information in the following format:
+
+```json
+{
+  "success": true,
+  "message": "Tracking information retrieved successfully",
+  "shipment": {
+    "id": "shipment_123",
+    "orderId": "order_456",
+    "trackingNumber": "TRK123456789",
+    "status": "IN_TRANSIT",
+    "estimatedDelivery": "2024-01-05T10:00:00Z"
+  },
+  "tracking": [
+    {
+      "status": "PICKED_UP",
+      "location": "Lagos Warehouse",
+      "timestamp": "2024-01-03T10:00:00Z",
+      "description": "Package picked up from vendor"
+    },
+    {
+      "status": "IN_TRANSIT",
+      "location": "Lagos Distribution Center",
+      "timestamp": "2024-01-04T10:00:00Z",
+      "description": "Package in transit to destination"
+    }
+  ]
+}
+```
