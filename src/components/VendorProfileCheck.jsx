@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import userService from '../services/userService';
+import { validateVendorProfileCompleteness } from '../utils/validationUtils';
 
 const VendorProfileCheck = () => {
   const { user } = useAuth();
@@ -14,18 +15,8 @@ const VendorProfileCheck = () => {
           const response = await userService.getVendorProfile();
           
           if (response.success) {
-            
-            // Check if required fields for Terminal delivery integration are present
-            const hasRequiredFields = 
-              response.data?.businessInfo?.contactPerson?.name && 
-              response.data?.businessInfo?.contactPerson?.phone &&
-              response.data?.businessInfo?.contactPerson?.email &&
-              response.data?.pickupAddress?.street &&
-              response.data?.pickupAddress?.city &&
-              response.data?.pickupAddress?.state &&
-              response.data?.pickupAddress?.zipCode;
-            
-            setIsComplete(hasRequiredFields);
+            const profileData = response.data || {};
+            setIsComplete(validateVendorProfileCompleteness(profileData));
           } else {
             setIsComplete(false);
           }

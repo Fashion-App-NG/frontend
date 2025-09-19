@@ -76,8 +76,10 @@ class UserService {
           businessInfo: profileData.businessInfo,
           categories: profileData.categories,
           description: profileData.description,
+          // Just use the socialMedia object directly without redundancy
           socialMedia: profileData.socialMedia,
-          storeName: profileData.storeName // May be redundant but match API expectations
+          // Only include storeName in vendorProfile if API requires it
+          ...(profileData.storeName && { storeName: profileData.storeName })
         }
       };
 

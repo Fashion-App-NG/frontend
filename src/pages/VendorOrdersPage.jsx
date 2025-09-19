@@ -1,9 +1,10 @@
 import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import VendorProfileCheck from '../components/VendorProfileCheck';
 import { useAuth } from "../contexts/AuthContext";
-import userService from '../services/userService'; // Import userService
+import { checkProfileCompleteness } from '../utils/validationUtils';
 
 const ORDER_STATUSES = [
   { key: "ALL", label: "All" },
@@ -273,39 +274,39 @@ const InfoTooltip = ({ text }) => {
 };
 
 // Update the checkProfileCompleteness function
-const checkProfileCompleteness = async (navigate) => {
-  try {
-    const response = await userService.getVendorProfile();
+// const checkProfileCompleteness = async (navigate) => {
+//   try {
+//     const response = await userService.getVendorProfile();
     
-    if (!response.success || !response.data) {
-      return false;
-    }
+//     if (!response.success || !response.data) {
+//       return false;
+//     }
     
-    const profile = response.data.vendorProfile;
+//     const profile = response.data.vendorProfile;
     
-    // Check if required fields are present
-    const hasRequiredFields = 
-      profile.businessInfo?.contactPerson?.name && 
-      profile.businessInfo?.contactPerson?.phone &&
-      profile.businessInfo?.contactPerson?.email &&
-      profile.pickupAddress?.street &&
-      profile.pickupAddress?.city &&
-      profile.pickupAddress?.state &&
-      profile.pickupAddress?.zipCode;
+//     // Check if required fields are present
+//     const hasRequiredFields = 
+//       profile.businessInfo?.contactPerson?.name && 
+//       profile.businessInfo?.contactPerson?.phone &&
+//       profile.businessInfo?.contactPerson?.email &&
+//       profile.pickupAddress?.street &&
+//       profile.pickupAddress?.city &&
+//       profile.pickupAddress?.state &&
+//       profile.pickupAddress?.zipCode;
     
-    if (!hasRequiredFields) {
-      alert('Your profile is incomplete. Please complete your contact information and pickup address before scheduling items for pickup.');
-      navigate('/vendor/profile');
-      return false;
-    }
+//     if (!hasRequiredFields) {
+//       alert('Your profile is incomplete. Please complete your contact information and pickup address before scheduling items for pickup.');
+//       navigate('/vendor/profile');
+//       return false;
+//     }
     
-    return true;
-  } catch (error) {
-    console.error('Error checking profile:', error);
-    alert('Failed to check profile completeness. Please ensure your profile is complete before scheduling pickups.');
-    return false;
-  }
-};
+//     return true;
+//   } catch (error) {
+//     console.error('Error checking profile:', error);
+//     alert('Failed to check profile completeness. Please ensure your profile is complete before scheduling pickups.');
+//     return false;
+//   }
+// };
 
 export default function VendorOrdersPage() {
   const navigate = useNavigate(); // Add this line
@@ -451,7 +452,7 @@ export default function VendorOrdersPage() {
     if (!user?.id) return;
 
     // First check if profile is complete
-    const profileComplete = await checkProfileCompleteness(navigate);
+    const profileComplete = await checkProfileCompleteness(navigate, true, toast);
     if (!profileComplete) {
       return;
     }
@@ -460,7 +461,7 @@ export default function VendorOrdersPage() {
       const orderToUpdate = orders.find(order => order.id === orderId);
 
       if (orderToUpdate?.status === "PROCESSING") {
-        alert("These items are already scheduled for pickup.");
+        toast.info("These items are already scheduled for pickup.");
         return;
       }
 
@@ -474,7 +475,7 @@ export default function VendorOrdersPage() {
         .map(item => item.productId);
 
       if (productsToUpdate.length === 0) {
-        alert("No items to schedule for pickup.");
+        toast.info("No items to schedule for pickup.");
         return;
       }
 
@@ -505,13 +506,13 @@ export default function VendorOrdersPage() {
             return order;
           })
         );
-        alert("All your items have been scheduled for pickup!");
+        toast.success("All your items have been scheduled for pickup!");
       } else {
-        alert(result.data.message || "Failed to update item statuses.");
+        toast.error(result.data.message || "Failed to update item statuses.");
       }
     } catch (error) {
       console.error("Failed to schedule items for pickup:", error);
-      alert(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       await refreshOrderData();
     }
@@ -524,7 +525,7 @@ export default function VendorOrdersPage() {
       const orderToUpdate = orders.find(order => order.id === orderId);
 
       if (!["CONFIRMED", "PROCESSING"].includes(orderToUpdate?.status === "PENDING" ? "CONFIRMED" : orderToUpdate?.status)) {
-        alert("Only confirmed or scheduled items can be cancelled.");
+        toast.error("Only confirmed or scheduled items can be cancelled.");
         return;
       }
 
@@ -542,7 +543,7 @@ export default function VendorOrdersPage() {
         .map(item => item.productId);
 
       if (productsToUpdate.length === 0) {
-        alert("No items to cancel.");
+        toast.info("No items to cancel.");
         return;
       }
 
@@ -572,13 +573,13 @@ export default function VendorOrdersPage() {
             return order;
           })
         );
-        alert("All your items have been cancelled!");
+        toast.success("All your items have been cancelled!");
       } else {
-        alert(result.data.message || "Failed to cancel items.");
+        toast.error(result.data.message || "Failed to cancel items.");
       }
     } catch (error) {
       console.error("Failed to cancel items:", error);
-      alert(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       await refreshOrderData();
     }

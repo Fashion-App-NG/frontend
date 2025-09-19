@@ -3,16 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
-import { useAuth } from '../contexts/AuthContext';
 import checkoutService from '../services/checkoutService';
 import shippingService from '../services/shippingService';
 
 const OrderTrackingPage = () => {
-  const { orderId } = useParams();
+  const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // eslint-disable-next-line no-unused-vars
-  const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,39 +21,39 @@ const OrderTrackingPage = () => {
       try {
         setLoading(true);
         
-        // First, determine if we have a standard MongoDB ID or an order number format
-        let orderData;
+        let orderResponse;
+        let orderIdToUse = params.orderId; // Use a different variable name to avoid reassignment to const
         
-        // The order object in the ShopperOrders.jsx page has BOTH orderNumber (e.g. ORD-250918-0001)
-        // AND orderId or _id (the MongoDB ID)
-        // Looking at the logs, we should use the MongoDB ID directly
-        if (orderId.startsWith('ORD-')) {
-          // Check if we're coming from ShopperOrders and might have the ID in state
-          const state = location.state;
-          if (state && state.orderId) {
-            // If the order ID is available in state, use it
-            const mongoId = state.orderId;
-            const orderResponse = await checkoutService.getOrderById(mongoId);
-            orderData = orderResponse.order || orderResponse;
-          } else {
-            // If we don't have the MongoDB ID, notify user of the error
-            throw new Error('Order details cannot be fetched with order number format. Please go back to orders page.');
+        // Handle different order ID formats
+        if (location.state?.orderId) {
+          // Use ID from state if available (most reliable)
+          orderIdToUse = location.state.orderId;
+          orderResponse = await checkoutService.getOrderById(orderIdToUse);
+        } else if (location.pathname.includes('/orders/')) {
+          // Extract ID from URL - could be MongoDB ID or formatted order number
+          const urlOrderId = location.pathname.split('/orders/')[1].split('/')[0];
+          
+          try {
+            // First try as MongoDB ID
+            orderResponse = await checkoutService.getOrderById(urlOrderId);
+          } catch (error) {
+            // If fails, could be order number format, try alternate endpoint
+            orderResponse = await checkoutService.getOrderByNumber(urlOrderId);
           }
         } else {
-          // Assume it's a MongoDB ObjectId
-          const orderResponse = await checkoutService.getOrderById(orderId);
-          orderData = orderResponse.order || orderResponse;
+          throw new Error('No valid order ID found');
         }
         
-        if (!orderData) {
-          throw new Error('Order data not found');
+        if (!orderResponse?.success && !orderResponse?.order) {
+          throw new Error('Failed to load order details');
         }
         
+        const orderData = orderResponse.order || orderResponse;
         setOrder(orderData);
         
         // Next, fetch shipments for this order
         try {
-          const shipmentsResponse = await shippingService.getOrderShipments(orderId);
+          const shipmentsResponse = await shippingService.getOrderShipments(orderIdToUse);
           if (shipmentsResponse.success && shipmentsResponse.shipments?.length) {
             setShipments(shipmentsResponse.shipments);
             setActiveShipment(shipmentsResponse.shipments[0]);
@@ -100,10 +97,8 @@ const OrderTrackingPage = () => {
       }
     };
 
-    if (orderId) {
-      fetchOrderAndShipments();
-    }
-  }, [orderId, location.state]);
+    fetchOrderAndShipments();
+  }, [location, params.orderId]);
 
   // Generate synthetic tracking data based on order status if no shipments
   const generateTrackingFromOrderStatus = () => {

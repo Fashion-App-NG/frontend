@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import userService from '../services/userService';
+import { validateVendorProfileCompleteness } from '../utils/validationUtils';
 
 const VendorProfilePage = () => {
   const { user } = useAuth();
@@ -184,18 +185,12 @@ const VendorProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Simple validation
-    if (!formData.businessInfo.contactPerson.name || 
-        !formData.businessInfo.contactPerson.phone || 
-        !formData.businessInfo.contactPerson.email || 
-        !formData.pickupAddress.street || 
-        !formData.pickupAddress.city || 
-        !formData.pickupAddress.state || 
-        !formData.pickupAddress.zipCode) {
+    // Use the shared validation function
+    if (!validateVendorProfileCompleteness(formData)) {
       toast.warning('Please fill in all required fields');
       return;
     }
-
+    
     setSaving(true);
     
     try {
