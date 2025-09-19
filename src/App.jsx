@@ -75,6 +75,9 @@ import ShopperOrderDetails from './pages/ShopperOrderDetails';
 // Import the new page
 import VendorProfilePage from './pages/VendorProfilePage';
 
+// Import order tracking component
+import OrderTrackingPage from './pages/OrderTrackingPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -183,6 +186,10 @@ function App() {
               {/* Legal routes */}
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+
+              {/* Order tracking route */}
+              <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+              <Route path="/shopper/orders/:orderId/tracking" element={<OrderTrackingPage />} />
 
               {/* 404 route */}
               <Route path="*" element={<NotFoundPage />} />

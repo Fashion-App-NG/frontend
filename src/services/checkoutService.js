@@ -1,3 +1,5 @@
+import api from './api';
+
 class CheckoutService {
   constructor() {
     this.baseURL = process.env.REACT_APP_API_BASE_URL || '';
@@ -178,6 +180,17 @@ class CheckoutService {
     });
     if (!response.ok) throw new Error('Failed to fetch order');
     return await response.json();
+  }
+
+  async getOrderByNumber(orderNumber) {
+    try {
+      // Use the correct endpoint structure without the "number/" part
+      const response = await api.get(`/api/checkout/orders/${orderNumber}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order by number:', error);
+      throw new Error('Failed to fetch order by number');
+    }
   }
 
   // Development-only verification method
