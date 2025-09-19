@@ -42,7 +42,8 @@ class AuthService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: userData.email,
+          // Change 'email' to 'identifier' to match API expectations
+          identifier: userData.email, // This will accept either email or phone
           password: userData.password,
           role: userData.role || 'shopper',
           ...(userData.storeName && { storeName: userData.storeName })
