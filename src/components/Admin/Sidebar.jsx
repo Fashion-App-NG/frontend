@@ -7,8 +7,8 @@ const menu = [
   { id: 1, label: "Dashboard", to: "/admin/dashboard" },
   { id: 2, label: "User Management",  to: "/admin/users" },
   { id: 3, label: "Order Management", to: "/admin/admin-orders" },
-  { id: 4,label: "Vendor Management", to: "/admin/vendors" },
-  { id: 5, label: "Product Management", to: "/admin/products" },
+  { id: 3, label: "Material Management", to: "/admin/admin-materials" },
+  { id: 3, label: "Fee Management", to: "/admin/fees-management" },
   { id: 6, label: "Sales Reports", to: "/admin/sales" },
 ];
 

@@ -196,9 +196,9 @@ class AdminService {
 
             if (!response.ok) {
                 throw new Error(data.message || "Failed to create material");;
-        }
+            }
 
-        return data;
+            return data;
         } catch (error) {
             return {success: false, message: error.message};    
         }
@@ -282,7 +282,7 @@ class AdminService {
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to rate material');
-        }
+            }
         }   catch (error) {
             console.error('Error rating material:', error);
             throw error;
@@ -295,19 +295,177 @@ class AdminService {
             const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs`,{
                 method: "POST",
                 headers: {
-                    method: 'POST',
-                    headers: this.getAuthHeaders(),
+                    "Content-Type": "application/json",
+                    ...this.getAuthHeaders(), // include token in headers
                 },
                 body: JSON.stringify(feeData),
             });
 
-            return await response.json
+            return await response.json()
 
         } catch (error) {
             console.error("Error creating fee config:", error);
             throw error;
         }
     }
+
+    async GetFees(page = 1, limit = 20, filters = {}) {
+        try {
+            const queryParams = this.buildQueryParams({
+                page,
+                limit,
+                ...filters
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs?${queryParams}`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch fees');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching fees:', error);
+            throw error;
+        }
+    }
+
+    async UpdateFee(feeId, updatedData) {
+        if (!feeId) throw new Error('fee ID is required');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs/${feeId}`, {
+                method: 'PUT',  
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(updatedData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update fee');
+            }
+            return data;         
+        
+        } catch (error) {
+            console.error(`Error updating fee ${feeId}:`, error);
+            throw error;
+        }
+    }
+
+    async DeleteFee(feeId) {
+        if (!feeId) throw new Error('Fee ID is required');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs/${feeId}`, {
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to delete fee');
+            }
+        } catch (error) {
+            console.error(`Error deleting fee ${feeId}:`, error);
+            throw error;    
+        }
+    }
+
+    async ToggleFee(feeId) {
+        if (!feeId) throw new Error('Fee ID is required');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs/${feeId}/toggle`, {
+                method: 'PATCH',
+                headers: this.getAuthHeaders()
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to toggle fee');
+            }
+        } catch (error) {
+            console.error(`Error toggling fee ${feeId}:`, error);
+            throw error;    
+        }
+    }
+
+    async GetFeeSummary () {
+        try {
+
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/configs/summary`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch fees summary');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching fees summary:', error);
+            throw error;
+        }
+    }
+
+        async getOrderBreakdown (orderId) {
+        try {
+
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/orders/${orderId}/breakdown`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch order breakdown');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching fees summary:', error);
+            throw error;
+        }
+    }
+
+    async getFeesEarnings(filters = {}) {
+        try {
+            const queryParams = this.buildQueryParams({
+                ...filters
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/admin-fees/reports/earnings?${queryParams}`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch fees earnings');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching fees earning:', error);
+            throw error;
+        }
+    }
+
 
 }
 

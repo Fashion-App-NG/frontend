@@ -1,4 +1,4 @@
-import { useState, useImperativeHandle, forwardRef, useEffect, useCallback} from "react";
+import { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 
 const ReusableForm = forwardRef(({
   fields,
@@ -6,6 +6,7 @@ const ReusableForm = forwardRef(({
   onSubmit,
   onCancel,
   submitText = "Submit",
+  onChange,
 }, ref) => {
 
   const getInitialFormData = useCallback(() => {
@@ -19,20 +20,40 @@ const ReusableForm = forwardRef(({
   const [formData, setFormData] = useState(getInitialFormData());
 
   useEffect(() => {
-    setFormData(getInitialFormData());
-  }, [getInitialFormData]);
+    setFormData((prev) => {
+      const updated = {};
+      fields.forEach((field) => {
+        // ✅ keep existing value if it exists
+        updated[field.name] =
+          prev[field.name] ?? initialData[field.name] ?? "";
+      });
+      return updated;
+    });
+  }, [fields, initialData]);
 
   useImperativeHandle(ref, () => ({
-    resetForm: () => setFormData(getInitialFormData())
+    resetForm: () => setFormData(getInitialFormData()),
+    setFormData: (data) => setFormData(data) // ✅ allow parent to override
   }));
 
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === "number" ? (value === "" ? "" : parseFloat(value)) : value
-    }));
+  const { name, value, type, checked } = e.target;
+    let newValue = value;
+
+    if (type === "number") {
+      newValue = value === "" ? "" : parseFloat(value);
+    } else if (type === "checkbox") {
+      newValue = checked;
+    }
+
+    const updatedFormData = {
+      ...formData,
+      [name]: newValue,
+    };
+
+    setFormData(updatedFormData);
+    if (onChange) onChange(updatedFormData); // 🔥 notify parent
   };
 
   const handleSubmit = (e) => {
@@ -71,7 +92,20 @@ const ReusableForm = forwardRef(({
                 rows={field.rows || 3}
                 required={field.required}
               />
-            ) : (
+            ) : field.type === "checkbox" ? (
+              <input
+                label={field.label}
+                type= {field.type}
+                name={field.name}
+                checked= {formData[field.name] || false}
+                onChange={(e) =>
+                setFormData(prev => ({
+                  ...prev,
+                  [field.name]: e.target.checked, // ✅ Boolean true/false
+                }))
+              }
+              />
+            )  : (
               <input
                 type={field.type}
                 name={field.name}

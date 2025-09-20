@@ -29,6 +29,10 @@ import CreateAdminPageWrapper from './pages/CreateAdminPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminMaterialPage from './pages/AdminMaterialPage';
 import AdminCreateMaterialPage from './pages/AdminCreateMaterialPage';
+import AdminCreateFeePage from './pages/AdminCreateFeePage';
+import AdminFeesPage from './pages/AdminFeesPage.jsx';
+import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
+import AdminEarningsPage from './pages/AdminEarningsPage.jsx';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -179,6 +183,10 @@ function App() {
               <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
               <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
               <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
+              <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
+              <Route path="/admin/fees-management" element={<AdminFeesPage />} />
+              <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
+              <Route path="/admin/earnings" element={<AdminEarningsPage />} />
 
               {/* Legal routes */}
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
