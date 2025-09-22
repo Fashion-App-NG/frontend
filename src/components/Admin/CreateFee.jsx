@@ -64,7 +64,7 @@ const CreateFee = ({ onCreated, onCancel }) => {
       }
 
       } catch (err) {
-      console.log("Error creating material:", err);
+      console.log("Error creating fee:", err);
       setMessage("❌ Failed to create fee. Check console for details.");
       } finally {
       setLoading(false);
