@@ -436,7 +436,7 @@ class AdminService {
             return data;
 
         } catch (error) {
-            console.error('Error fetching fees summary:', error);
+            console.error('Error fetching order breakdown:', error);
             throw error;
         }
     }
