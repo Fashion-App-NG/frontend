@@ -409,7 +409,7 @@ const FeesManagement = () => {
               setSelectedFee({ ...selectedFee, description: e.target.value })
             }
             className="w-full p-2 border rounded mb-4"
-            placeholder="Fee Value"
+            placeholder="Description"
           />
         </div>
       </UpdateModal>}
