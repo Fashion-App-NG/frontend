@@ -461,7 +461,7 @@ class AdminService {
             return data;
 
         } catch (error) {
-            console.error('Error fetching fees earning:', error);
+            console.error('Error fetching fees earnings:', error);
             throw error;
         }
     }
