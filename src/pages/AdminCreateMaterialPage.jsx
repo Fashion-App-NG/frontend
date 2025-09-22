@@ -1,4 +1,3 @@
-// Create: /pages/AdminDashboardPage.jsx
 import React from 'react';
 import AdminCreateMaterial from '../components/Admin/AdminCreateMaterial';
 

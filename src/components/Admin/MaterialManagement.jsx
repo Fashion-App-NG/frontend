@@ -50,7 +50,7 @@ const MaterialManagement = () => {
         pagination.limit, // limit per page
         filters // current filters state
       );
-      
+    
     if (data.success) {
     setMaterials(data.materials);
     setPagination((prev) => ({
@@ -115,7 +115,7 @@ const MaterialManagement = () => {
 
   //handle status update
   const handleMaterialUpdate = async () => {
-    if (!selectedMaterial || !selectedMaterial) return;
+    if (!selectedMaterial) return;
 
     setLoading(true);
     try {
