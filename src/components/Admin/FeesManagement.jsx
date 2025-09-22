@@ -44,7 +44,7 @@ const FeesManagement = () => {
   });
 
   const filterConfigs = [
-    { key: "level", type: "select", placeholder: "All Leavel", options: levelOptions },
+    { key: "level", type: "select", placeholder: "All Level", options: levelOptions },
     { key: "feeType", type: "select", placeholder: "All Fee Type", options: feeOptions },
     { key: "vendorId", type: "text", placeholder: "Filter by Vendor ID" },
     { key: "productId", type: "text", placeholder: "Filter by Product ID" },
