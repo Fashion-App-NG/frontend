@@ -25,16 +25,16 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 
 // Import admin pages
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import CreateAdminPageWrapper from './pages/CreateAdminPage';
-import AdminOrdersPage from './pages/AdminOrdersPage';
-import AdminMaterialPage from './pages/AdminMaterialPage';
-import AdminCreateMaterialPage from './pages/AdminCreateMaterialPage';
 import AdminCreateFeePage from './pages/AdminCreateFeePage';
-import AdminFeesPage from './pages/AdminFeesPage.jsx';
-import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
+import AdminCreateMaterialPage from './pages/AdminCreateMaterialPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminEarningsPage from './pages/AdminEarningsPage.jsx';
+import AdminFeesPage from './pages/AdminFeesPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminMaterialPage from './pages/AdminMaterialPage';
+import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
+import AdminOrdersPage from './pages/AdminOrdersPage';
+import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -149,9 +149,9 @@ function App() {
                   </CartProvider>
                 }
               >
-                <Route index element={<ShopperDashboardPage />} />
-                <Route path="dashboard" element={<ShopperDashboardPage />} />
+                <Route index element={<ShopperProductListPage />} /> {/* Changed from ShopperDashboardPage */}
                 <Route path="browse" element={<ShopperProductListPage />} />
+                <Route path="dashboard" element={<ShopperDashboardPage />} />
                 <Route path="product/:productId" element={<ProductDetailPage />} />
                 <Route path="orders" element={<ShopperOrders />} />
                 <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
