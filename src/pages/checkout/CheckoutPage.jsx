@@ -12,7 +12,7 @@ import ShippingInfoStep from './steps/ShippingInfoStep';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cartItems, cartCount } = useCart();
+  const { cartItems, cartCount, getCartTotal } = useCart();
   const {
     currentStep,
     loading,
@@ -74,6 +74,20 @@ const CheckoutPage = () => {
   useEffect(() => {
     reviewCart();
   }, [reviewCart]);
+
+  // Verify that UI and API totals match
+  useEffect(() => {
+    const uiTotal = getCartTotal();
+    const apiTotal = cart?.totalAmount || 0;
+    
+    if (Math.abs(uiTotal - apiTotal) > 1) {
+      console.warn('Cart total mismatch detected!', {
+        uiCalculated: uiTotal,
+        apiValue: apiTotal,
+        difference: uiTotal - apiTotal
+      });
+    }
+  }, [cart, getCartTotal]);
 
   if (loading) {
     return (
