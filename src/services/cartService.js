@@ -1,3 +1,5 @@
+import { CART_TOTAL_TOLERANCE } from '../constants/cart';
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 class CartService {
@@ -57,7 +59,7 @@ class CartService {
     }, 0);
     
     // Validate against API total
-    if (Math.abs(calculatedTotal - response.totalAmount) > 1) {
+    if (Math.abs(calculatedTotal - response.totalAmount) > CART_TOTAL_TOLERANCE) {
       console.warn('API cart total mismatch!', {
         calculated: calculatedTotal,
         received: response.totalAmount,

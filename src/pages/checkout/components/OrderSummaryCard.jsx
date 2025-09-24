@@ -27,16 +27,9 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
       maximumFractionDigits: 0
     }).format(price || 0);
 
-  const shippingError = false; // Remove error display since we're intentionally not showing shipping yet
-
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
-      {shippingError && (
-        <div className="bg-yellow-50 text-yellow-700 text-sm rounded px-2 py-1 mb-2">
-          Unable to calculate shipping. Please check your address or try again.
-        </div>
-      )}
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-gray-600">Subtotal</span>

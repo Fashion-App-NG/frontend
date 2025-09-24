@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
+import { CART_TOTAL_TOLERANCE } from '../../constants/cart';
 
 import CheckoutProgressBar from './components/CheckoutProgressBar';
 import OrderSummaryCard from './components/OrderSummaryCard';
@@ -80,7 +81,7 @@ const CheckoutPage = () => {
     const uiTotal = getCartTotal();
     const apiTotal = cart?.totalAmount || 0;
     
-    if (Math.abs(uiTotal - apiTotal) > 1) {
+    if (Math.abs(uiTotal - apiTotal) > CART_TOTAL_TOLERANCE) {
       console.warn('Cart total mismatch detected!', {
         uiCalculated: uiTotal,
         apiValue: apiTotal,
