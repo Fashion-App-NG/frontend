@@ -58,12 +58,9 @@ export const LoginForm = () => {
       if (response.user && response.token) {
         await login(response.user, response.token);
         
-        // Navigate to SHOPPER dashboard
-        navigate('/shopper/dashboard', { 
-          state: { 
-            message: `Welcome back, ${response.user?.firstName || response.user?.email || 'Shopper'}!`,
-            type: 'success'
-          }
+        // Navigate to product browsing page
+        navigate('/shopper/browse', { 
+          state: { from: location }
         });
       } else {
         setError('Invalid response from server. Please try again.');

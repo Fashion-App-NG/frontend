@@ -1,3 +1,5 @@
+import { CART_TOTAL_TOLERANCE } from '../constants/cart';
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 class CartService {
@@ -41,6 +43,33 @@ class CartService {
       }
     }
     return headers;
+  }
+
+  // Add this function to validate cart response data
+  processCartResponse(response) {
+    if (!response || !response.items) {
+      return response;
+    }
+    
+    // Ensure totals are recalculated and validated
+    const calculatedTotal = response.items.reduce((sum, item) => {
+      // Check for different price field names that might be used in your structure
+      const itemPrice = item.price || item.pricePerYard || 0;
+      return sum + (itemPrice * item.quantity);
+    }, 0);
+    
+    // Validate against API total
+    if (Math.abs(calculatedTotal - response.totalAmount) > CART_TOTAL_TOLERANCE) {
+      console.warn('API cart total mismatch!', {
+        calculated: calculatedTotal,
+        received: response.totalAmount,
+        difference: calculatedTotal - response.totalAmount
+      });
+      // Force correct total
+      response.totalAmount = calculatedTotal;
+    }
+    
+    return response;
   }
 
   async getCart() {
@@ -102,7 +131,7 @@ class CartService {
             if (process.env.NODE_ENV === 'development') {
               console.log('✅ Cart recovered successfully:', retryData.cart);
             }
-            return retryData;
+            return this.processCartResponse(retryData);
           } else if (retryResponse.status === 404) {
             return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
           }
@@ -129,7 +158,7 @@ class CartService {
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Cart fetched successfully:', data.cart);
       }
-      return data;
+      return this.processCartResponse(data);
       
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {

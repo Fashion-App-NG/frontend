@@ -7,12 +7,12 @@ const ShopperLayout = () => {
   const location = useLocation();
 
   const navigation = [
-    { name: 'Dashboard', href: '/shopper', icon: 'home' },
-    { name: 'Browse Products', href: '/shopper/browse', icon: 'grid' }, // ✅ Updated to shopper route
+    { name: 'Browse Products', href: '/shopper/browse', icon: 'grid' },
     { name: 'My Orders', href: '/shopper/orders', icon: 'clipboard' },
     { name: 'Shopping Cart', href: '/shopper/cart', icon: 'cart' },
     { name: 'Favorites', href: '/shopper/favorites', icon: 'heart' },
     { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' },
+    { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' }, // Moved lower, just before Settings
     { name: 'Settings', href: '/shopper/settings', icon: 'settings' },
     { name: 'Profile', href: '/shopper/profile', icon: 'user' }
   ];
