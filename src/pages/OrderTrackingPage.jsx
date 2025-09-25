@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
+import OrderActivityHistory from '../components/OrderActivityHistory';
+import OrderTrackingProgress from '../components/OrderTrackingProgress';
 import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
+import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import checkoutService from '../services/checkoutService';
 import shippingService from '../services/shippingService';
+import { normalizeOrderStatus } from '../utils/orderUtils';
 
 const OrderTrackingPage = () => {
   const params = useParams();
@@ -49,17 +53,25 @@ const OrderTrackingPage = () => {
         }
         
         const orderData = orderResponse.order || orderResponse;
+        orderData.status = normalizeOrderStatus(orderData);
         setOrder(orderData);
         
         // Next, fetch shipments for this order
         try {
           const shipmentsResponse = await shippingService.getOrderShipments(orderIdToUse);
           if (shipmentsResponse.success && shipmentsResponse.shipments?.length) {
-            setShipments(shipmentsResponse.shipments);
-            setActiveShipment(shipmentsResponse.shipments[0]);
+            // Normalize shipment data to ensure consistent property names
+            const normalizedShipments = shipmentsResponse.shipments.map(shipment => ({
+              ...shipment,
+              // Ensure estimatedDelivery is set correctly
+              estimatedDelivery: shipment.estimatedDeliveryDate || shipment.estimatedDelivery
+            }));
+            
+            setShipments(normalizedShipments);
+            setActiveShipment(normalizedShipments[0]);
             
             // For each shipment, fetch detailed tracking information
-            const shipmentWithTrackingPromises = shipmentsResponse.shipments.map(async (shipment) => {
+            const shipmentWithTrackingPromises = normalizedShipments.map(async (shipment) => {
               try {
                 const trackingResponse = await shippingService.getShipmentTracking(shipment.id);
                 if (trackingResponse.success && trackingResponse.tracking) {
@@ -162,6 +174,38 @@ const OrderTrackingPage = () => {
     }
   };
 
+  // Enhanced delivery time display
+  const formatDeliveryTime = (dateString) => {
+    if (!dateString) return null;
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.warn("Invalid date format:", dateString);
+        return dateString; // Return the original string if parsing fails
+      }
+      
+      const formattedDate = date.toLocaleDateString('en-NG', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      
+      const formattedTime = date.toLocaleTimeString('en-NG', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      return `${formattedDate} at ${formattedTime}`;
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return dateString; // Return the original string on error
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -200,6 +244,12 @@ const OrderTrackingPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <OrderBreadcrumbs 
+        orderId={order.id || order._id} 
+        orderNumber={order.orderNumber} 
+        currentPage="tracking"
+      />
+      
       <div className="flex items-center mb-6">
         <button onClick={goBack} className="text-gray-600 hover:text-black mr-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -207,6 +257,26 @@ const OrderTrackingPage = () => {
           </svg>
         </button>
         <h1 className="text-2xl font-bold">Order Tracking</h1>
+      </div>
+
+      {/* Add OrderTrackingProgress here */}
+      <OrderTrackingProgress status={order.status} />
+
+      <div className="mb-4 flex justify-between">
+        <div>
+          <span className="text-sm text-gray-600">Current Status:</span>
+          <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+            ${order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+            order.status === 'PROCESSING' ? 'bg-blue-100 text-blue-800' :
+            order.status === 'CONFIRMED' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800'}`
+          }>
+            {order.status?.replace(/_/g, ' ')}
+          </span>
+        </div>
+        <div className="text-sm text-gray-600">
+          Last Updated: {new Date(order.updatedAt || order.createdAt).toLocaleString()}
+        </div>
       </div>
 
       {shipments.length > 0 ? (
@@ -253,15 +323,57 @@ const OrderTrackingPage = () => {
                 </div>
                 
                 {activeShipment.estimatedDelivery && (
-                  <p className="text-sm text-gray-600 mb-6">
-                    Estimated delivery: {new Date(activeShipment.estimatedDelivery).toLocaleDateString()}
-                  </p>
+                  <div className="flex items-center mt-3 bg-gray-50 p-3 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium">Expected Delivery</p>
+                      <p className="text-xs text-gray-600">
+                        {formatDeliveryTime(activeShipment.estimatedDelivery)}
+                      </p>
+                    </div>
+                  </div>
                 )}
                 
                 <OrderTrackingTimeline 
                   tracking={activeShipment.tracking || []} 
                   status={activeShipment.status}
                 />
+
+                {/* Add vendor display to the tracking view */}
+                <div className="mt-2">
+                  <span className="text-sm text-gray-600 mr-2">Vendor:</span>
+                  <span className="text-sm font-medium">
+                    {activeShipment.vendorName || order.items?.find(item => 
+                      item.productId === activeShipment.items?.[0]?.productId
+                    )?.vendorName || "Unknown Vendor"}
+                  </span>
+                </div>
+
+                {/* Add carrier information to the tracking view */}
+                {activeShipment?.carrier && (
+                  <div className="flex items-center mt-2">
+                    <span className="text-sm text-gray-600 mr-2">Carrier:</span>
+                    <span className="inline-flex items-center bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
+                      {activeShipment.carrier.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {activeShipment?.trackingUrl && (
+                  <a 
+                    href={activeShipment.trackingUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center mt-2 text-blue-600 hover:text-blue-800"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Track with Carrier
+                  </a>
+                )}
               </>
             )}
           </div>
@@ -303,7 +415,73 @@ const OrderTrackingPage = () => {
             {order.shippingAddress?.country}
           </address>
         </div>
+
+        {/* Add this block to display estimated delivery */}
+        {order.shipments?.length > 0 && order.shipments[0].estimatedDeliveryDate && !activeShipment?.estimatedDelivery && (
+          <div className="mt-4">
+            <h3 className="text-md font-semibold mb-2">Estimated Delivery</h3>
+            <div className="flex items-center bg-gray-50 p-3 rounded">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-sm">
+                  {formatDeliveryTime(order.shipments[0].estimatedDeliveryDate)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Add OrderActivityHistory here */}
+      <OrderActivityHistory activities={order.activities || []} />
+
+      <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-4">Actions</h2>
+        <div className="flex flex-wrap gap-3">
+          <button 
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            onClick={() => window.print()}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print Details
+          </button>
+          
+          <button 
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            onClick={() => navigate(`/shopper/orders/${order.id || order._id}`)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            View Order Details
+          </button>
+          
+          {["SHIPPED", "DISPATCHED", "IN_TRANSIT"].includes(order.status) && (
+            <button className="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Confirm Delivery
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Development-only debugging */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-8 p-4 bg-gray-50 rounded-lg border">
+          <h2 className="text-lg font-semibold mb-4">Debug Info</h2>
+          <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+            {`Order: ${JSON.stringify(order, null, 2)}
+Shipments: ${JSON.stringify(shipments, null, 2)}
+Active Shipment: ${JSON.stringify(activeShipment, null, 2)}`}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };

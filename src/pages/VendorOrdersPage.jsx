@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import VendorStatusExplainer from '../components/Vendor/VendorStatusExplainer';
 import VendorProfileCheck from '../components/VendorProfileCheck';
 import { useAuth } from "../contexts/AuthContext";
 import { checkProfileCompleteness } from '../utils/validationUtils';
@@ -648,6 +649,7 @@ export default function VendorOrdersPage() {
   return (
     <div className="flex-1 ml-[254px] p-8 bg-gray-50 min-h-screen">
       <VendorProfileCheck />
+      <VendorStatusExplainer />
       {/* Updated Summary cards to focus on revenue-generating statuses */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg p-6 shadow-sm">

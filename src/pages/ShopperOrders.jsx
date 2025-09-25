@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext"; // ✅ Add this import
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
+import OrderStatusBadge from '../components/OrderStatusBadge';
+import { normalizeOrderStatus } from '../utils/orderUtils';
 
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
@@ -13,21 +15,6 @@ const FILTER_TABS = [
     { key: "PENDING", label: "Pending" },
     { key: "CANCELLED", label: "Cancelled" },
 ];
-
-const StatusBadge = ({ status }) => {
-    const map = {
-        COMPLETED: "bg-green-100 text-green-700",
-        CANCELLED: "bg-red-100 text-red-700",
-        IN_PROGRESS: "bg-yellow-100 text-yellow-700",
-        PENDING: "bg-orange-100 text-orange-700",
-        NEW_ORDER: "bg-blue-100 text-blue-700",
-    };
-    return (
-        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${map[status] || "bg-gray-100 text-gray-700"}`}>
-            {status.replace("_", " ").toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase())}
-        </span>
-    );
-};
 
 const PAGE_SIZE = 10;
 
@@ -211,6 +198,7 @@ const ShopperOrders = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredOrders.map((order) => {
                                 const vendorInfo = getVendorInfo(order);
+                                const normalizedOrder = { ...order, status: normalizeOrderStatus(order) };
                                 return (
                                     <tr key={order.id || order.orderId} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
@@ -243,7 +231,7 @@ const ShopperOrders = () => {
                                             {formatPrice(order.totalAmount)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge status={order.status} />
+                                            <OrderStatusBadge status={normalizedOrder.status} />
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-4 justify-end">
                                             <Link

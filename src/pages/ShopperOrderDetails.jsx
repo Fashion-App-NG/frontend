@@ -1,19 +1,29 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
+import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
+import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
+import { normalizeOrderStatus } from '../utils/orderUtils';
 
-const statusBadge = (status) => {
-  const map = {
-    COMPLETED: "bg-green-100 text-green-700",
-    CANCELLED: "bg-red-100 text-red-700",
-    IN_PROGRESS: "bg-yellow-100 text-yellow-700",
-    PENDING: "bg-orange-100 text-orange-700",
-    NEW_ORDER: "bg-blue-100 text-blue-700",
+// Create a function to handle payment status display
+const PaymentStatusBadge = ({ status }) => {
+  const normalizedStatus = status?.toUpperCase() || 'PENDING';
+  
+  const getStatusColor = () => {
+    switch(normalizedStatus) {
+      case 'COMPLETED': return 'bg-green-100 text-green-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'FAILED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
+  
   return (
-    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${map[status] || "bg-gray-100 text-gray-700"}`}>
-      {status?.replace("_", " ").toLowerCase().replace(/(^|\s)\S/g, l => l.toUpperCase())}
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${getStatusColor()}`}>
+      {normalizedStatus.replace(/_/g, ' ')}
     </span>
   );
 };
@@ -32,7 +42,8 @@ const ShopperOrderDetails = () => {
       try {
         const data = await checkoutService.getOrderById(orderId);
         console.log("Fetched order details:", data);
-        setOrder(data.order || data);
+        const normalizedOrder = { ...data.order, status: normalizeOrderStatus(data.order) };
+        setOrder(normalizedOrder);
       } catch (err) {
         setError(err.message || "Failed to fetch order.");
       } finally {
@@ -86,6 +97,11 @@ const ShopperOrderDetails = () => {
         <ArrowLeftIcon className="w-5 h-5 mr-1" />
         Back to Orders
       </button>
+      <OrderBreadcrumbs 
+        orderId={order.id || order._id}
+        orderNumber={order.orderNumber}
+        currentPage="details" 
+      />
       <div className="bg-white rounded-xl shadow border p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h1>
         <div className="flex flex-wrap gap-6 mb-4">
@@ -103,11 +119,11 @@ const ShopperOrderDetails = () => {
           </div>
           <div>
             <div className="text-xs text-gray-500">Status</div>
-            {statusBadge(order.status)}
+            <OrderStatusBadge status={order.status} size="lg" />
           </div>
           <div>
             <div className="text-xs text-gray-500">Payment</div>
-            {statusBadge(order.paymentStatus)}
+            <PaymentStatusBadge status={order.paymentStatus} />
           </div>
         </div>
         <div className="mb-4">
@@ -150,6 +166,7 @@ const ShopperOrderDetails = () => {
             ))}
           </ul>
         </div>
+        <OrderDeliveryInfo order={order} />
         {["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(order.status) && (
           <Link 
             to={`/shopper/orders/${order.orderId || order._id || order.id}/tracking`}

@@ -1,6 +1,6 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { VendorSidebar } from '../Vendor/VendorSidebar';
-import { useState } from 'react';
 
 const VendorLayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
