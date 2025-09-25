@@ -1,10 +1,10 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import OrderStatusBadge from '../components/OrderStatusBadge';
 import { useAuth } from "../contexts/AuthContext"; // ✅ Add this import
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
-import OrderStatusBadge from '../components/OrderStatusBadge';
 import { normalizeOrderStatus } from '../utils/orderUtils';
 
 const FILTER_TABS = [
@@ -96,6 +96,29 @@ const ShopperOrders = () => {
             name: 'Multiple Vendors', // Since one order can have items from multiple vendors
             email: null,
             initial: 'V'
+        };
+    };
+
+    // eslint-disable-next-line no-unused-vars
+    const getOrderStatusSummary = (order) => {
+        // Extract vendor-specific status information
+        const vendorGroups = {};
+        order.items.forEach(item => {
+            if (!vendorGroups[item.vendorId]) {
+                vendorGroups[item.vendorId] = {
+                    vendorName: item.vendorName || "Vendor",
+                    items: [],
+                    statuses: new Set()
+                };
+            }
+            vendorGroups[item.vendorId].items.push(item);
+            vendorGroups[item.vendorId].statuses.add(item.status || order.status);
+        });
+        
+        return {
+            overallStatus: order.status,
+            vendorCount: Object.keys(vendorGroups).length,
+            vendorGroups
         };
     };
 

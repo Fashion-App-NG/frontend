@@ -53,6 +53,23 @@ const ShopperOrderDetails = () => {
     fetchOrder();
   }, [orderId]);
 
+  const groupItemsByVendor = (items) => {
+    const vendorGroups = {};
+    items.forEach(item => {
+      const vendorId = item.vendorId;
+      if (!vendorGroups[vendorId]) {
+        vendorGroups[vendorId] = {
+          vendorId,
+          vendorName: item.vendorName || "Vendor",
+          items: [],
+          status: item.status || 'PROCESSING'
+        };
+      }
+      vendorGroups[vendorId].items.push(item);
+    });
+    return Object.values(vendorGroups);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -87,6 +104,8 @@ const ShopperOrderDetails = () => {
       </div>
     );
   }
+
+  const vendorGroups = groupItemsByVendor(order.items);
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -158,13 +177,35 @@ const ShopperOrderDetails = () => {
         </div>
         <div>
           <div className="text-xs text-gray-500 mb-1">Items</div>
-          <ul className="list-disc ml-5 text-sm text-gray-700">
-            {order.items?.map((item) => (
-              <li key={item.productId}>
-                <span className="font-medium">{item.name}</span> x{item.quantity} @ ₦{item.pricePerYard?.toLocaleString()}
-              </li>
-            ))}
-          </ul>
+          {/* Group items by vendor */}
+          {vendorGroups.map(group => (
+            <div key={group.vendorId} className="mb-6 border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">{group.vendorName}</h3>
+                <OrderStatusBadge status={group.status} />
+              </div>
+              
+              {/* List items from this vendor */}
+              <ul className="list-disc ml-5 text-sm text-gray-700">
+                {group.items.map((item) => (
+                  <li key={item.productId}>
+                    <span className="font-medium">{item.name}</span> x{item.quantity} @ ₦{item.pricePerYard?.toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+              
+              {/* Track button per vendor */}
+              <Link 
+                to={`/shopper/orders/${order.id || order._id}/tracking/${group.vendorId}`}
+                className="inline-flex items-center px-3 py-1 mt-2 text-sm border border-blue-600 rounded-md text-blue-600 hover:bg-blue-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Track Items
+              </Link>
+            </div>
+          ))}
         </div>
         <OrderDeliveryInfo order={order} />
         {["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(order.status) && (
@@ -176,7 +217,7 @@ const ShopperOrderDetails = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            Track Order
+            Track Complete Order
           </Link>
         )}
       </div>

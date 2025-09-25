@@ -84,6 +84,7 @@ import VendorProfilePage from './pages/VendorProfilePage';
 
 // Import order tracking component
 import OrderTrackingPage from './pages/OrderTrackingPage';
+import ShopperOrderTracking from './pages/ShopperOrderTracking';
 
 function App() {
   return (
@@ -203,7 +204,8 @@ function App() {
 
               {/* Order tracking route */}
               <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
-              <Route path="/shopper/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+              <Route path="/shopper/orders/:orderId/tracking" element={<ShopperOrderTracking />} />
+              <Route path="/shopper/orders/:orderId/tracking/:vendorId?" element={<ShopperOrderTracking />} />
 
               {/* 404 route */}
               <Route path="*" element={<NotFoundPage />} />
