@@ -4,18 +4,18 @@
  * @returns {string} Formatted price string
  */
 export const formatPrice = (price) => {
-  if (!price && price !== 0) return 'Price not available';
+  if (price == null || isNaN(price)) return "₦0";
+  return `₦${parseFloat(price).toLocaleString()}`;
+};
+
+// Add a new utility function for calculating total price with platform fee
+export const getPriceWithPlatformFee = (product) => {
+  if (!product) return 0;
   
-  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+  const basePrice = product.pricePerYard || product.price || 0;
+  const platformFee = product.platformFee?.amount || 0;
   
-  if (isNaN(numPrice)) return '₦0';
-  
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(numPrice);
+  return basePrice + platformFee;
 };
 
 export default formatPrice;

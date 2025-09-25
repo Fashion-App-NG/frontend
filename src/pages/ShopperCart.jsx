@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { formatPrice } from '../utils/formatPrice';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -10,60 +10,12 @@ const ShopperCart = () => {
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal,
     error
   } = useCart();
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
   }
-
-  // ✅ DEBUG: Log cart data in ShopperCart component
-  useEffect(() => {
-    console.log('🔍 SHOPPER CART DEBUG:', {
-      cartItemsLength: cartItems.length,
-      cartCount,
-      cartItems: cartItems.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        pricePerYard: item.pricePerYard,
-        quantity: item.quantity,
-        vendor: item.vendor,
-        vendorName: item.vendorName,
-        allItemFields: Object.keys(item)
-      })),
-      cartTotal: getCartTotal()
-    });
-  }, [cartItems, cartCount, getCartTotal]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] ShopperCart useEffect: cartItems changed:', cartItems);
-    }
-  }, [cartItems]);
-
-  const formatPrice = (price) => {
-    console.log('🔍 FORMAT PRICE DEBUG:', {
-      inputPrice: price,
-      typeOfPrice: typeof price,
-      parsedPrice: parseFloat(price || 0),
-      finalPrice: new Intl.NumberFormat('en-NG', {
-        style: 'currency',
-        currency: 'NGN',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(price || 0)
-    });
-    
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price || 0);
-  };
 
   // ✅ FIX: Use correct item ID and handle missing IDs
   const handleQuantityUpdate = (itemId, newQuantity) => {
@@ -79,6 +31,25 @@ const ShopperCart = () => {
     });
     
     updateCartItemQuantity(itemId, newQuantity);
+  };
+
+  // Calculate the correct line item total: (pricePerYard * quantity) + platformFeeAmount
+  const getLineItemTotal = (item) => {
+    const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
+    const platformFee = item.platformFeeAmount || 0;
+    return baseSubtotal + platformFee;
+  };
+
+  // Get individual price per yard (without the platform fee)
+  const getPricePerYard = (item) => {
+    return item.pricePerYard || 0;
+  };
+
+  // Calculate total amount for all items
+  const calculateSubtotal = () => {
+    return cartItems.reduce((total, item) => {
+      return total + getLineItemTotal(item);
+    }, 0);
   };
 
   if (cartItems.length === 0) {
@@ -131,7 +102,7 @@ const ShopperCart = () => {
                       src={getProductImageUrl(item)}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                onError={e => { e.target.src = '/images/default-product.jpg'; }}
+                      onError={e => { e.target.src = '/images/default-product.jpg'; }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -145,21 +116,29 @@ const ShopperCart = () => {
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-medium text-gray-900">{item.name}</h3>
-                  {item.vendor && (
+                  {item.vendorName && (
                     <p className="text-sm text-gray-600">
-                      by {item.vendor.storeName || item.vendor.name}
+                      by {item.vendorName}
                     </p>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-1">
-                    {formatPrice(item.pricePerYard || item.price)} per yard
+                    {formatPrice(getPricePerYard(item))} per yard
                   </p>
+                  
+                  {/* DEBUG: Display price breakdown for verification */}
+                  <div className="mt-1 p-1 bg-gray-100 rounded text-xs text-gray-800">
+                    <div>Base price: {formatPrice(item.pricePerYard)} × {item.quantity} = {formatPrice(item.pricePerYard * item.quantity)}</div>
+                    <div>Platform fee: {formatPrice(item.platformFeeAmount)} (flat fee)</div>
+                    <div>Line total: {formatPrice(getLineItemTotal(item))}</div>
+                  </div>
                 </div>
 
                 {/* Quantity Controls */}
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={() => handleQuantityUpdate(itemId, (item.quantity || 1) - 1)}
+                    onClick={() => handleQuantityUpdate(itemId, Math.max(1, (item.quantity || 1) - 1))}
                     className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                    disabled={(item.quantity || 1) <= 1}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -179,7 +158,7 @@ const ShopperCart = () => {
                 {/* Subtotal */}
                 <div className="text-right">
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatPrice((item.pricePerYard || item.price || 0) * (item.quantity || 1))}
+                    {formatPrice(getLineItemTotal(item))}
                   </p>
                   <button
                     onClick={() => removeFromCart(itemId)}
@@ -196,9 +175,26 @@ const ShopperCart = () => {
         {/* Cart Summary */}
         <div className="bg-gray-50 px-6 py-4">
           <div className="flex items-center justify-between text-lg font-semibold">
-            <span>Total:</span>
-            <span className="text-xl">{formatPrice(getCartTotal())}</span>
+            <span>Subtotal:</span>
+            <span className="text-xl">{formatPrice(calculateSubtotal())}</span>
           </div>
+          
+          {/* Shipping message - updated to indicate calculation at checkout */}
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>Shipping:</span>
+            <span>Calculated at checkout</span>
+          </div>
+
+          <div className="flex items-center justify-between text-lg font-semibold border-t pt-2 mt-2">
+            <span>Estimated Total:</span>
+            <span className="text-xl">{formatPrice(calculateSubtotal())}</span>
+          </div>
+          
+          {/* Add a note that final total will include shipping */}
+          <p className="text-xs text-gray-500 mt-1 mb-4">
+            Final total will include shipping costs based on delivery address.
+          </p>
+
           <div className="flex space-x-4 mt-4">
             <button
               onClick={async () => {

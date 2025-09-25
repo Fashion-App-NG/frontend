@@ -1,11 +1,26 @@
 import { useCart } from '../../../contexts/CartContext';
+import { formatPrice } from '../../../utils/formatPrice';
 
 // Accepts either sessionData (in-progress) or a confirmed order object
 const OrderSummaryCard = ({ cart, order, currentStep }) => {
-  const { getCartTotal } = useCart(); // Get the calculation directly from CartContext
+  const { cartItems } = useCart();
   
-  // Use CartContext calculation as the source of truth for subtotal
-  const subtotal = getCartTotal();
+  // Calculate the correct line item total: (pricePerYard * quantity) + platformFeeAmount
+  const getLineItemTotal = (item) => {
+    const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
+    const platformFee = item.platformFeeAmount || 0;
+    return baseSubtotal + platformFee;
+  };
+
+  // Calculate total amount for all items
+  const calculateSubtotal = () => {
+    return cartItems.reduce((total, item) => {
+      return total + getLineItemTotal(item);
+    }, 0);
+  };
+
+  // Use our own calculation as the source of truth for subtotal
+  const subtotal = calculateSubtotal();
   
   // Only show delivery fee and tax after shipping info step (step 2)
   const showDetailedBreakdown = currentStep >= 3;
@@ -18,14 +33,6 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
   const total = showDetailedBreakdown && cart?.totalWithShipping 
     ? cart.totalWithShipping 
     : subtotal;
-
-  const formatPrice = (price) =>
-    new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price || 0);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
+import { getPriceWithPlatformFee } from '../../utils/formatPrice';
 
 const ProductCard = ({
   product,
@@ -167,7 +168,7 @@ const ProductCard = ({
         </h3>
 
         <p className="text-lg font-bold text-blue-600 mb-2">
-          ₦{(product.pricePerYard || product.price || 0).toLocaleString()}
+          ₦{(getPriceWithPlatformFee(product)).toLocaleString()}
           <span className="text-xs text-gray-500 font-normal"> per yard</span>
         </p>
 

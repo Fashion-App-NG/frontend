@@ -275,6 +275,11 @@ const PaymentMethodStep = ({
     setOrderConfirmed(false);
   };
 
+  // Format price for display
+  const formatPrice = (amount) => {
+    return `₦${amount.toLocaleString()}`;
+  };
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
@@ -332,20 +337,20 @@ const PaymentMethodStep = ({
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium">₦{subtotal.toLocaleString()}</span>
+            <span className="font-medium">{formatPrice(subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Delivery Fee</span>
-            <span className="font-medium">₦{deliveryFee.toLocaleString()}</span>
+            <span className="font-medium">{formatPrice(deliveryFee)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Tax (7.5%)</span>
-            <span className="font-medium">₦{tax.toLocaleString()}</span>
+            <span className="font-medium">{formatPrice(tax)}</span>
           </div>
           <hr className="my-2" />
           <div className="flex justify-between text-lg font-semibold">
             <span>Total</span>
-            <span className="text-blue-600">₦{total.toLocaleString()}</span>
+            <span className="text-blue-600">{formatPrice(total)}</span>
           </div>
         </div>
       </div>

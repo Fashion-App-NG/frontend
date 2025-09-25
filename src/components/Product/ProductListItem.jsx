@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useCart } from '../../contexts/CartContext';
+import { getPriceWithPlatformFee } from '../../utils/formatPrice';
 
 const ProductListItem = ({ product, showVendorInfo = true }) => {
   const [imageError, setImageError] = useState(false);
-
-  const formatPrice = (price) => {
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice)) return '₦0';
-    return `₦${numPrice.toLocaleString()}`;
-  };
+  const { addToCart } = useCart();
 
   const getDisplayImage = () => {
     if (imageError) return '/api/placeholder/80/80';
@@ -87,7 +84,8 @@ const ProductListItem = ({ product, showVendorInfo = true }) => {
               {/* Price */}
               <div className="text-right">
                 <span className="text-lg font-semibold text-blue-600">
-                  {formatPrice(product.pricePerYard || product.price)}
+                  ₦₦{(getPriceWithPlatformFee(product)).toLocaleString()}
+                  <span className="text-xs text-gray-500 ml-1">(includes platform fee)</span>
                 </span>
                 <span className="text-xs text-gray-500 block">per yard</span>
               </div>
@@ -107,7 +105,25 @@ const ProductListItem = ({ product, showVendorInfo = true }) => {
                 >
                   View
                 </Link>
-                <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Debug - List View Add to Cart:', {
+                      basePrice: product.pricePerYard || product.price,
+                      platformFee: product.platformFee?.amount,
+                      totalWithFee: getPriceWithPlatformFee(product)
+                    });
+                    
+                    addToCart({
+                      ...product,
+                      vendorId: product.vendorId || product.vendor?.id,
+                      quantity: 1
+                    });
+                  }}
+                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
                   Add to Cart
                 </button>
               </div>

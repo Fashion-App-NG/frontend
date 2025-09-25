@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import cartService from "../services/cartService";
+import { getPriceWithPlatformFee } from '../utils/formatPrice';
 
 const CartContext = createContext();
 
@@ -88,6 +89,15 @@ export const CartProvider = ({ children }) => {
 
   // --- Add Item to Cart ---
   const addToCart = useCallback(async (product) => {
+    // Debug logging
+    console.log('🔍 DEBUG - addToCart payload:', {
+      productData: product,
+      basePrice: product.pricePerYard || product.price || 0,
+      platformFee: product.platformFee?.amount || 0,
+      totalPrice: (product.pricePerYard || product.price || 0) + (product.platformFee?.amount || 0),
+      calculatedByUtility: getPriceWithPlatformFee(product)
+    });
+    
     setIsLoading(true);
     setError(null);
     try {
@@ -233,6 +243,7 @@ export const CartProvider = ({ children }) => {
     loadCart,
     mergeGuestCart,
     getCartTotal,
+    setCartItems // Add this line
   };
 
   // --- Debug: Log cart state changes ---
