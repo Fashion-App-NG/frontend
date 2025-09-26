@@ -4,6 +4,8 @@ import LoadingSpinner from '../components/Common/LoadingSpinner';
 import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
 import checkoutService from '../services/checkoutService';
+import { formatPrice } from "../utils/formatPrice";
+import { getDisplayPricePerYard } from "../utils/priceCalculations";
 
 const ShopperOrderTracking = () => {
   const { orderId, vendorId } = useParams();
@@ -233,45 +235,16 @@ const ShopperOrderTracking = () => {
           <h3 className="font-medium text-lg mb-3">Items Being Tracked</h3>
           <div className="space-y-4">
             {displayItems.map((item) => (
-              <div key={item.productId} className="flex items-center space-x-4">
-                {item.image && (
-                  <img 
-                    src={item.image} 
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                )}
-                <div className="flex-grow">
+              <div key={item.productId} className="flex items-center">
+                <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded mr-4" />
+                <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-sm text-gray-600">
-                    Quantity: {item.quantity} • ₦{item.pricePerYard?.toLocaleString()} per yard
+                    Quantity: {item.quantity} • {formatPrice(getDisplayPricePerYard(item))} per yard
                   </p>
-                  <div className="mt-1 flex items-center">
-                    <span 
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        item.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
-                        item.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {item.status?.replace(/_/g, ' ') || order.status?.replace(/_/g, ' ')}
-                    </span>
-                    
-                    <span className="text-xs text-gray-500 ml-2">
-                      Vendor: {getVendorName(item.vendorId)}
-                    </span>
-                    
-                    {item.trackingUrl && (
-                      <a 
-                        href={item.trackingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        Track Item
-                      </a>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-500">
+                    Vendor: {item.vendorName || 'Unknown'}
+                  </p>
                 </div>
               </div>
             ))}

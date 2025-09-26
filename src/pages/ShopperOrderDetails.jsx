@@ -5,7 +5,9 @@ import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
+import { formatPrice } from "../utils/formatPrice";
 import { normalizeOrderStatus } from '../utils/orderUtils';
+import { calculateSubtotal, getDisplayPricePerYard } from "../utils/priceCalculations";
 
 // Create a function to handle payment status display
 const PaymentStatusBadge = ({ status }) => {
@@ -134,7 +136,7 @@ const ShopperOrderDetails = () => {
           </div>
           <div>
             <div className="text-xs text-gray-500">Amount</div>
-            <div className="font-semibold text-blue-700">₦{order.totalAmount?.toLocaleString()}</div>
+            <div className="font-semibold text-blue-700">{formatPrice(order.totalWithShipping || order.totalAmount || calculateSubtotal(order.items))}</div>
           </div>
           <div>
             <div className="text-xs text-gray-500">Status</div>
@@ -186,13 +188,13 @@ const ShopperOrderDetails = () => {
               </div>
               
               {/* List items from this vendor */}
-              <ul className="list-disc ml-5 text-sm text-gray-700">
+              <div className="items">
                 {group.items.map((item) => (
-                  <li key={item.productId}>
-                    <span className="font-medium">{item.name}</span> x{item.quantity} @ ₦{item.pricePerYard?.toLocaleString()}
-                  </li>
+                  <p key={item.productId}>
+                    <span className="font-medium">{item.name}</span> x{item.quantity} @ {formatPrice(getDisplayPricePerYard(item))}
+                  </p>
                 ))}
-              </ul>
+              </div>
               
               {/* Track button per vendor */}
               <Link 

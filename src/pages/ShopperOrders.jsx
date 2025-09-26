@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext"; // ✅ Add this import
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
 import { normalizeOrderStatus } from '../utils/orderUtils';
+import { calculateSubtotal } from "../utils/priceCalculations"; // Add this import
 
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
@@ -250,8 +251,8 @@ const ShopperOrders = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {order.products?.length || order.items?.length || 0} items
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {formatPrice(order.totalAmount)}
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {formatPrice(order.totalWithShipping || order.totalAmount || calculateSubtotal(order.items))}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <OrderStatusBadge status={normalizedOrder.status} />
