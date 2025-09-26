@@ -4,6 +4,7 @@ import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
+import { formatPrice } from '../../../utils/formatPrice';
 
 const PaymentMethodStep = ({ 
   onSubmit, 
@@ -29,7 +30,7 @@ const PaymentMethodStep = ({
   }, []);
 
   const { user } = useAuth();
-  const { getCartTotal } = useCart();
+  const { getCartTotal, cartItems } = useCart(); // Add cartItems here
   
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
@@ -86,11 +87,35 @@ const PaymentMethodStep = ({
     }
   }, [paymentError, paymentErrorProp]);
 
-  // Calculate totals
-  const subtotal = cart ? cart.totalAmount : getCartTotal();
+  // Calculate totals - Update this section
+  const getCorrectSubtotal = () => {
+    // If we have a cart.totalAmount from the API, use it
+    //if (cart?.totalAmount) return cart.totalAmount;
+    
+    // Otherwise, use the same calculation method as OrderSummaryCard
+    return cartItems.reduce((total, item) => {
+      const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
+      const platformFee = item.platformFeeAmount || 0;
+      return total + baseSubtotal + platformFee;
+    }, 0);
+  };
+  
+  const subtotal = getCorrectSubtotal();
   const deliveryFee = cart ? cart.shippingCost : 3000;
   const tax = cart ? cart.taxAmount : Math.round(subtotal * 0.075); // 7.5% VAT
   const total = cart ? cart.totalWithShipping : subtotal + deliveryFee + tax;
+
+  // Make sure we're using the correct value from the cart context
+  useEffect(() => {
+    // Debug the values
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Payment Summary Debug:', {
+        cartTotalAmount: cart?.totalAmount,
+        contextTotal: getCartTotal(),
+        orderSummaryTotal: 531000 // The correct value shown in Order Summary
+      });
+    }
+  }, [cart, getCartTotal]);
 
   // Format payment error message for production
   const formatErrorForDisplay = (error) => {
@@ -122,7 +147,7 @@ const PaymentMethodStep = ({
     amount: formatAmountForPaystack(total),
     currency: PAYSTACK_CONFIG.currency,
     publicKey: PAYSTACK_CONFIG.publicKey,
-    text: `Pay ₦${total.toLocaleString()}`,
+    text: `Pay ${formatPrice(total)}`, // This will now use the imported formatPrice
     channels: PAYSTACK_CONFIG.channels,
     metadata: {
       customerName: customerInfo?.name,
@@ -273,11 +298,6 @@ const PaymentMethodStep = ({
     setPaymentError(null);
     if (clearPaymentError) clearPaymentError();
     setOrderConfirmed(false);
-  };
-
-  // Format price for display
-  const formatPrice = (amount) => {
-    return `₦${amount.toLocaleString()}`;
   };
 
   return (

@@ -27,6 +27,15 @@ const CartReviewStep = ({ onNext }) => {
     }, 0);
   };
 
+  // Add this function to calculate display price per yard
+  const getDisplayPricePerYard = (item) => {
+    const basePrice = item.pricePerYard || 0;
+    // Add the platform fee divided by 1 (not the actual quantity)
+    // This keeps the display price consistent regardless of quantity
+    const platformFeePerYard = (item.platformFeeAmount || 0) / 1;
+    return basePrice + platformFeePerYard;
+  };
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Review Your Cart</h2>
@@ -62,16 +71,9 @@ const CartReviewStep = ({ onNext }) => {
               {item.vendorName && (
                 <p className="text-sm text-gray-600">by {item.vendorName}</p>
               )}
-              <p className="text-sm text-blue-600">
-                {formatPrice(getPricePerYard(item))} per yard
+              <p className="text-blue-600 font-semibold">
+                {formatPrice(getDisplayPricePerYard(item))} per yard
               </p>
-              
-              {/* DEBUG: Display price breakdown for verification */}
-              <div className="mt-1 p-1 bg-gray-100 rounded text-xs text-gray-800">
-                <div>Base price: {formatPrice(item.pricePerYard)} × {item.quantity} = {formatPrice(item.pricePerYard * item.quantity)}</div>
-                <div>Platform fee: {formatPrice(item.platformFeeAmount)} (flat fee)</div>
-                <div>Line total: {formatPrice(getLineItemTotal(item))}</div>
-              </div>
             </div>
 
             {/* Quantity Controls */}

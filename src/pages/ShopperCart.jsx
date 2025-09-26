@@ -45,6 +45,15 @@ const ShopperCart = () => {
     return item.pricePerYard || 0;
   };
 
+  // Get display price per yard (including the platform fee portion)
+  const getDisplayPricePerYard = (item) => {
+    const basePrice = item.pricePerYard || 0;
+    // Add the platform fee divided by 1 (not the actual quantity)
+    // This keeps the display price consistent regardless of quantity
+    const platformFeePerYard = (item.platformFeeAmount || 0) / 1;
+    return basePrice + platformFeePerYard;
+  };
+
   // Calculate total amount for all items
   const calculateSubtotal = () => {
     return cartItems.reduce((total, item) => {
@@ -122,15 +131,8 @@ const ShopperCart = () => {
                     </p>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-1">
-                    {formatPrice(getPricePerYard(item))} per yard
+                    {formatPrice(getDisplayPricePerYard(item))} per yard
                   </p>
-                  
-                  {/* DEBUG: Display price breakdown for verification */}
-                  <div className="mt-1 p-1 bg-gray-100 rounded text-xs text-gray-800">
-                    <div>Base price: {formatPrice(item.pricePerYard)} × {item.quantity} = {formatPrice(item.pricePerYard * item.quantity)}</div>
-                    <div>Platform fee: {formatPrice(item.platformFeeAmount)} (flat fee)</div>
-                    <div>Line total: {formatPrice(getLineItemTotal(item))}</div>
-                  </div>
                 </div>
 
                 {/* Quantity Controls */}
