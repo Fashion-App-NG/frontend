@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
+import OrderTrackingProgress from '../components/OrderTrackingProgress';
 import checkoutService from '../services/checkoutService';
 import { formatPrice } from "../utils/formatPrice";
 import { getDisplayPricePerYard } from "../utils/priceCalculations";
@@ -186,6 +187,8 @@ const ShopperOrderTracking = () => {
             Placed on: {new Date(order.createdAt).toLocaleDateString()}
           </span>
         </div>
+        
+        <OrderTrackingProgress status={order.status} />
         
         <OrderTrackingTimeline 
           items={displayItems}
