@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useTax } from '../contexts/TaxContext';
 import { formatPrice } from '../utils/formatPrice';
+import { getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -12,6 +14,8 @@ const ShopperCart = () => {
     clearCart, 
     error
   } = useCart();
+
+  const { taxRate } = useTax();
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
@@ -131,7 +135,8 @@ const ShopperCart = () => {
                     </p>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-1">
-                    {formatPrice(getDisplayPricePerYard(item))} per yard
+                    {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
+                    <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                   </p>
                 </div>
 
@@ -160,7 +165,7 @@ const ShopperCart = () => {
                 {/* Subtotal */}
                 <div className="text-right">
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatPrice(getLineItemTotal(item))}
+                    {formatPrice(getAllInclusiveLineItemTotal(item, taxRate))}
                   </p>
                   <button
                     onClick={() => removeFromCart(itemId)}
@@ -178,7 +183,7 @@ const ShopperCart = () => {
         <div className="bg-gray-50 px-6 py-4">
           <div className="flex items-center justify-between text-lg font-semibold">
             <span>Subtotal:</span>
-            <span className="text-xl">{formatPrice(calculateSubtotal())}</span>
+            <span className="text-xl">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
           </div>
           
           {/* Shipping message - updated to indicate calculation at checkout */}

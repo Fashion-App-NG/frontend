@@ -5,6 +5,8 @@ import { toast } from 'react-toastify';
 import VendorStatusExplainer from '../components/Vendor/VendorStatusExplainer';
 import VendorProfileCheck from '../components/VendorProfileCheck';
 import { useAuth } from "../contexts/AuthContext";
+import { formatPrice } from '../utils/formatPrice';
+import { getDisplayPricePerYard } from '../utils/priceCalculations';
 import { checkProfileCompleteness } from '../utils/validationUtils';
 
 const ORDER_STATUSES = [
@@ -33,18 +35,6 @@ const PAYMENT_STYLES = {
   "PENDING": { bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-400" },
   "REFUNDED": { bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-400" },
   "FAILED": { bg: "bg-red-100", text: "text-red-700", dot: "bg-red-400" }
-};
-
-// Format price function
-const formatPrice = (price) => {
-  if (!price) return "Not set";
-  
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(price);
 };
 
 // Get product image URL (adapted from productUtils)
@@ -859,7 +849,7 @@ export default function VendorOrdersPage() {
                               <div className="text-xs text-gray-500 flex flex-wrap gap-x-4">
                                 <span>{item.materialType} | {item.pattern}</span>
                                 <span>Quantity: {item.quantity} {item.quantity > 1 ? 'yards' : 'yard'}</span>
-                                <span>Price: {formatPrice(item.pricePerYard || item.price || 0)}</span>
+                                <span>Price: {formatPrice(getDisplayPricePerYard(item))}</span>
                                 <span>Status: <StatusBadge status={item.status} /></span>
                               </div>
                             </div>

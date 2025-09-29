@@ -4,6 +4,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import AuthProvider from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import FavoritesProvider from './contexts/FavoritesContext';
+import { TaxProvider } from './contexts/TaxContext';
 
 // Import header component
 import Header from './components/Common/Header';
@@ -90,129 +91,131 @@ function App() {
   return (
     <AuthProvider>
       <FavoritesProvider>
-        <Router>
-          <div className="App">
-            <Header />
-            <Routes>
-              {/* Home and public routes */}
-              <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
-              <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
-              <Route path="/product/:id" element={<ProductDetailPage />} />
-              <Route path="/products" element={<Navigate to="/browse" replace />} />
-              <Route path="/explore" element={<GuestBrowsePage />} />
+        <TaxProvider>
+          <Router>
+            <div className="App">
+              <Header />
+              <Routes>
+                {/* Home and public routes */}
+                <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
+                <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
+                <Route path="/product/:id" element={<ProductDetailPage />} />
+                <Route path="/products" element={<Navigate to="/browse" replace />} />
+                <Route path="/explore" element={<GuestBrowsePage />} />
 
-              {/* Auth routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/login/shopper" element={<LoginPage />} />
-              <Route path="/login/vendor" element={<VendorLoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/register/shopper" element={<RegisterPage />} />
-              <Route path="/register/vendor" element={<VendorRegisterPage />} />
-              <Route path="/admin/login" element={<AdminLoginPage />} />
-              <Route path="/admin/create" element={<CreateAdminPageWrapper />} />
-              <Route path="/otp" element={<OTPPage />} />
-              <Route path="/verify-otp" element={<OTPPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<PasswordResetPage />} />
+                {/* Auth routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login/shopper" element={<LoginPage />} />
+                <Route path="/login/vendor" element={<VendorLoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/register/shopper" element={<RegisterPage />} />
+                <Route path="/register/vendor" element={<VendorRegisterPage />} />
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/admin/create" element={<CreateAdminPageWrapper />} />
+                <Route path="/otp" element={<OTPPage />} />
+                <Route path="/verify-otp" element={<OTPPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<PasswordResetPage />} />
 
-              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+                <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
-              {/*Browse route with CartProvider */}
-              <Route
-                path="/browse"
-                element={
-                  <CartProvider key="browse-provider">
-                    <GuestBrowsePage />
-                  </CartProvider>
-                }
-              />
+                {/*Browse route with CartProvider */}
+                <Route
+                  path="/browse"
+                  element={
+                    <CartProvider key="browse-provider">
+                      <GuestBrowsePage />
+                    </CartProvider>
+                  }
+                />
 
-              {/* Guest routes with CartProvider */}
-              <Route
-                path="/guest/*"
-                element={
-                  <CartProvider key="guest-provider">
-                    <Routes>
-                      <Route path="browse" element={<GuestBrowsePage />} />
-                      <Route path="cart" element={<GuestCartPage />} />
-                      <Route path="checkout" element={<GuestCheckoutPage />} />  {/* ✅ Add checkout route */}
-                    </Routes>
-                  </CartProvider>
-                }
-              />
+                {/* Guest routes with CartProvider */}
+                <Route
+                  path="/guest/*"
+                  element={
+                    <CartProvider key="guest-provider">
+                      <Routes>
+                        <Route path="browse" element={<GuestBrowsePage />} />
+                        <Route path="cart" element={<GuestCartPage />} />
+                        <Route path="checkout" element={<GuestCheckoutPage />} />  {/* ✅ Add checkout route */}
+                      </Routes>
+                    </CartProvider>
+                  }
+                />
 
-              {/* Shopper routes with CartProvider */}
-              <Route
-                path="/shopper/*"
-                element={
-                  <CartProvider key="shopper-provider">
-                    <ShopperLayout />
-                  </CartProvider>
-                }
-              >
-                <Route index element={<ShopperProductListPage />} /> {/* Changed from ShopperDashboardPage */}
-                <Route path="browse" element={<ShopperProductListPage />} />
-                <Route path="dashboard" element={<ShopperDashboardPage />} />
-                <Route path="product/:productId" element={<ProductDetailPage />} />
-                <Route path="orders" element={<ShopperOrders />} />
-                <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
-                <Route path="cart" element={<ShopperCart />} />
-                <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="profile" element={<ShopperProfile />} />
-                <Route path="favorites" element={<FavouritesPage />} />
-                <Route path="notifications" element={<ShopperNotifications />} />
-                <Route path="settings" element={<ShopperSettings />} />
-              </Route>
+                {/* Shopper routes with CartProvider */}
+                <Route
+                  path="/shopper/*"
+                  element={
+                    <CartProvider key="shopper-provider">
+                      <ShopperLayout />
+                    </CartProvider>
+                  }
+                >
+                  <Route index element={<ShopperProductListPage />} /> {/* Changed from ShopperDashboardPage */}
+                  <Route path="browse" element={<ShopperProductListPage />} />
+                  <Route path="dashboard" element={<ShopperDashboardPage />} />
+                  <Route path="product/:productId" element={<ProductDetailPage />} />
+                  <Route path="orders" element={<ShopperOrders />} />
+                  <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
+                  <Route path="cart" element={<ShopperCart />} />
+                  <Route path="checkout" element={<CheckoutPage />} />
+                  <Route path="profile" element={<ShopperProfile />} />
+                  <Route path="favorites" element={<FavouritesPage />} />
+                  <Route path="notifications" element={<ShopperNotifications />} />
+                  <Route path="settings" element={<ShopperSettings />} />
+                </Route>
 
-              {/* Legacy shopper routes */}
-              <Route path="/dashboard" element={<Navigate to="/shopper" replace />} />
-              <Route path="/explore-page" element={<ExplorePage />} />
-              <Route path="/favourites" element={<FavouritesPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
+                {/* Legacy shopper routes */}
+                <Route path="/dashboard" element={<Navigate to="/shopper" replace />} />
+                <Route path="/explore-page" element={<ExplorePage />} />
+                <Route path="/favourites" element={<FavouritesPage />} />
+                <Route path="/orders" element={<OrdersPage />} />
 
-              {/* Vendor routes */}
-              <Route path="/vendor/*" element={<VendorLayout />}>
-                <Route index element={<VendorDashboardPage />} />
-                <Route path="dashboard" element={<VendorDashboardPage />} />
-                <Route path="products" element={<VendorProductListPage />} />
-                <Route path="products/:id" element={<VendorProductDetailPage />} />
-                <Route path="products/:id/edit" element={<VendorProductEditPage />} />
-                <Route path="upload" element={<VendorProductUploadPage />} />
-                <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
-                <Route path="orders" element={<VendorOrdersPage />} />
-                <Route path="orders/:orderId" element={<VendorOrderDetailsPage />} />
-                <Route path="sales" element={<VendorSalesPage />} />
-                <Route path="notifications" element={<VendorNotificationsPage />} />
-                <Route path="settings" element={<VendorSettingsPage />} />
-                <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
-              </Route>
+                {/* Vendor routes */}
+                <Route path="/vendor/*" element={<VendorLayout />}>
+                  <Route index element={<VendorDashboardPage />} />
+                  <Route path="dashboard" element={<VendorDashboardPage />} />
+                  <Route path="products" element={<VendorProductListPage />} />
+                  <Route path="products/:id" element={<VendorProductDetailPage />} />
+                  <Route path="products/:id/edit" element={<VendorProductEditPage />} />
+                  <Route path="upload" element={<VendorProductUploadPage />} />
+                  <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
+                  <Route path="orders" element={<VendorOrdersPage />} />
+                  <Route path="orders/:orderId" element={<VendorOrderDetailsPage />} />
+                  <Route path="sales" element={<VendorSalesPage />} />
+                  <Route path="notifications" element={<VendorNotificationsPage />} />
+                  <Route path="settings" element={<VendorSettingsPage />} />
+                  <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
+                </Route>
 
-              {/* Admin routes */}
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
-              <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
-              <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
-              <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
-              <Route path="/admin/fees-management" element={<AdminFeesPage />} />
-              <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
-              <Route path="/admin/earnings" element={<AdminEarningsPage />} />
+                {/* Admin routes */}
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
+                <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
+                <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
+                <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
+                <Route path="/admin/fees-management" element={<AdminFeesPage />} />
+                <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
+                <Route path="/admin/earnings" element={<AdminEarningsPage />} />
 
-              {/* Legal routes */}
-              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                {/* Legal routes */}
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
-              {/* Order tracking route */}
-              <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
-              <Route path="/shopper/orders/:orderId/tracking" element={<ShopperOrderTracking />} />
-              <Route path="/shopper/orders/:orderId/tracking/:vendorId?" element={<ShopperOrderTracking />} />
+                {/* Order tracking route */}
+                <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+                <Route path="/shopper/orders/:orderId/tracking" element={<ShopperOrderTracking />} />
+                <Route path="/shopper/orders/:orderId/tracking/:vendorId?" element={<ShopperOrderTracking />} />
 
-              {/* 404 route */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-            <ToastContainer position="top-right" autoClose={5000} />
-          </div>
-        </Router>
+                {/* 404 route */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+              <ToastContainer position="top-right" autoClose={5000} />
+            </div>
+          </Router>
+        </TaxProvider>
       </FavoritesProvider>
     </AuthProvider>
   );

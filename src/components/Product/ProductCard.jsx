@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import { getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { useTax } from '../../contexts/TaxContext';
+import { formatPrice } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
 const ProductCard = ({
   product,
@@ -16,6 +18,7 @@ const ProductCard = ({
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart, isInCart, isLoading, error } = useCart(); // <-- add error
   const { isAuthenticated } = useAuth();
+  const { taxRate } = useTax();
 
   const productId = product._id || product.id;
   const isProductFavorited = isFavorite?.(productId) || false;
@@ -168,8 +171,8 @@ const ProductCard = ({
         </h3>
 
         <p className="text-lg font-bold text-blue-600 mb-2">
-          ₦{(getPriceWithPlatformFee(product)).toLocaleString()}
-          <span className="text-xs text-gray-500 font-normal"> per yard</span>
+          {formatPrice(getAllInclusivePricePerYard(product, taxRate))}
+          <span className="text-xs text-gray-500 font-normal"> per yard (incl. fees & tax)</span>
         </p>
 
         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">

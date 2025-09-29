@@ -1,12 +1,14 @@
+import { useState } from 'react'; // Add this import
 import { useCart } from '../../../contexts/CartContext';
+import { useTax } from '../../../contexts/TaxContext';
 import { formatPrice } from '../../../utils/formatPrice';
+import { getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
 import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext }) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Dev - [PAGE] CartReviewStep rendered');
-  }
-  const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
+  const { cartItems, updateCartItemQuantity } = useCart(); // Remove unused removeFromCart
+  const { taxRate } = useTax();
+  const [shippingCost] = useState(0); // Add this to define shippingCost (will be calculated at shipping step)
 
   // Calculate the correct line item total: (pricePerYard * quantity) + platformFeeAmount
   const getLineItemTotal = (item) => {
@@ -38,15 +40,15 @@ const CartReviewStep = ({ onNext }) => {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-6">Review Your Cart</h2>
+      <h2 className="text-xl font-semibold mb-6">Review Cart</h2>
 
       {cartItems.map((item, index) => {
         // Generate consistent item key and ID
         const itemKey = item.id || item.productId || `item-${index}`;
         const itemId = item.productId || item.id; // Use productId as primary identifier
-        
+
         return (
-          <div key={itemKey} className="flex items-center space-x-4 py-4 border-b border-gray-200">
+          <div key={itemKey} className="flex items-center py-4 border-b">
             {/* Product Image */}
             <div className="flex-shrink-0 w-16 h-16">
               {item.image ? (
@@ -66,13 +68,15 @@ const CartReviewStep = ({ onNext }) => {
             </div>
 
             {/* Product Info */}
-            <div className="flex-1">
-              <h3 className="font-medium text-gray-900">{item.name}</h3>
+            <div className="flex-1 ml-4">
+              <h3 className="font-medium">{item.name}</h3>
               {item.vendorName && (
                 <p className="text-sm text-gray-600">by {item.vendorName}</p>
               )}
               <p className="text-blue-600 font-semibold">
-                {formatPrice(getDisplayPricePerYard(item))} per yard
+                {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
+                <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
+                × {item.quantity} yards
               </p>
             </div>
 
@@ -98,39 +102,31 @@ const CartReviewStep = ({ onNext }) => {
               </button>
             </div>
 
-            {/* Subtotal */}
-            <div className="text-right">
-              <p className="font-semibold text-gray-900">
-                {formatPrice(getLineItemTotal(item))}
-              </p>
-              <button
-                onClick={() => removeFromCart(itemId)}
-                className="text-sm text-red-600 hover:text-red-700 mt-1"
-              >
-                Remove
-              </button>
+            {/* Line item total */}
+            <div className="font-medium">
+              {formatPrice(getAllInclusiveLineItemTotal(item, taxRate))}
             </div>
           </div>
         );
       })}
-      
-      {/* Order Summary */}
-      <div className="mt-8 border-t pt-4">
+
+      {/* Summary totals */}
+      <div className="mt-6 border-t pt-4">
         <div className="flex justify-between mb-2">
-          <span className="text-gray-600">Subtotal:</span>
-          <span className="font-semibold">{formatPrice(calculateSubtotal())}</span>
+          <span className="text-gray-600">Subtotal (incl. fees & tax):</span>
+          <span className="font-semibold">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
         </div>
-        <div className="flex justify-between text-sm text-gray-600 mb-2">
-          <span>Shipping:</span>
-          <span>Calculated at checkout</span>
+        <div className="flex justify-between mb-2">
+          <span className="text-gray-600">Shipping:</span>
+          <span className="font-semibold">{formatPrice(shippingCost || 0)}</span>
         </div>
-        <div className="flex items-center justify-between text-lg font-semibold border-t pt-2 mt-2">
-          <span>Estimated Total:</span>
-          <span className="text-xl">{formatPrice(calculateSubtotal())}</span>
+        <div className="flex justify-between mt-4 text-lg font-bold">
+          <span>Total:</span>
+          <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate) + (shippingCost || 0))}</span>
         </div>
-        <p className="text-xs text-gray-500 mt-1 mb-4">
-          Final total will include shipping costs based on delivery address.
-        </p>
+        <div className="text-xs text-gray-500 mt-1">
+          All prices include platform fees and {Math.round(taxRate * 100)}% tax.
+        </div>
       </div>
 
       <div className="mt-6 flex justify-end">

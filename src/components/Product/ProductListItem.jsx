@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { useTax } from '../../contexts/TaxContext';
+import { formatPrice, getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
 const ProductListItem = ({ product, showVendorInfo = true }) => {
   const [imageError, setImageError] = useState(false);
   const { addToCart } = useCart();
+  const { taxRate } = useTax();
 
   const getDisplayImage = () => {
     if (imageError) return '/api/placeholder/80/80';
@@ -84,10 +87,10 @@ const ProductListItem = ({ product, showVendorInfo = true }) => {
               {/* Price */}
               <div className="text-right">
                 <span className="text-lg font-semibold text-blue-600">
-                  ₦₦{(getPriceWithPlatformFee(product)).toLocaleString()}
+                  {formatPrice(getAllInclusivePricePerYard(product, taxRate))}
                   <span className="text-xs text-gray-500 ml-1">(includes platform fee)</span>
                 </span>
-                <span className="text-xs text-gray-500 block">per yard</span>
+                <span className="text-xs text-gray-500 block">per yard (incl. fees & tax)</span>
               </div>
               
               {/* Quantity */}

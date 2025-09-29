@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTax } from '../../contexts/TaxContext';
 import { getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
 export const ShopperProductTableRow = ({ 
@@ -12,6 +14,7 @@ export const ShopperProductTableRow = ({
   onClick 
 }) => {
   const [imageError, setImageError] = useState(false);
+  const { taxRate } = useTax();
 
   // ✅ PRESERVE: Image handling with count badge logic
   const getProductImage = () => {
@@ -56,17 +59,17 @@ export const ShopperProductTableRow = ({
   const formatPrice = (product) => {
     if (!product) return 'Contact vendor';
     
-    // Get price with platform fee
-    const priceWithFee = getPriceWithPlatformFee(product);
+    // Get all-inclusive price (with platform fee and tax)
+    const allInclusivePrice = getAllInclusivePricePerYard(product, taxRate);
     
-    if (!priceWithFee || priceWithFee <= 0) return 'Contact vendor';
+    if (!allInclusivePrice || allInclusivePrice <= 0) return 'Contact vendor';
     
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(priceWithFee);
+    }).format(allInclusivePrice);
   };
 
   const getStatusBadge = () => {
@@ -218,7 +221,7 @@ export const ShopperProductTableRow = ({
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm font-semibold text-blue-600">
           {formatPrice(product)}
-          <span className="text-xs text-gray-500 ml-1">(incl. fees)</span>
+          <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
         </div>
         <div className="text-xs text-gray-500">per yard</div>
       </td>
