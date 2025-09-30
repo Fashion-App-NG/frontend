@@ -29,27 +29,32 @@ export const calculateSubtotal = (items) => {
  */
 export const getDisplayPricePerYard = (item) => {
   const basePrice = item.pricePerYard || 0;
-  // For display, add platform fee to a single yard
-  const platformFeePerYard = item.platformFeeAmount ? item.platformFeeAmount / 1 : 0;
+  // UPDATED: Access the platformFee.amount property correctly
+  const platformFeePerYard = item.platformFee?.amount || 0;
   return basePrice + platformFeePerYard;
 };
 
 /**
- * Get all-inclusive price per yard (base price + platform fee + tax)
+ * Get all-inclusive price per yard (base price + tax + platform fee)
  * @param {Object} item - Product/cart item
  * @param {number} taxRate - Tax rate (default 0.075 for 7.5%)
  * @returns {number} All-inclusive price per yard
  */
 export const getAllInclusivePricePerYard = (item, taxRate = 0.075) => {
-  // Get base price and platform fee
+  if (!item) return 0;
+  
+  // Get base price
   const basePrice = item.pricePerYard || 0;
-  const platformFeePerYard = item.platformFeeAmount ? item.platformFeeAmount / 1 : 0;
   
-  // Add tax to the combined base price and platform fee
-  const preTaxPrice = basePrice + platformFeePerYard;
-  const taxPerYard = preTaxPrice * taxRate;
+  // Calculate tax on the base price only
+  const taxAmount = basePrice * taxRate;
   
-  return preTaxPrice + taxPerYard;
+  // Add platform fee after tax calculation (platform fee is not taxed)
+  // UPDATED: Access the platformFee.amount property correctly
+  const platformFeePerYard = item.platformFee?.amount || 0;
+  
+  // Return the total: base price + tax + platform fee
+  return basePrice + taxAmount + platformFeePerYard;
 };
 
 /**
@@ -59,17 +64,30 @@ export const getAllInclusivePricePerYard = (item, taxRate = 0.075) => {
  * @returns {number} Total price including everything
  */
 export const getAllInclusiveLineItemTotal = (item, taxRate = 0.075) => {
-  return getAllInclusivePricePerYard(item, taxRate) * (item.quantity || 1);
+  if (!item) return 0;
+  
+  const quantity = item.quantity || 1;
+  const basePrice = item.pricePerYard || 0;
+  
+  // Calculate tax on the base price only
+  const taxAmount = basePrice * taxRate;
+  
+  // Add platform fee (untaxed)
+  // UPDATED: Access the platformFee.amount property correctly
+  const platformFeePerYard = item.platformFee?.amount || 0;
+  
+  // Calculate total: (base + tax + platform fee) * quantity
+  return (basePrice + taxAmount + platformFeePerYard) * quantity;
 };
 
 /**
- * Calculate subtotal for cart with all taxes and fees included
- * @param {Array} items - Cart items
+ * Calculate all-inclusive subtotal for all items
+ * @param {Array} items - Array of cart/order items
  * @param {number} taxRate - Tax rate (default 0.075 for 7.5%)
- * @returns {number} Subtotal with all inclusive pricing
+ * @returns {number} Subtotal with taxes and fees
  */
 export const getAllInclusiveSubtotal = (items, taxRate = 0.075) => {
-  return items.reduce((total, item) => {
-    return total + getAllInclusiveLineItemTotal(item, taxRate);
-  }, 0);
+  if (!items || !Array.isArray(items)) return 0;
+  
+  return items.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item, taxRate), 0);
 };

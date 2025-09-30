@@ -1,28 +1,27 @@
-const OrderStatusBadge = ({ status, size = 'md' }) => {
-  const normalizedStatus = status?.toUpperCase() || 'PENDING';
+import { getDisplayStatus, getStatusClass } from '../utils/orderUtils';
+
+const OrderStatusBadge = ({ status, size = "md" }) => {
+  // Debug what's being passed in
+  console.log("OrderStatusBadge received status:", status);
   
-  const getStatusColor = () => {
-    switch(normalizedStatus) {
-      case 'DELIVERED': return 'bg-green-100 text-green-800';
-      case 'PROCESSING': return 'bg-blue-100 text-blue-800';
-      case 'CONFIRMED': return 'bg-yellow-100 text-yellow-800';
-      case 'SHIPPED':
-      case 'IN_TRANSIT': 
-      case 'DISPATCHED': return 'bg-purple-100 text-purple-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Handle all possible status formats
+  const safeStatus = (typeof status === 'string')
+    ? status
+    : (typeof status === 'object' && status !== null) 
+      ? status.status
+      : 'CONFIRMED';
+      
+  const normalizedStatus = safeStatus.toString().toUpperCase();
   
-  const sizeClasses = {
-    'sm': 'px-2 py-0.5 text-xs',
-    'md': 'px-2.5 py-0.5 text-sm',
-    'lg': 'px-3 py-1 text-base'
-  };
+  // Get display text and CSS class
+  const displayStatus = getDisplayStatus(normalizedStatus);
+  const badgeClass = getStatusClass(normalizedStatus);
   
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${getStatusColor()} ${sizeClasses[size]}`}>
-      {normalizedStatus.replace(/_/g, ' ')}
+    <span className={`inline-flex items-center rounded-full 
+      ${size === "lg" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs"} 
+      font-medium ${badgeClass}`}>
+      {displayStatus}
     </span>
   );
 };

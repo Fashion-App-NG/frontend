@@ -1,15 +1,19 @@
 import { formatDate } from '../utils/dateUtils';
 
 const ORDER_TRACKING_STATUSES = [
+  { key: "CONFIRMED", label: "Order Confirmed" },
   { key: "PROCESSING", label: "Processing Order" },
-  { key: "READY_FOR_PICKUP", label: "Ready for pickup" },
-  { key: "DISPATCHED", label: "Order Dispatch" },
-  { key: "DELIVERED", label: "Delivered" }
+  { key: "SHIPPED", label: "Shipped" },
+  { key: "IN_TRANSIT", label: "In Transit" },
+  { key: "DELIVERED", label: "Delivered" },
+  { key: "CANCELLED", label: "Cancelled" }
 ];
 
 const normalizeOrderStatus = (status) => {
   switch(status?.toUpperCase()) {
     case 'DRAFT': return 'CONFIRMED';
+    case 'PENDING': return 'CONFIRMED';
+    case 'DISPATCHED': return 'SHIPPED';
     default: return status;
   }
 };

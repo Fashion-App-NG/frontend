@@ -110,6 +110,8 @@ const ProductCard = ({
     return '/images/default-product.jpg';
   };
 
+  const displayPrice = getAllInclusivePricePerYard(product);
+
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${className}`}
@@ -171,7 +173,7 @@ const ProductCard = ({
         </h3>
 
         <p className="text-lg font-bold text-blue-600 mb-2">
-          {formatPrice(getAllInclusivePricePerYard(product, taxRate))}
+          {formatPrice(displayPrice)}
           <span className="text-xs text-gray-500 font-normal"> per yard (incl. fees & tax)</span>
         </p>
 
