@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useCart } from '../../contexts/CartContext';
+import { useTax } from '../../contexts/TaxContext';
+import { formatPrice, getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
 const ProductListItem = ({ product, showVendorInfo = true }) => {
   const [imageError, setImageError] = useState(false);
-
-  const formatPrice = (price) => {
-    const numPrice = parseFloat(price);
-    if (isNaN(numPrice)) return '₦0';
-    return `₦${numPrice.toLocaleString()}`;
-  };
+  const { addToCart } = useCart();
+  const { taxRate } = useTax();
 
   const getDisplayImage = () => {
     if (imageError) return '/api/placeholder/80/80';
@@ -87,9 +87,10 @@ const ProductListItem = ({ product, showVendorInfo = true }) => {
               {/* Price */}
               <div className="text-right">
                 <span className="text-lg font-semibold text-blue-600">
-                  {formatPrice(product.pricePerYard || product.price)}
+                  {formatPrice(getAllInclusivePricePerYard(product, taxRate))}
+                  <span className="text-xs text-gray-500 ml-1">(includes platform fee)</span>
                 </span>
-                <span className="text-xs text-gray-500 block">per yard</span>
+                <span className="text-xs text-gray-500 block">per yard (incl. fees & tax)</span>
               </div>
               
               {/* Quantity */}
@@ -107,7 +108,25 @@ const ProductListItem = ({ product, showVendorInfo = true }) => {
                 >
                   View
                 </Link>
-                <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Debug - List View Add to Cart:', {
+                      basePrice: product.pricePerYard || product.price,
+                      platformFee: product.platformFee?.amount,
+                      totalWithFee: getPriceWithPlatformFee(product)
+                    });
+                    
+                    addToCart({
+                      ...product,
+                      vendorId: product.vendorId || product.vendor?.id,
+                      quantity: 1
+                    });
+                  }}
+                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
                   Add to Cart
                 </button>
               </div>

@@ -1,4 +1,5 @@
 import { CART_TOTAL_TOLERANCE } from '../constants/cart';
+import { getPriceWithPlatformFee } from '../utils/formatPrice';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -45,20 +46,32 @@ class CartService {
     return headers;
   }
 
-  // Add this function to validate cart response data
+  // Update the processCartResponse method to preserve basePrice and platformFee
+
   processCartResponse(response) {
     if (!response || !response.items) {
       return response;
     }
     
-    // Ensure totals are recalculated and validated
-    const calculatedTotal = response.items.reduce((sum, item) => {
-      // Check for different price field names that might be used in your structure
-      const itemPrice = item.price || item.pricePerYard || 0;
-      return sum + (itemPrice * item.quantity);
-    }, 0);
+    // Ensure each item has basePrice and platformFee fields
+    response.items.forEach(item => {
+      // If we have platformFeeAmount from the API, use it
+      if (response.platformFeeAmount && !item.platformFee) {
+        const itemRatio = item.pricePerYard / response.totalAmount;
+        item.platformFee = Math.round(response.platformFeeAmount * itemRatio);
+        item.basePrice = item.pricePerYard - item.platformFee;
+      } else if (!item.platformFee) {
+        // Otherwise use a default calculation
+        item.platformFee = Math.round(item.pricePerYard * 0.08); // Assuming 8% fee
+        item.basePrice = item.pricePerYard - item.platformFee;
+      }
+    });
     
     // Validate against API total
+    const calculatedTotal = response.items.reduce((sum, item) => {
+      return sum + (item.pricePerYard * item.quantity);
+    }, 0);
+    
     if (Math.abs(calculatedTotal - response.totalAmount) > CART_TOTAL_TOLERANCE) {
       console.warn('API cart total mismatch!', {
         calculated: calculatedTotal,
@@ -216,7 +229,9 @@ class CartService {
       const requestBody = {
         productId: productData.productId || productData.id || productData._id,
         name: productData.name,
-        pricePerYard: parseFloat(productData.pricePerYard || productData.price || 0),
+        pricePerYard: parseFloat(getPriceWithPlatformFee(productData)),
+        basePrice: parseFloat(productData.pricePerYard || productData.price || 0),
+        platformFee: productData.platformFee?.amount || 0,
         quantity: parseInt(productData.quantity || 1),
         materialType: productData.materialType || 'Unknown',
         pattern: productData.pattern || 'Unknown',

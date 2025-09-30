@@ -274,12 +274,17 @@ export const ShopperProductListPage = () => {
     
     switch (action) {
       case 'add_to_cart':
+        // Use getPriceWithPlatformFee for consistent pricing in both views
         addToCart({
           id: productId,
           name: product.name,
           price: product.pricePerYard || product.price,
+          pricePerYard: product.pricePerYard || product.price, 
+          platformFee: product.platformFee, // Include the entire platformFee object
           image: getProductImage(product),
           vendor: product.vendor,
+          vendorId: product.vendorId || product.vendor?.id,
+          vendorName: product.vendorName || product.vendor?.storeName || product.vendor?.name,
           quantity: 1
         });
         break;

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
+import { formatPrice } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
 const ProductCard = ({
   product,
@@ -9,11 +11,11 @@ const ProductCard = ({
   onClick,
   className = "",
   showFavoriteButton = true,
-  showAddToCartButton = true // ✅ Add this prop back
+  showAddToCartButton = true
 }) => {
   const [imageError, setImageError] = useState(false);
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToCart, isInCart, isLoading, error } = useCart(); // <-- add error
+  const { addToCart, isInCart, isLoading, error } = useCart();
   const { isAuthenticated } = useAuth();
 
   const productId = product._id || product.id;
@@ -106,6 +108,8 @@ const ProductCard = ({
     return '/images/default-product.jpg';
   };
 
+  const displayPrice = getAllInclusivePricePerYard(product);
+
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${className}`}
@@ -167,8 +171,8 @@ const ProductCard = ({
         </h3>
 
         <p className="text-lg font-bold text-blue-600 mb-2">
-          ₦{(product.pricePerYard || product.price || 0).toLocaleString()}
-          <span className="text-xs text-gray-500 font-normal"> per yard</span>
+          {formatPrice(displayPrice)}
+          <span className="text-xs text-gray-500 font-normal"> per yard (incl. fees & tax)</span>
         </p>
 
         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">

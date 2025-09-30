@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
+import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
+import OrderStatusBadge from '../components/OrderStatusBadge';
 import { useAuth } from '../contexts/AuthContext';
 import vendorOrderService from '../services/vendorOrderService';
 import { formatPrice } from '../utils/formatPrice';
@@ -125,32 +127,6 @@ const VendorOrderDetailsPage = () => {
   }
 
   // ✅ Main render logic
-  const StatusBadge = ({ status, type = 'order' }) => {
-    const colors = {
-      order: {
-        pending: 'bg-yellow-100 text-yellow-800',
-        processing: 'bg-blue-100 text-blue-800',
-        shipped: 'bg-purple-100 text-purple-800',
-        delivered: 'bg-green-100 text-green-800',
-        cancelled: 'bg-red-100 text-red-800'
-      },
-      payment: {
-        paid: 'bg-green-100 text-green-800',
-        pending: 'bg-yellow-100 text-yellow-800',
-        failed: 'bg-red-100 text-red-800',
-        refunded: 'bg-gray-100 text-gray-800'
-      }
-    };
-    
-    const colorClass = colors[type][status] || 'bg-gray-100 text-gray-800';
-    
-    return (
-      <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${colorClass}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex-1 ml-[254px] p-6">
@@ -201,11 +177,11 @@ const VendorOrderDetailsPage = () => {
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="text-sm text-gray-500">Order Status</div>
-                <div className="mt-1"><StatusBadge status={order.status} /></div>
+                <div className="mt-1"><OrderStatusBadge status={order.status} /></div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="text-sm text-gray-500">Payment Status</div>
-                <div className="mt-1"><StatusBadge status={order.paymentStatus} type="payment" /></div>
+                <div className="mt-1"><OrderStatusBadge status={order.paymentStatus} type="payment" /></div>
               </div>
             </div>
           </div>
@@ -263,7 +239,7 @@ const VendorOrderDetailsPage = () => {
                   <div className="text-right">
                     <div className="font-medium">{formatPrice(item.price)} × {item.quantity}</div>
                     <div className="text-lg font-semibold">{formatPrice(item.totalPrice)}</div>
-                    <StatusBadge status={item.status} />
+                    <OrderStatusBadge status={item.status} />
                   </div>
                 </div>
               ))}
@@ -291,6 +267,9 @@ const VendorOrderDetailsPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Delivery Information - New Section */}
+          <OrderDeliveryInfo order={order} />
         </div>
       </div>
     </div>

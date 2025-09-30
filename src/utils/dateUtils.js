@@ -3,21 +3,25 @@
  * @param {string|Date} dateStr - Date string or Date object to format
  * @returns {string} Formatted date string
  */
-export const formatDate = (dateStr) => {
-  if (!dateStr) return null;
+export const formatDate = (dateString) => {
+  if (!dateString) return '';
   
-  const date = new Date(dateStr);
-  
-  // Check if the date is valid
-  if (isNaN(date.getTime())) return null;
-  
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    return date.toLocaleDateString('en-NG', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (err) {
+    console.error('Error formatting date:', err);
+    return dateString;
+  }
 };
 
 /**

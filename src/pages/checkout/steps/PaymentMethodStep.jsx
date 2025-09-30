@@ -4,6 +4,9 @@ import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
+import { useTax } from '../../../contexts/TaxContext';
+import { formatPrice } from '../../../utils/formatPrice';
+import { getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
 
 const PaymentMethodStep = ({ 
   onSubmit, 
@@ -29,8 +32,18 @@ const PaymentMethodStep = ({
   }, []);
 
   const { user } = useAuth();
-  const { getCartTotal } = useCart();
+  const { cartItems } = useCart();
+  const { taxRate } = useTax();
   
+  // Use all-inclusive subtotal calculation
+  const subtotal = getAllInclusiveSubtotal(cartItems, taxRate);
+  
+  // Calculate delivery fee
+  const deliveryFee = cart?.shippingCost || 3000;
+  
+  // Calculate total (tax is already included in subtotal)
+  const total = subtotal + deliveryFee;
+
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
   const [paymentError, setPaymentError] = useState(null);
@@ -86,12 +99,6 @@ const PaymentMethodStep = ({
     }
   }, [paymentError, paymentErrorProp]);
 
-  // Calculate totals
-  const subtotal = cart ? cart.totalAmount : getCartTotal();
-  const deliveryFee = cart ? cart.shippingCost : 3000;
-  const tax = cart ? cart.taxAmount : Math.round(subtotal * 0.075); // 7.5% VAT
-  const total = cart ? cart.totalWithShipping : subtotal + deliveryFee + tax;
-
   // Format payment error message for production
   const formatErrorForDisplay = (error) => {
     if (!error) return '';
@@ -122,7 +129,7 @@ const PaymentMethodStep = ({
     amount: formatAmountForPaystack(total),
     currency: PAYSTACK_CONFIG.currency,
     publicKey: PAYSTACK_CONFIG.publicKey,
-    text: `Pay ₦${total.toLocaleString()}`,
+    text: `Pay ${formatPrice(total)}`, // This will now use the imported formatPrice
     channels: PAYSTACK_CONFIG.channels,
     metadata: {
       customerName: customerInfo?.name,
@@ -331,21 +338,17 @@ const PaymentMethodStep = ({
         <h3 className="font-medium text-gray-900 mb-3">Payment Summary</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium">₦{subtotal.toLocaleString()}</span>
+            <span className="text-gray-600">Subtotal (incl. fees & tax)</span>
+            <span className="font-medium">{formatPrice(subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Delivery Fee</span>
-            <span className="font-medium">₦{deliveryFee.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Tax (7.5%)</span>
-            <span className="font-medium">₦{tax.toLocaleString()}</span>
+            <span className="font-medium">{formatPrice(deliveryFee)}</span>
           </div>
           <hr className="my-2" />
           <div className="flex justify-between text-lg font-semibold">
             <span>Total</span>
-            <span className="text-blue-600">₦{total.toLocaleString()}</span>
+            <span className="text-blue-600">{formatPrice(total)}</span>
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useTax } from '../contexts/TaxContext';
+import { formatPrice } from '../utils/formatPrice';
+import { calculateSubtotal, getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal, getPlatformFee } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -10,60 +12,14 @@ const ShopperCart = () => {
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal,
     error
   } = useCart();
+
+  const { taxRate } = useTax();
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
   }
-
-  // ✅ DEBUG: Log cart data in ShopperCart component
-  useEffect(() => {
-    console.log('🔍 SHOPPER CART DEBUG:', {
-      cartItemsLength: cartItems.length,
-      cartCount,
-      cartItems: cartItems.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        pricePerYard: item.pricePerYard,
-        quantity: item.quantity,
-        vendor: item.vendor,
-        vendorName: item.vendorName,
-        allItemFields: Object.keys(item)
-      })),
-      cartTotal: getCartTotal()
-    });
-  }, [cartItems, cartCount, getCartTotal]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] ShopperCart useEffect: cartItems changed:', cartItems);
-    }
-  }, [cartItems]);
-
-  const formatPrice = (price) => {
-    console.log('🔍 FORMAT PRICE DEBUG:', {
-      inputPrice: price,
-      typeOfPrice: typeof price,
-      parsedPrice: parseFloat(price || 0),
-      finalPrice: new Intl.NumberFormat('en-NG', {
-        style: 'currency',
-        currency: 'NGN',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(price || 0)
-    });
-    
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price || 0);
-  };
 
   // ✅ FIX: Use correct item ID and handle missing IDs
   const handleQuantityUpdate = (itemId, newQuantity) => {
@@ -79,6 +35,24 @@ const ShopperCart = () => {
     });
     
     updateCartItemQuantity(itemId, newQuantity);
+  };
+
+  // Calculate total tax amount for all items
+  const calculateTaxTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const basePrice = item.pricePerYard || 0;
+      const quantity = item.quantity || 1;
+      return total + (basePrice * taxRate * quantity);
+    }, 0);
+  };
+
+  // Calculate total platform fee amount for all items
+  const calculatePlatformFeeTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const platformFee = getPlatformFee(item);
+      const quantity = item.quantity || 1;
+      return total + (platformFee * quantity);
+    }, 0);
   };
 
   if (cartItems.length === 0) {
@@ -131,7 +105,7 @@ const ShopperCart = () => {
                       src={getProductImageUrl(item)}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                onError={e => { e.target.src = '/images/default-product.jpg'; }}
+                      onError={e => { e.target.src = '/images/default-product.jpg'; }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -145,21 +119,32 @@ const ShopperCart = () => {
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-medium text-gray-900">{item.name}</h3>
-                  {item.vendor && (
+                  {item.vendorName && (
                     <p className="text-sm text-gray-600">
-                      by {item.vendor.storeName || item.vendor.name}
+                      by {item.vendorName}
                     </p>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-1">
-                    {formatPrice(item.pricePerYard || item.price)} per yard
+                    {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
+                    <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                   </p>
+
+                  {/* Price Breakdown - NEW */}
+                  <div className="mt-1 text-sm text-gray-500">
+                    Base: {formatPrice(item.pricePerYard)}
+                    <span className="mx-1">+</span>
+                    Tax: {formatPrice(item.pricePerYard * taxRate)}
+                    <span className="mx-1">+</span>
+                    Fee: {formatPrice(getPlatformFee(item))}
+                  </div>
                 </div>
 
                 {/* Quantity Controls */}
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={() => handleQuantityUpdate(itemId, (item.quantity || 1) - 1)}
+                    onClick={() => handleQuantityUpdate(itemId, Math.max(1, (item.quantity || 1) - 1))}
                     className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                    disabled={(item.quantity || 1) <= 1}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -179,7 +164,7 @@ const ShopperCart = () => {
                 {/* Subtotal */}
                 <div className="text-right">
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatPrice((item.pricePerYard || item.price || 0) * (item.quantity || 1))}
+                    {formatPrice(getAllInclusiveLineItemTotal(item, taxRate))}
                   </p>
                   <button
                     onClick={() => removeFromCart(itemId)}
@@ -195,10 +180,27 @@ const ShopperCart = () => {
 
         {/* Cart Summary */}
         <div className="bg-gray-50 px-6 py-4">
-          <div className="flex items-center justify-between text-lg font-semibold">
-            <span>Total:</span>
-            <span className="text-xl">{formatPrice(getCartTotal())}</span>
+          {/* Updated Cart Summary with Tax and Fees */}
+          <div className="flex justify-between py-2">
+            <span>Subtotal:</span>
+            <span>{formatPrice(calculateSubtotal(cartItems))}</span>
           </div>
+          <div className="flex justify-between py-2">
+            <span>Tax ({taxRate * 100}%):</span>
+            <span>{formatPrice(calculateTaxTotal())}</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span>Platform Fees:</span>
+            <span>{formatPrice(calculatePlatformFeeTotal())}</span>
+          </div>
+          <div className="flex justify-between py-2 font-bold">
+            <span>Total:</span>
+            <span>{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">
+            * Tax is calculated on product price only. Platform fees are not taxed.
+          </div>
+
           <div className="flex space-x-4 mt-4">
             <button
               onClick={async () => {

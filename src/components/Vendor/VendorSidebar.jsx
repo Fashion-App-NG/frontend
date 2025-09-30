@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useEffect, useState } from 'react';
 
 // React Component: Vendor navigation sidebar matching design specs
 export const VendorSidebar = () => {

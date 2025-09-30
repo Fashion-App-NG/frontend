@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTax } from '../../contexts/TaxContext';
+import { getPriceWithPlatformFee } from '../../utils/formatPrice';
+import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
 export const ShopperProductTableRow = ({ 
@@ -11,6 +14,7 @@ export const ShopperProductTableRow = ({
   onClick 
 }) => {
   const [imageError, setImageError] = useState(false);
+  const { taxRate } = useTax();
 
   // ✅ PRESERVE: Image handling with count badge logic
   const getProductImage = () => {
@@ -51,14 +55,21 @@ export const ShopperProductTableRow = ({
     return null;
   };
 
-  const formatPrice = (price) => {
-    if (!price || price <= 0) return 'Contact vendor';
+  // Update formatPrice to use getPriceWithPlatformFee
+  const formatPrice = (product) => {
+    if (!product) return 'Contact vendor';
+    
+    // Get all-inclusive price (with platform fee and tax)
+    const allInclusivePrice = getAllInclusivePricePerYard(product, taxRate);
+    
+    if (!allInclusivePrice || allInclusivePrice <= 0) return 'Contact vendor';
+    
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(price);
+    }).format(allInclusivePrice);
   };
 
   const getStatusBadge = () => {
@@ -209,11 +220,10 @@ export const ShopperProductTableRow = ({
       {/* ✅ FIXED: Price Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm font-semibold text-blue-600">
-          {formatPrice(product.pricePerYard || product.price)}
+          {formatPrice(product)}
+          <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
         </div>
-        {(product.pricePerYard || product.price) && (
-          <div className="text-xs text-gray-500">per yard</div>
-        )}
+        <div className="text-xs text-gray-500">per yard</div>
       </td>
 
       {/* ✅ FIXED: Quantity Column */}
@@ -240,6 +250,15 @@ export const ShopperProductTableRow = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              
+              // Log product data for debugging
+              console.log('Adding product to cart with fee:', {
+                basePrice: product.pricePerYard || product.price || 0,
+                platformFee: product.platformFee?.amount || 0,
+                totalWithFee: getPriceWithPlatformFee(product)
+              });
+              
+              // Use the same product object but ensure price includes platform fee
               onAction && onAction(product, 'add_to_cart');
             }}
             className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
