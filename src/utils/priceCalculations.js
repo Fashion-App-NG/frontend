@@ -7,8 +7,9 @@
  */
 export const calculateLineItemTotal = (item) => {
   const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
-  const platformFee = item.platformFeeAmount || 0;
-  return baseSubtotal + platformFee;
+  //const platformFee = getPlatformFee(item);
+  //return baseSubtotal + platformFee;
+  return baseSubtotal;
 };
 
 /**
@@ -29,8 +30,7 @@ export const calculateSubtotal = (items) => {
  */
 export const getDisplayPricePerYard = (item) => {
   const basePrice = item.pricePerYard || 0;
-  // UPDATED: Access the platformFee.amount property correctly
-  const platformFeePerYard = item.platformFee?.amount || 0;
+  const platformFeePerYard = getPlatformFee(item);
   return basePrice + platformFeePerYard;
 };
 
@@ -43,17 +43,10 @@ export const getDisplayPricePerYard = (item) => {
 export const getAllInclusivePricePerYard = (item, taxRate = 0.075) => {
   if (!item) return 0;
   
-  // Get base price
   const basePrice = item.pricePerYard || 0;
-  
-  // Calculate tax on the base price only
   const taxAmount = basePrice * taxRate;
-  
-  // Add platform fee after tax calculation (platform fee is not taxed)
-  // UPDATED: Access the platformFee.amount property correctly
-  const platformFeePerYard = item.platformFee?.amount || 0;
-  
-  // Return the total: base price + tax + platform fee
+  const platformFeePerYard = getPlatformFee(item);
+
   return basePrice + taxAmount + platformFeePerYard;
 };
 
@@ -73,8 +66,7 @@ export const getAllInclusiveLineItemTotal = (item, taxRate = 0.075) => {
   const taxAmount = basePrice * taxRate;
   
   // Add platform fee (untaxed)
-  // UPDATED: Access the platformFee.amount property correctly
-  const platformFeePerYard = item.platformFee?.amount || 0;
+  const platformFeePerYard = getPlatformFee(item);
   
   // Calculate total: (base + tax + platform fee) * quantity
   return (basePrice + taxAmount + platformFeePerYard) * quantity;
@@ -90,4 +82,22 @@ export const getAllInclusiveSubtotal = (items, taxRate = 0.075) => {
   if (!items || !Array.isArray(items)) return 0;
   
   return items.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item, taxRate), 0);
+};
+
+/**
+ * Get platform fee from item regardless of structure
+ * @param {Object} item - Product or cart item
+ * @returns {number} Platform fee amount
+ */
+export const getPlatformFee = (item) => {
+  // Handle both formats
+  if (item.platformFeeAmount) {
+    return item.platformFeeAmount;
+  }
+  
+  if (item.platformFee?.amount) {
+    return item.platformFee.amount;
+  }
+  
+  return 0;
 };

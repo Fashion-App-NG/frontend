@@ -125,7 +125,7 @@ const CartReviewStep = ({ onNext }) => {
           <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate) + (shippingCost || 0))}</span>
         </div>
         <div className="text-xs text-gray-500 mt-1">
-          All prices include platform fees and {Math.round(taxRate * 100)}% tax.
+          * Tax ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.
         </div>
       </div>
 

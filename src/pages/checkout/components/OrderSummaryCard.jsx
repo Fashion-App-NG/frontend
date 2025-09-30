@@ -17,9 +17,10 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
   const deliveryFee = showDetailedBreakdown ? (cart?.shippingCost ?? 0) : 0;
   
   // For total, just add delivery fee to subtotal (tax already included)
-  const total = showDetailedBreakdown && cart?.totalWithShipping 
-    ? cart.totalWithShipping 
-    : subtotal + deliveryFee;
+  const total = 
+  //showDetailedBreakdown && cart?.totalWithShipping 
+    //? cart.totalWithShipping : 
+    subtotal + deliveryFee;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

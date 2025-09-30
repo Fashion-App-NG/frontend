@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useTax } from '../contexts/TaxContext';
 import { formatPrice } from '../utils/formatPrice';
-import { getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal } from '../utils/priceCalculations';
+import { calculateSubtotal, getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal, getPlatformFee } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -37,31 +37,21 @@ const ShopperCart = () => {
     updateCartItemQuantity(itemId, newQuantity);
   };
 
-  // Calculate the correct line item total: (pricePerYard * quantity) + platformFeeAmount
-  const getLineItemTotal = (item) => {
-    const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
-    const platformFee = item.platformFeeAmount || 0;
-    return baseSubtotal + platformFee;
-  };
-
-  // Get individual price per yard (without the platform fee)
-  const getPricePerYard = (item) => {
-    return item.pricePerYard || 0;
-  };
-
-  // Get display price per yard (including the platform fee portion)
-  const getDisplayPricePerYard = (item) => {
-    const basePrice = item.pricePerYard || 0;
-    // Add the platform fee divided by 1 (not the actual quantity)
-    // This keeps the display price consistent regardless of quantity
-    const platformFeePerYard = (item.platformFeeAmount || 0) / 1;
-    return basePrice + platformFeePerYard;
-  };
-
-  // Calculate total amount for all items
-  const calculateSubtotal = () => {
+  // Calculate total tax amount for all items
+  const calculateTaxTotal = () => {
     return cartItems.reduce((total, item) => {
-      return total + getLineItemTotal(item);
+      const basePrice = item.pricePerYard || 0;
+      const quantity = item.quantity || 1;
+      return total + (basePrice * taxRate * quantity);
+    }, 0);
+  };
+
+  // Calculate total platform fee amount for all items
+  const calculatePlatformFeeTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const platformFee = getPlatformFee(item);
+      const quantity = item.quantity || 1;
+      return total + (platformFee * quantity);
     }, 0);
   };
 
@@ -138,6 +128,15 @@ const ShopperCart = () => {
                     {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
                     <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                   </p>
+
+                  {/* Price Breakdown - NEW */}
+                  <div className="mt-1 text-sm text-gray-500">
+                    Base: {formatPrice(item.pricePerYard)}
+                    <span className="mx-1">+</span>
+                    Tax: {formatPrice(item.pricePerYard * taxRate)}
+                    <span className="mx-1">+</span>
+                    Fee: {formatPrice(getPlatformFee(item))}
+                  </div>
                 </div>
 
                 {/* Quantity Controls */}
@@ -181,26 +180,26 @@ const ShopperCart = () => {
 
         {/* Cart Summary */}
         <div className="bg-gray-50 px-6 py-4">
-          <div className="flex items-center justify-between text-lg font-semibold">
+          {/* Updated Cart Summary with Tax and Fees */}
+          <div className="flex justify-between py-2">
             <span>Subtotal:</span>
-            <span className="text-xl">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
+            <span>{formatPrice(calculateSubtotal(cartItems))}</span>
           </div>
-          
-          {/* Shipping message - updated to indicate calculation at checkout */}
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Shipping:</span>
-            <span>Calculated at checkout</span>
+          <div className="flex justify-between py-2">
+            <span>Tax ({taxRate * 100}%):</span>
+            <span>{formatPrice(calculateTaxTotal())}</span>
           </div>
-
-          <div className="flex items-center justify-between text-lg font-semibold border-t pt-2 mt-2">
-            <span>Estimated Total:</span>
-            <span className="text-xl">{formatPrice(calculateSubtotal())}</span>
+          <div className="flex justify-between py-2">
+            <span>Platform Fees:</span>
+            <span>{formatPrice(calculatePlatformFeeTotal())}</span>
           </div>
-          
-          {/* Add a note that final total will include shipping */}
-          <p className="text-xs text-gray-500 mt-1 mb-4">
-            Final total will include shipping costs based on delivery address.
-          </p>
+          <div className="flex justify-between py-2 font-bold">
+            <span>Total:</span>
+            <span>{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">
+            * Tax is calculated on product price only. Platform fees are not taxed.
+          </div>
 
           <div className="flex space-x-4 mt-4">
             <button
