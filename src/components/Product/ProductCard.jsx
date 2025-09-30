@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import { useTax } from '../../contexts/TaxContext';
 import { formatPrice } from '../../utils/formatPrice';
 import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
@@ -12,13 +11,12 @@ const ProductCard = ({
   onClick,
   className = "",
   showFavoriteButton = true,
-  showAddToCartButton = true // ✅ Add this prop back
+  showAddToCartButton = true
 }) => {
   const [imageError, setImageError] = useState(false);
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToCart, isInCart, isLoading, error } = useCart(); // <-- add error
+  const { addToCart, isInCart, isLoading, error } = useCart();
   const { isAuthenticated } = useAuth();
-  const { taxRate } = useTax();
 
   const productId = product._id || product.id;
   const isProductFavorited = isFavorite?.(productId) || false;

@@ -10,34 +10,6 @@ const CartReviewStep = ({ onNext }) => {
   const { taxRate } = useTax();
   const [shippingCost] = useState(0); // Add this to define shippingCost (will be calculated at shipping step)
 
-  // Calculate the correct line item total: (pricePerYard * quantity) + platformFeeAmount
-  const getLineItemTotal = (item) => {
-    const baseSubtotal = (item.pricePerYard || 0) * (item.quantity || 1);
-    const platformFee = item.platformFeeAmount || 0;
-    return baseSubtotal + platformFee;
-  };
-
-  // Get individual price per yard (without the platform fee)
-  const getPricePerYard = (item) => {
-    return item.pricePerYard || 0;
-  };
-
-  // Calculate total amount for all items
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => {
-      return total + getLineItemTotal(item);
-    }, 0);
-  };
-
-  // Add this function to calculate display price per yard
-  const getDisplayPricePerYard = (item) => {
-    const basePrice = item.pricePerYard || 0;
-    // Add the platform fee divided by 1 (not the actual quantity)
-    // This keeps the display price consistent regardless of quantity
-    const platformFeePerYard = (item.platformFeeAmount || 0) / 1;
-    return basePrice + platformFeePerYard;
-  };
-
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Review Cart</h2>
