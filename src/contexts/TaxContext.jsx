@@ -4,30 +4,32 @@ import { settingsService } from '../services/settingsService';
 export const TaxContext = createContext();
 
 export const TaxProvider = ({ children }) => {
-  const [taxRate, setTaxRate] = useState(0.075); // Default 7.5%
+  const [taxRate, setTaxRate] = useState(null); // Start with null instead of 0.075
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTaxSettings = async () => {
+    const fetchVATSettings = async () => {
       try {
         setIsLoading(true);
-        const response = await settingsService.getTaxSettings();
+        const response = await settingsService.getVATSettings();
         if (response.success && response.data) {
-          // Convert percentage to decimal (e.g., 7.5% → 0.075)
-          setTaxRate(response.data.vatRate / 100);
+          setTaxRate(response.data.taxRate);
+        } else {
+          // Only set default if API fails
+          setTaxRate(0.0); // Default to 0% if API fails
         }
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch tax settings:', err);
-        setError('Unable to fetch tax rate - using default');
-        // Keep using default tax rate
+        console.error('Failed to fetch VAT settings:', err);
+        setError('Unable to fetch VAT rate - using default');
+        setTaxRate(0.0); // Fallback on error
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchTaxSettings();
+    fetchVATSettings();
   }, []);
 
   return (

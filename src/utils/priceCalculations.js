@@ -37,49 +37,56 @@ export const getDisplayPricePerYard = (item) => {
 /**
  * Get all-inclusive price per yard (base price + tax + platform fee)
  * @param {Object} item - Product/cart item
- * @param {number} taxRate - Tax rate (default 0.075 for 7.5%)
+ * @param {number} taxRate - Tax rate (required, no default)
  * @returns {number} All-inclusive price per yard
  */
-export const getAllInclusivePricePerYard = (item, taxRate = 0.075) => {
+export const getAllInclusivePricePerYard = (item, taxRate) => {
   if (!item) return 0;
+  if (!taxRate && taxRate !== 0) {
+    console.warn('Tax rate not provided to getAllInclusivePricePerYard');
+    return item.pricePerYard || 0; // Return base price if no tax rate
+  }
   
   const basePrice = item.pricePerYard || 0;
   const taxAmount = basePrice * taxRate;
   const platformFeePerYard = getPlatformFee(item);
-
+  
   return basePrice + taxAmount + platformFeePerYard;
 };
 
 /**
  * Calculate total price for a line item with all taxes and fees included
  * @param {Object} item - Cart/order item
- * @param {number} taxRate - Tax rate (default 0.075 for 7.5%)
+ * @param {number} taxRate - Tax rate (required, no default)
  * @returns {number} Total price including everything
  */
-export const getAllInclusiveLineItemTotal = (item, taxRate = 0.075) => {
+export const getAllInclusiveLineItemTotal = (item, taxRate) => {
   if (!item) return 0;
+  if (!taxRate && taxRate !== 0) {
+    console.warn('Tax rate not provided to getAllInclusiveLineItemTotal');
+    return calculateLineItemTotal(item); // Fallback to base calculation
+  }
   
   const quantity = item.quantity || 1;
   const basePrice = item.pricePerYard || 0;
-  
-  // Calculate tax on the base price only
   const taxAmount = basePrice * taxRate;
-  
-  // Add platform fee (untaxed)
   const platformFeePerYard = getPlatformFee(item);
   
-  // Calculate total: (base + tax + platform fee) * quantity
   return (basePrice + taxAmount + platformFeePerYard) * quantity;
 };
 
 /**
  * Calculate all-inclusive subtotal for all items
  * @param {Array} items - Array of cart/order items
- * @param {number} taxRate - Tax rate (default 0.075 for 7.5%)
+ * @param {number} taxRate - Tax rate (required, no default)
  * @returns {number} Subtotal with taxes and fees
  */
-export const getAllInclusiveSubtotal = (items, taxRate = 0.075) => {
+export const getAllInclusiveSubtotal = (items, taxRate) => {
   if (!items || !Array.isArray(items)) return 0;
+  if (!taxRate && taxRate !== 0) {
+    console.warn('Tax rate not provided to getAllInclusiveSubtotal');
+    return calculateSubtotal(items); // Fallback to base calculation
+  }
   
   return items.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item, taxRate), 0);
 };
@@ -92,11 +99,11 @@ export const getAllInclusiveSubtotal = (items, taxRate = 0.075) => {
 export const getPlatformFee = (item) => {
   // Handle both formats
   if (item.platformFeeAmount) {
-    return item.platformFeeAmount;
+    return item.platformFeeAmount / (item.quantity || 1);
   }
   
   if (item.platformFee?.amount) {
-    return item.platformFee.amount;
+    return item.platformFee.amount / (item.quantity || 1);
   }
   
   return 0;
