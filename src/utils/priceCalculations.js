@@ -99,11 +99,11 @@ export const getAllInclusiveSubtotal = (items, taxRate) => {
 export const getPlatformFee = (item) => {
   // Handle both formats
   if (item.platformFeeAmount) {
-    return item.platformFeeAmount/(item.quantity || 1);
+    return item.platformFeeAmount / (item.quantity || 1);
   }
   
   if (item.platformFee?.amount) {
-    return item.platformFee.amount/(item.quantity || 1);
+    return item.platformFee.amount / (item.quantity || 1);
   }
   
   return 0;

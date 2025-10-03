@@ -58,7 +58,7 @@ const ShopperCart = () => {
   // Calculate total platform fee amount for all items
   const calculatePlatformFeeTotal = () => {
     return cartItems.reduce((total, item) => {
-      const platformFee = getPlatformFee(item)*item.quantity;
+      const platformFee = getPlatformFee(item) * item.quantity;
       return total + platformFee;
     }, 0);
   };
