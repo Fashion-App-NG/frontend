@@ -15,7 +15,16 @@ const ShopperCart = () => {
     error
   } = useCart();
 
-  const { taxRate } = useTax();
+  const { taxRate, isLoading: taxLoading } = useTax(); // Get loading state
+
+  // Wait for tax rate to load
+  if (taxLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-16">Loading tax information...</div>
+      </div>
+    );
+  }
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
@@ -185,7 +194,7 @@ const ShopperCart = () => {
             <span>{formatPrice(calculateSubtotal(cartItems))}</span>
           </div>
           <div className="flex justify-between py-2">
-            <span>Tax ({taxRate * 100}%):</span>
+            <span>VAT ({(taxRate * 100).toFixed(1)}%):</span>
             <span>{formatPrice(calculateTaxTotal())}</span>
           </div>
           <div className="flex justify-between py-2">
@@ -197,7 +206,7 @@ const ShopperCart = () => {
             <span>{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            * Tax is calculated on product price only. Platform fees are not taxed.
+            * VAT is calculated on product price only. Platform fees are not taxed.
           </div>
 
           <div className="flex space-x-4 mt-4">

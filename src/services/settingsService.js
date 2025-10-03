@@ -11,22 +11,23 @@ class SettingsService {
     };
   }
   
-  async getTaxSettings() {
+  // Update method name to reflect VAT terminology
+  async getVATSettings() {
     try {
-      const response = await fetch(`${this.baseURL}/api/settings/tax`, {
+      const response = await fetch(`${this.baseURL}/api/admin/tax/current`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
       
-      const data = await response.json();
+      const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch tax settings');
+        throw new Error(result.message || 'Failed to fetch VAT settings');
       }
       
-      return { success: true, data };
+      return { success: true, data: result.data };
     } catch (error) {
-      console.error('Error fetching tax settings:', error);
+      console.error('Error fetching VAT settings:', error);
       return { success: false, message: error.message };
     }
   }

@@ -46,9 +46,8 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
         </div>
         
         {!showDetailedBreakdown && currentStep < 3 && (
-          <p className="text-xs text-gray-500 mt-1">
-            Shipping will be calculated after address confirmation.
-            All prices include fees and {Math.round(taxRate * 100)}% tax.
+          <p className="text-xs text-gray-500 mt-2">
+            * VAT ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.
           </p>
         )}
       </div>
