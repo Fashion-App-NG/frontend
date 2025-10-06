@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTax } from '../../contexts/TaxContext';
-import { getPriceWithPlatformFee } from '../../utils/formatPrice';
-import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
+import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
+import { useFavorites } from '../../contexts/FavoritesContext';
+import { formatPrice } from '../../utils/formatPrice';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
 export const ShopperProductTableRow = ({ 
@@ -13,10 +14,32 @@ export const ShopperProductTableRow = ({
   isInCart, 
   onClick 
 }) => {
+  const { toggleFavorite } = useFavorites();
+  const { addToCart, isInCart: isInCartContext } = useCart();
+  const { isAuthenticated } = useAuth();
   const [imageError, setImageError] = useState(false);
-  const { taxRate } = useTax();
 
-  // ✅ PRESERVE: Image handling with count badge logic
+  const productId = product.id || product._id;
+
+  // Calculate display price from API data
+  const basePrice = product.pricePerYard || 0;
+  const tax = product.taxAmount || 0;
+  const platformFee = product.platformFee?.amount || 0;
+  const displayPrice = basePrice + tax + platformFee;
+  const vatRate = product.taxRate || 0;
+
+  // Format price display
+  const formatPriceDisplay = (price) => {
+    if (!price || price <= 0) return 'Contact vendor';
+    
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
   const getProductImage = () => {
     if (imageError) return null;
     
@@ -38,7 +61,6 @@ export const ShopperProductTableRow = ({
       return product.image.url;
     }
     
-    // ✅ PRESERVE: Images array handling with count badge logic
     if (product.images && product.images.length > 0) {
       const firstImage = product.images[0];
       if (typeof firstImage === 'string') {
@@ -53,23 +75,6 @@ export const ShopperProductTableRow = ({
     }
     
     return null;
-  };
-
-  // Update formatPrice to use getPriceWithPlatformFee
-  const formatPrice = (product) => {
-    if (!product) return 'Contact vendor';
-    
-    // Get all-inclusive price (with platform fee and tax)
-    const allInclusivePrice = getAllInclusivePricePerYard(product, taxRate);
-    
-    if (!allInclusivePrice || allInclusivePrice <= 0) return 'Contact vendor';
-    
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(allInclusivePrice);
   };
 
   const getStatusBadge = () => {
@@ -112,16 +117,7 @@ export const ShopperProductTableRow = ({
   };
 
   const productImage = getProductImage();
-  const productId = product.id || product._id;
   const isFavorite = favorites?.has(productId);
-
-  // ✅ DEBUG: Log vendor data
-  console.log('🔍 Product vendor data:', {
-    productName: product.name,
-    vendor: product.vendor,
-    vendorId: product.vendorId,
-    createdBy: product.createdBy
-  });
 
   return (
     <tr 
@@ -130,10 +126,9 @@ export const ShopperProductTableRow = ({
       }`}
       onClick={() => onClick && onClick(product)}
     >
-      {/* ✅ FIXED: Product Image + Name Column (Separate from description) */}
+      {/* Product Image + Name Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="flex items-center">
-          {/* Product Image with Counter Badge */}
           <div className="flex-shrink-0 h-12 w-12 relative">
             {productImage ? (
               <>
@@ -143,7 +138,6 @@ export const ShopperProductTableRow = ({
                   alt={product.name}
                   onError={() => setImageError(true)}
                 />
-                {/* ✅ PRESERVED: Image Count Badge */}
                 {product.images && product.images.length > 1 && (
                   <div className="absolute -top-1 -left-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold shadow-sm">
                     {product.images.length}
@@ -159,7 +153,6 @@ export const ShopperProductTableRow = ({
             )}
           </div>
           
-          {/* Product Name Only */}
           <div className="ml-3">
             <div className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">
               <Link to={`/shopper/product/${productId}`} className="hover:underline">
@@ -173,10 +166,9 @@ export const ShopperProductTableRow = ({
         </div>
       </td>
 
-      {/* ✅ FIXED: Vendor Column - Enhanced vendor data extraction */}
+      {/* Vendor Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm text-gray-900">
-          {/* Try multiple vendor data sources */}
           {product.vendor?.storeName || 
            product.vendor?.name || 
            product.vendor?.businessName ||
@@ -192,7 +184,7 @@ export const ShopperProductTableRow = ({
         )}
       </td>
 
-      {/* ✅ FIXED: Description Column (Separate) */}
+      {/* Description Column */}
       <td className="px-4 py-3">
         <div className="text-sm text-gray-600 max-w-xs">
           {product.description ? (
@@ -205,7 +197,7 @@ export const ShopperProductTableRow = ({
         </div>
       </td>
 
-      {/* ✅ FIXED: Material Column */}
+      {/* Material Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm text-gray-900">
           {product.materialType || 'Not specified'}
@@ -217,16 +209,23 @@ export const ShopperProductTableRow = ({
         )}
       </td>
 
-      {/* ✅ FIXED: Price Column */}
+      {/* Price Column with breakdown */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm font-semibold text-blue-600">
-          {formatPrice(product)}
-          <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
+          {formatPriceDisplay(displayPrice)}
         </div>
-        <div className="text-xs text-gray-500">per yard</div>
+        <div className="text-xs text-gray-500 space-y-0.5 mt-1">
+          <div>Base: {formatPrice(basePrice)}</div>
+          {tax > 0 && (
+            <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(tax)}</div>
+          )}
+          {platformFee > 0 && (
+            <div>Fee: {formatPrice(platformFee)}</div>
+          )}
+        </div>
       </td>
 
-      {/* ✅ FIXED: Quantity Column */}
+      {/* Quantity Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm text-gray-900">
           {product.quantity || 0} yards
@@ -238,27 +237,17 @@ export const ShopperProductTableRow = ({
         )}
       </td>
 
-      {/* ✅ FIXED: Status Column */}
+      {/* Status Column */}
       <td className="px-4 py-3 whitespace-nowrap">
         {getStatusBadge()}
       </td>
 
-      {/* ✅ FIXED: Actions Column - Compact */}
+      {/* Actions Column */}
       <td className="px-4 py-3 whitespace-nowrap text-right">
         <div className="flex items-center justify-end space-x-1">
-          {/* Quick Add to Cart */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              
-              // Log product data for debugging
-              console.log('Adding product to cart with fee:', {
-                basePrice: product.pricePerYard || product.price || 0,
-                platformFee: product.platformFee?.amount || 0,
-                totalWithFee: getPriceWithPlatformFee(product)
-              });
-              
-              // Use the same product object but ensure price includes platform fee
               onAction && onAction(product, 'add_to_cart');
             }}
             className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -274,7 +263,6 @@ export const ShopperProductTableRow = ({
             {isInCart ? 'In Cart' : 'Add'}
           </button>
 
-          {/* Quick Favorite */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -292,7 +280,6 @@ export const ShopperProductTableRow = ({
             </svg>
           </button>
 
-          {/* Action Dropdown */}
           <ShopperProductActionDropdown
             product={product}
             onAction={onAction}

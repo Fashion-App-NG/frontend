@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
-import { getAllInclusivePricePerYard } from '../../utils/priceCalculations';
 
 const ProductCard = ({
   product,
@@ -20,6 +19,18 @@ const ProductCard = ({
 
   const productId = product._id || product.id;
   const isProductFavorited = isFavorite?.(productId) || false;
+
+  // Calculate display price from API data
+  const calculateDisplayPrice = () => {
+    const basePrice = product.pricePerYard || 0;
+    const tax = product.taxAmount || 0;
+    const platformFee = product.platformFee?.amount || 0;
+
+    return basePrice + tax + platformFee;
+  };
+
+  const displayPrice = calculateDisplayPrice();
+  const vatRate = product.taxRate || 0;
 
   const handleImageError = () => {
     setImageError(true);
@@ -48,9 +59,8 @@ const ProductCard = ({
     }
     addToCart({
       ...product,
-      vendorId: product.vendorId || product.vendor?.id, // Ensure vendorId is present
-      // ...other fields as needed
-      quantity: 1, // or whatever logic you want
+      vendorId: product.vendorId || product.vendor?.id,
+      quantity: 1,
     });
   };
 
@@ -60,55 +70,41 @@ const ProductCard = ({
     }
   };
 
-  // Update the image handling logic
   const getImageSrc = () => {
     if (imageError) {
       return '/images/default-product.jpg';
     }
 
-    // Handle images array
     if (product.images && product.images.length > 0) {
       const firstImage = product.images[0];
 
-      // Handle image object with url property
       if (typeof firstImage === 'object' && firstImage.url) {
         return firstImage.url;
       }
 
-      // Handle string URL
       if (typeof firstImage === 'string') {
-        // If it's already a full URL
         if (firstImage.startsWith('http')) {
           return firstImage;
         }
-        // If it's a path from your API
         return `${process.env.REACT_APP_API_BASE_URL || ''}${firstImage.startsWith('/') ? '' : '/'}${firstImage}`;
       }
     }
 
-    // Handle single image
     if (product.image) {
-      // Handle image object
       if (typeof product.image === 'object' && product.image.url) {
         return product.image.url;
       }
 
-      // Handle string URL
       if (typeof product.image === 'string') {
-        // If it's already a full URL
         if (product.image.startsWith('http') || product.image.startsWith('data:')) {
           return product.image;
         }
-        // If it's a path from your API
         return `${process.env.REACT_APP_API_BASE_URL || ''}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
       }
     }
 
-    // Fallback to default image
     return '/images/default-product.jpg';
   };
-
-  const displayPrice = getAllInclusivePricePerYard(product);
 
   return (
     <div
@@ -172,8 +168,21 @@ const ProductCard = ({
 
         <p className="text-lg font-bold text-blue-600 mb-2">
           {formatPrice(displayPrice)}
-          <span className="text-xs text-gray-500 font-normal"> per yard (incl. fees & tax)</span>
+          <span className="text-xs text-gray-500 font-normal">
+            {' '}per yard (incl. {vatRate > 0 ? `${(vatRate * 100).toFixed(1)}% VAT &` : ''} fees)
+          </span>
         </p>
+
+        {/* Price breakdown */}
+        <div className="text-xs text-gray-500 mb-2">
+          <div>Base: {formatPrice(product.pricePerYard)}</div>
+          {product.taxAmount > 0 && (
+            <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(product.taxAmount)}</div>
+          )}
+          {product.platformFee?.amount > 0 && (
+            <div>Platform Fee: {formatPrice(product.platformFee.amount)}</div>
+          )}
+        </div>
 
         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
           <span>{product.materialType || 'Material'}</span>
@@ -182,7 +191,7 @@ const ProductCard = ({
           )}
         </div>
 
-        {/* Vendor Info - Only show if requested */}
+        {/* Vendor Info */}
         {showVendorInfo && (
           <div className="flex items-center text-xs text-gray-600">
             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +201,7 @@ const ProductCard = ({
           </div>
         )}
 
-        {/* ✅ ADD: Add to Cart button back */}
+        {/* Add to Cart button */}
         {showAddToCartButton && (
           <>
             {error && (
