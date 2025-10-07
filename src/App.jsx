@@ -1,6 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+//import { ToastContainer } from 'react-toastify';
+//import 'react-toastify/dist/ReactToastify.css';
 import AuthProvider from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import FavoritesProvider from './contexts/FavoritesContext';
@@ -35,6 +35,7 @@ import AdminMaterialPage from './pages/AdminMaterialPage';
 import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
+import AdminTaxPage from './pages/AdminTaxPage.jsx';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -45,7 +46,7 @@ import VendorDashboardPage from './pages/VendorDashboardPage';
 import VendorHybridBulkUploadPage from './pages/VendorHybridBulkUploadPage';
 import VendorNotificationsPage from './pages/VendorNotificationsPage';
 import VendorOrderDetailsPage from './pages/VendorOrderDetailsPage';
-import VendorOrdersPage from './pages/VendorOrdersPage';
+//import VendorOrdersPage from './pages/VendorOrdersPage';
 import VendorProductDetailPage from './pages/VendorProductDetailPage';
 import VendorProductEditPage from './pages/VendorProductEditPage';
 import VendorProductListPage from './pages/VendorProductListPage';
@@ -80,10 +81,10 @@ import GuestCartPage from './pages/GuestCartPage';
 import ShopperOrderDetails from './pages/ShopperOrderDetails';
 
 // Import the new page
-import VendorProfilePage from './pages/VendorProfilePage';
+//import VendorProfilePage from './pages/VendorProfilePage';
 
 // Import order tracking component
-import OrderTrackingPage from './pages/OrderTrackingPage';
+//import OrderTrackingPage from './pages/OrderTrackingPage';
 
 function App() {
   return (
@@ -178,12 +179,12 @@ function App() {
                 <Route path="products/:id/edit" element={<VendorProductEditPage />} />
                 <Route path="upload" element={<VendorProductUploadPage />} />
                 <Route path="bulk-upload" element={<VendorHybridBulkUploadPage />} />
-                <Route path="orders" element={<VendorOrdersPage />} />
+                {/*<Route path="orders" element={<VendorOrdersPage />} />*/}
                 <Route path="orders/:orderId" element={<VendorOrderDetailsPage />} />
                 <Route path="sales" element={<VendorSalesPage />} />
                 <Route path="notifications" element={<VendorNotificationsPage />} />
                 <Route path="settings" element={<VendorSettingsPage />} />
-                <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
+                {/*<Route path="profile" element={<VendorProfilePage />} />*/} {/* New profile route */}
               </Route>
 
               {/* Admin routes */}
@@ -196,19 +197,20 @@ function App() {
               <Route path="/admin/fees-management" element={<AdminFeesPage />} />
               <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
               <Route path="/admin/earnings" element={<AdminEarningsPage />} />
+              <Route path="/admin/tax" element={<AdminTaxPage />} />
 
               {/* Legal routes */}
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms-of-service" element={<TermsOfServicePage />} />
 
               {/* Order tracking route */}
-              <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
-              <Route path="/shopper/orders/:orderId/tracking" element={<OrderTrackingPage />} />
+              {/*<Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />*/}
+              {/*<Route path="/shopper/orders/:orderId/tracking" element={<OrderTrackingPage />} />*/}
 
               {/* 404 route */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-            <ToastContainer position="top-right" autoClose={5000} />
+            {/*<ToastContainer position="top-right" autoClose={5000} />*/}
           </div>
         </Router>
       </FavoritesProvider>

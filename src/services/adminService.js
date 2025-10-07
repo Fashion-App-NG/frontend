@@ -419,7 +419,7 @@ class AdminService {
         }
     }
 
-        async getOrderBreakdown (orderId) {
+    async getOrderBreakdown (orderId) {
         try {
 
             const response = await fetch(`${API_BASE_URL}/api/admin-fees/orders/${orderId}/breakdown`, {
@@ -466,7 +466,90 @@ class AdminService {
         }
     }
 
+    async GetCurrentTax () {
+        try {
 
+            const response = await fetch(`${API_BASE_URL}/api/admin/tax/current`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch tax summary');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching tax summary:', error);
+            throw error;
+        }
+    }
+
+    async UpdateTax(updatedData) {
+        //if (!taxId) throw new Error('fee ID is required');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin/tax/update`, {
+                method: 'PUT',  
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(updatedData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update tax');
+            }
+            return data;         
+        
+        } catch (error) {
+            console.error(`Error updating fee:`, error);
+            throw error;
+        }
+    }
+
+    async GetTaxHistory () {
+        try {
+
+            const response = await fetch(`${API_BASE_URL}/api/admin/tax/history`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to fetch tax history');
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error fetching tax history:', error);
+            throw error;
+        }
+    }
+
+    async ToggleTax() {
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/admin/tax/toggle`, {
+                method: 'POST',
+                headers: this.getAuthHeaders()
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to toggle tax');
+            }
+        } catch (error) {
+            console.error(`Error toggling tax:`, error);
+            throw error;    
+        }
+    }
 }
 
 // Create and export a single instance
