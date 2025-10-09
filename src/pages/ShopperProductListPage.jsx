@@ -326,10 +326,18 @@ export const ShopperProductListPage = () => {
     }
   }, [addToCart, navigate]);
 
+  // ✅ EXISTING: Debounced filters effect
   useEffect(() => {
-    // Only fetch when debouncedFilters changes
     loadShopperProducts(debouncedFilters);
   }, [debouncedFilters, loadShopperProducts]);
+
+  // ✅ ADD: Separate effect for pagination changes
+  useEffect(() => {
+    // Only refetch when currentPage changes (not on initial mount with debouncedFilters)
+    if (pagination.currentPage > 1) {
+      loadShopperProducts(filters);
+    }
+  }, [pagination.currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterCounts = getFilterCounts();
 
@@ -678,19 +686,25 @@ export const ShopperProductListPage = () => {
           </>
         )}
 
-        {/* Pagination Controls - Add after products grid/list */}
+        {/* Pagination Controls */}
         {!isLoading && !error && products.length > 0 && pagination.totalPages > 1 && (
           <div className="mt-8 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
             <div className="flex flex-1 justify-between sm:hidden">
               <button
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                onClick={() => {
+                  const newPage = pagination.currentPage - 1;
+                  setPagination(prev => ({ ...prev, currentPage: newPage }));
+                }}
                 disabled={!pagination.hasPrevPage}
                 className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               <button
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                onClick={() => {
+                  const newPage = pagination.currentPage + 1;
+                  setPagination(prev => ({ ...prev, currentPage: newPage }));
+                }}
                 disabled={!pagination.hasNextPage}
                 className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -709,7 +723,10 @@ export const ShopperProductListPage = () => {
               <div>
                 <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                   <button
-                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                    onClick={() => {
+                      const newPage = pagination.currentPage - 1;
+                      setPagination(prev => ({ ...prev, currentPage: newPage }));
+                    }}
                     disabled={!pagination.hasPrevPage}
                     className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -724,7 +741,10 @@ export const ShopperProductListPage = () => {
                   </span>
                   
                   <button
-                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                    onClick={() => {
+                      const newPage = pagination.currentPage + 1;
+                      setPagination(prev => ({ ...prev, currentPage: newPage }));
+                    }}
                     disabled={!pagination.hasNextPage}
                     className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

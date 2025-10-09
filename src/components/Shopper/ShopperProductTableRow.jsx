@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
-import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
@@ -14,9 +11,6 @@ export const ShopperProductTableRow = ({
   isInCart, 
   onClick 
 }) => {
-  const { toggleFavorite } = useFavorites();
-  const { addToCart, isInCart: isInCartContext } = useCart();
-  const { isAuthenticated } = useAuth();
   const [imageError, setImageError] = useState(false);
 
   const productId = product.id || product._id;
@@ -28,16 +22,10 @@ export const ShopperProductTableRow = ({
   const displayPrice = basePrice + tax + platformFee;
   const vatRate = product.taxRate || 0;
 
-  // Format price display
+  // Use imported formatPrice utility instead of duplicate function
   const formatPriceDisplay = (price) => {
     if (!price || price <= 0) return 'Contact vendor';
-    
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price);
+    return formatPrice(price);
   };
 
   const getProductImage = () => {

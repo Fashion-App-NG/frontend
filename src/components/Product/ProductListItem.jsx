@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { formatPrice } from '../../utils/formatPrice';
 
-const ProductListItem = ({ product, onClick }) => {
+const ProductListItem = ({ product }) => {
   const [imageError, setImageError] = useState(false);
-
-  const productId = product._id || product.id;
 
   // Calculate display price from API data
   const calculateDisplayPrice = () => {
@@ -84,8 +82,6 @@ const ProductListItem = ({ product, onClick }) => {
               </div>
             )}
           </div>
-
-          {/* Rest of component */}
         </div>
       </div>
     </div>
