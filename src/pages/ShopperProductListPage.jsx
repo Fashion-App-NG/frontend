@@ -95,19 +95,38 @@ export const ShopperProductListPage = () => {
   }));
   const debouncedFilters = useDebounce(filters, 400);
 
+  // ✅ Pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+
   // ✅ Load products with enhanced filtering for shoppers
   const loadShopperProducts = useCallback(async (currentFilters) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await productService.getAllProducts(currentFilters);
+      // ✅ ADD: Include pagination parameters
+      const response = await productService.getAllProducts({
+        ...currentFilters,
+        page: pagination.currentPage,
+        limit: 20
+      });
       
       if (response.error) {
         throw new Error(response.error);
       }
 
       let shopperProducts = response.products || [];
+      
+      // ✅ UPDATE: Store pagination from API response
+      if (response.pagination) {
+        setPagination(response.pagination);
+      }
       
       // Filter out inactive products for shoppers
       shopperProducts = shopperProducts.filter(product => 
@@ -209,7 +228,7 @@ export const ShopperProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeFilterTab, favorites]); // ✅ Remove filters dependency since we use currentFilters parameter
+  }, [activeFilterTab, favorites, pagination.currentPage]); // ✅ ADD pagination.currentPage dependency
 
   // ✅ Filter counts for shoppers
   const getFilterCounts = () => {
@@ -307,10 +326,18 @@ export const ShopperProductListPage = () => {
     }
   }, [addToCart, navigate]);
 
+  // ✅ EXISTING: Debounced filters effect
   useEffect(() => {
-    // Only fetch when debouncedFilters changes
     loadShopperProducts(debouncedFilters);
   }, [debouncedFilters, loadShopperProducts]);
+
+  // ✅ ADD: Separate effect for pagination changes
+  useEffect(() => {
+    // Only refetch when currentPage changes (not on initial mount with debouncedFilters)
+    if (pagination.currentPage > 1) {
+      loadShopperProducts(filters);
+    }
+  }, [pagination.currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterCounts = getFilterCounts();
 
@@ -505,7 +532,10 @@ export const ShopperProductListPage = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Browse Products</h1>
           <p className="text-gray-600 mt-1">
             {!isLoading && products.length > 0 ? (
-              <>Showing {products.length} product{products.length !== 1 ? 's' : ''}</>
+              <>
+                Showing {products.length} of {pagination.totalCount} products
+                {pagination.totalPages > 1 && ` (Page ${pagination.currentPage} of ${pagination.totalPages})`}
+              </>
             ) : !isLoading ? (
               'No products found'
             ) : (
@@ -654,6 +684,79 @@ export const ShopperProductListPage = () => {
               </div>
             )}
           </>
+        )}
+
+        {/* Pagination Controls */}
+        {!isLoading && !error && products.length > 0 && pagination.totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                onClick={() => {
+                  const newPage = pagination.currentPage - 1;
+                  setPagination(prev => ({ ...prev, currentPage: newPage }));
+                }}
+                disabled={!pagination.hasPrevPage}
+                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => {
+                  const newPage = pagination.currentPage + 1;
+                  setPagination(prev => ({ ...prev, currentPage: newPage }));
+                }}
+                disabled={!pagination.hasNextPage}
+                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+            
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing page <span className="font-medium">{pagination.currentPage}</span> of{' '}
+                  <span className="font-medium">{pagination.totalPages}</span>
+                  {' '}({pagination.totalCount} total products)
+                </p>
+              </div>
+              <div>
+                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                  <button
+                    onClick={() => {
+                      const newPage = pagination.currentPage - 1;
+                      setPagination(prev => ({ ...prev, currentPage: newPage }));
+                    }}
+                    disabled={!pagination.hasPrevPage}
+                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={() => {
+                      const newPage = pagination.currentPage + 1;
+                      setPagination(prev => ({ ...prev, currentPage: newPage }));
+                    }}
+                    disabled={!pagination.hasNextPage}
+                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

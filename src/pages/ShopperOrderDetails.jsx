@@ -120,6 +120,14 @@ const ShopperOrderDetails = () => {
     return Object.values(vendorGroups);
   };
 
+  const calculateOrderSubtotal = (items) => {
+    return (items || []).reduce((total, item) => {
+      const basePrice = (item.pricePerYard || 0) * (item.quantity || 1);
+      const platformFee = (item.platformFeeAmount || item.platformFee?.amount || 0);
+      return total + basePrice + platformFee;
+    }, 0);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -199,6 +207,28 @@ const ShopperOrderDetails = () => {
             <PaymentStatusBadge status={order.paymentStatus} />
           </div>
         </div>
+        
+        {/* ADD PRICE BREAKDOWN SECTION */}
+        <div className="mb-4 border-t pt-4">
+          <div className="text-xs text-gray-500 mb-2">Price Breakdown</div>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Subtotal (items):</span>
+              <span className="font-medium">{formatPrice(calculateOrderSubtotal(order.items))}</span>
+            </div>
+            {order.shippingCost > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Delivery Fee:</span>
+                <span className="font-medium">{formatPrice(order.shippingCost)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t">
+              <span className="text-gray-900 font-semibold">Total:</span>
+              <span className="text-blue-700 font-bold">{formatPrice(order.totalWithShipping || order.totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+        
         <div className="mb-4">
           <div className="text-xs text-gray-500 mb-1">Shipping Address</div>
           <div className="text-sm text-gray-700">
