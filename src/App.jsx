@@ -35,6 +35,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import AdminMaterialPage from './pages/AdminMaterialPage';
 import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AdminTaxPage from './pages/AdminTaxPage.jsx';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
@@ -189,16 +190,17 @@ function App() {
                   <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
                 </Route>
 
-                {/* Admin routes */}
-                <Route path="/admin" element={<AdminDashboardPage />} />
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
-                <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
-                <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
-                <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
-                <Route path="/admin/fees-management" element={<AdminFeesPage />} />
-                <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
-                <Route path="/admin/earnings" element={<AdminEarningsPage />} />
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
+              <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
+              <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
+              <Route path="/admin/fees-management" element={<AdminFeesPage />} />
+              <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
+              <Route path="/admin/earnings" element={<AdminEarningsPage />} />
+              <Route path="/admin/tax" element={<AdminTaxPage />} />
 
                 {/* Legal routes */}
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
