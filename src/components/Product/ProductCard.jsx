@@ -20,17 +20,21 @@ const ProductCard = ({
   const productId = product._id || product.id;
   const isProductFavorited = isFavorite?.(productId) || false;
 
-  // Calculate display price from API data
+  // Calculate display price from API data with proper precision
   const calculateDisplayPrice = () => {
-    const basePrice = product.pricePerYard || 0;
-    const tax = product.taxAmount || 0;
-    const platformFee = product.platformFee?.amount || 0;
+    const basePrice = parseFloat(product.pricePerYard) || 0;
+    const tax = parseFloat(product.taxAmount) || 0;
+    const platformFee = parseFloat(product.platformFee?.amount) || 0;
 
     return basePrice + tax + platformFee;
   };
 
   const displayPrice = calculateDisplayPrice();
-  const vatRate = product.taxRate || 0;
+  
+  // Calculate tax rate from actual values to avoid rounding issues
+  const basePrice = parseFloat(product.pricePerYard) || 0;
+  const taxAmount = parseFloat(product.taxAmount) || 0;
+  const vatRate = basePrice > 0 ? taxAmount / basePrice : 0;
 
   const handleImageError = () => {
     setImageError(true);
@@ -173,13 +177,13 @@ const ProductCard = ({
           </span>
         </p>
 
-        {/* Price breakdown */}
+        {/* Price breakdown with proper decimal handling */}
         <div className="text-xs text-gray-500 mb-2">
-          <div>Base: {formatPrice(product.pricePerYard)}</div>
-          {product.taxAmount > 0 && (
-            <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(product.taxAmount)}</div>
+          <div>Base: {formatPrice(basePrice)}</div>
+          {taxAmount > 0 && (
+            <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(taxAmount)}</div>
           )}
-          {product.platformFee?.amount > 0 && (
+          {parseFloat(product.platformFee?.amount) > 0 && (
             <div>Platform Fee: {formatPrice(product.platformFee.amount)}</div>
           )}
         </div>

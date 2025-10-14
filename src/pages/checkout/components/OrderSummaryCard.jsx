@@ -1,26 +1,32 @@
 import { useCart } from '../../../contexts/CartContext';
-import { useTax } from '../../../contexts/TaxContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
+import { getPlatformFee } from '../../../utils/priceCalculations';
 
 const OrderSummaryCard = ({ cart, order, currentStep }) => {
   const { cartItems } = useCart();
-  const { taxRate } = useTax();
   
-  // Use all-inclusive subtotal calculation
-  const subtotal = getAllInclusiveSubtotal(cartItems, taxRate);
+  // Calculate all-inclusive subtotal using API taxAmount
+  const getAllInclusiveSubtotal = () => {
+    return cartItems.reduce((sum, item) => {
+      const basePrice = parseFloat(item.pricePerYard) || 0;
+      const taxAmount = parseFloat(item.taxAmount) || 0;
+      const platformFee = getPlatformFee(item);
+      const quantity = item.quantity || 1;
+      return sum + ((basePrice + taxAmount + platformFee) * quantity);
+    }, 0);
+  };
+  
+  const subtotal = getAllInclusiveSubtotal();
   
   // Only show delivery fee after shipping info step (step 2)
   const showDetailedBreakdown = currentStep >= 3;
-  
-  // Use zeros for delivery until we reach payment step
   const deliveryFee = showDetailedBreakdown ? (cart?.shippingCost ?? 0) : 0;
-  
-  // For total, just add delivery fee to subtotal (tax already included)
-  const total = 
-  //showDetailedBreakdown && cart?.totalWithShipping 
-    //? cart.totalWithShipping : 
-    subtotal + deliveryFee;
+  const total = subtotal + deliveryFee;
+
+  // Get tax rate for display
+  const taxRate = cartItems.length > 0 && cartItems[0].taxAmount 
+    ? cartItems[0].taxAmount / cartItems[0].pricePerYard 
+    : 0;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -36,7 +42,6 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
             <span className="text-gray-600">Delivery Fee</span>
             <span>{formatPrice(deliveryFee)}</span>
           </div>
-          // Tax line removed since it's included in subtotal
         )}
         
         <hr className="my-2" />

@@ -1,23 +1,44 @@
-import { useState } from 'react'; // Add this import
+import { useState } from 'react';
 import { useCart } from '../../../contexts/CartContext';
-import { useTax } from '../../../contexts/TaxContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
+import { getPlatformFee } from '../../../utils/priceCalculations';
 import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext }) => {
-  const { cartItems, updateCartItemQuantity } = useCart(); // Remove unused removeFromCart
-  const { taxRate } = useTax();
-  const [shippingCost] = useState(0); // Add this to define shippingCost (will be calculated at shipping step)
+  const { cartItems, updateCartItemQuantity } = useCart();
+  const [shippingCost] = useState(0);
+
+  // Calculate all-inclusive price per yard using API taxAmount
+  const getAllInclusivePricePerYard = (item) => {
+    const basePrice = parseFloat(item.pricePerYard) || 0;
+    const taxAmount = parseFloat(item.taxAmount) || 0;
+    const platformFee = getPlatformFee(item);
+    return basePrice + taxAmount + platformFee;
+  };
+
+  // Calculate all-inclusive line item total
+  const getAllInclusiveLineItemTotal = (item) => {
+    const quantity = item.quantity || 1;
+    return getAllInclusivePricePerYard(item) * quantity;
+  };
+
+  // Calculate all-inclusive subtotal
+  const getAllInclusiveSubtotal = () => {
+    return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
+  };
+
+  // Get tax rate for display from first item
+  const taxRate = cartItems.length > 0 && cartItems[0].taxAmount 
+    ? cartItems[0].taxAmount / cartItems[0].pricePerYard 
+    : 0;
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Review Cart</h2>
 
       {cartItems.map((item, index) => {
-        // Generate consistent item key and ID
         const itemKey = item.id || item.productId || `item-${index}`;
-        const itemId = item.productId || item.id; // Use productId as primary identifier
+        const itemId = item.productId || item.id;
 
         return (
           <div key={itemKey} className="flex items-center py-4 border-b">
@@ -46,7 +67,7 @@ const CartReviewStep = ({ onNext }) => {
                 <p className="text-sm text-gray-600">by {item.vendorName}</p>
               )}
               <p className="text-blue-600 font-semibold">
-                {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
+                {formatPrice(getAllInclusivePricePerYard(item))} per yard
                 <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                 × {item.quantity} yards
               </p>
@@ -76,7 +97,7 @@ const CartReviewStep = ({ onNext }) => {
 
             {/* Line item total */}
             <div className="font-medium">
-              {formatPrice(getAllInclusiveLineItemTotal(item, taxRate))}
+              {formatPrice(getAllInclusiveLineItemTotal(item))}
             </div>
           </div>
         );
@@ -86,7 +107,7 @@ const CartReviewStep = ({ onNext }) => {
       <div className="mt-6 border-t pt-4">
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Subtotal (incl. fees & tax):</span>
-          <span className="font-semibold">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
+          <span className="font-semibold">{formatPrice(getAllInclusiveSubtotal())}</span>
         </div>
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">Shipping:</span>
@@ -94,7 +115,7 @@ const CartReviewStep = ({ onNext }) => {
         </div>
         <div className="flex justify-between mt-4 text-lg font-bold">
           <span>Total:</span>
-          <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate) + (shippingCost || 0))}</span>
+          <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal() + (shippingCost || 0))}</span>
         </div>
         <div className="text-xs text-gray-500 mt-2">
           * VAT ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.

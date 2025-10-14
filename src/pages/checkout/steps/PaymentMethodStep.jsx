@@ -4,9 +4,8 @@ import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
-import { useTax } from '../../../contexts/TaxContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
+import { getPlatformFee } from '../../../utils/priceCalculations';
 
 const PaymentMethodStep = ({ 
   onSubmit, 
@@ -33,16 +32,54 @@ const PaymentMethodStep = ({
 
   const { user } = useAuth();
   const { cartItems } = useCart();
-  const { taxRate } = useTax();
   
-  // Use all-inclusive subtotal calculation
-  const subtotal = getAllInclusiveSubtotal(cartItems, taxRate);
+  // ✅ FIX: Calculate subtotal using API taxAmount (same as OrderSummaryCard)
+  const calculateSubtotal = () => {
+    return cartItems.reduce((sum, item) => {
+      const basePrice = parseFloat(item.pricePerYard) || 0;
+      const taxAmount = parseFloat(item.taxAmount) || 0;
+      const platformFee = getPlatformFee(item);
+      const quantity = item.quantity || 1;
+      return sum + ((basePrice + taxAmount + platformFee) * quantity);
+    }, 0);
+  };
   
-  // Calculate delivery fee
-  const deliveryFee = cart?.shippingCost || 3000;
+  const subtotal = calculateSubtotal();
   
-  // Calculate total (tax is already included in subtotal)
+  // Get delivery fee from backend cart data
+  const deliveryFee = cart?.shippingCost || 0;
+  
+  // Calculate total
   const total = subtotal + deliveryFee;
+
+  // 🔍 Debug log to compare values - only in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('💰 PAYMENT STEP PRICE COMPARISON:', {
+        frontendCalculated: {
+          subtotal,
+          deliveryFee,
+          total,
+          totalInKobo: Math.round(total * 100)
+        },
+        backendProvided: {
+          totalAmount: cart?.totalAmount,
+          shippingCost: cart?.shippingCost,
+          totalWithShipping: cart?.totalWithShipping,
+          totalInKobo: cart?.totalAmount ? Math.round(cart.totalAmount * 100) : null
+        },
+        difference: cart?.totalAmount ? (total - cart.totalAmount).toFixed(2) : 'N/A',
+        cartItems: cartItems.map(item => ({
+          name: item.name,
+          pricePerYard: item.pricePerYard,
+          taxAmount: item.taxAmount,
+          platformFee: getPlatformFee(item),
+          quantity: item.quantity,
+          lineTotal: (parseFloat(item.pricePerYard) + parseFloat(item.taxAmount) + getPlatformFee(item)) * item.quantity
+        }))
+      });
+    }
+  }, [cart, subtotal, deliveryFee, total, cartItems]);
 
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
@@ -129,7 +166,7 @@ const PaymentMethodStep = ({
     amount: formatAmountForPaystack(total),
     currency: PAYSTACK_CONFIG.currency,
     publicKey: PAYSTACK_CONFIG.publicKey,
-    text: `Pay ${formatPrice(total)}`, // This will now use the imported formatPrice
+    text: `Pay ${formatPrice(total)}`,
     channels: PAYSTACK_CONFIG.channels,
     metadata: {
       customerName: customerInfo?.name,
