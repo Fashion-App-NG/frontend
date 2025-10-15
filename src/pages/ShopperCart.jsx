@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/formatPrice';
-import { calculateSubtotal, getPlatformFee } from '../utils/priceCalculations';
+import { calculateSubtotal, getPlatformFee, getTaxRateFromCart } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -71,9 +71,7 @@ const ShopperCart = () => {
   };
 
   // Get tax rate for display from first item (all should have same rate)
-  const taxRate = cartItems.length > 0 && cartItems[0].taxAmount 
-    ? cartItems[0].taxAmount / cartItems[0].pricePerYard 
-    : 0;
+  const taxRate = getTaxRateFromCart(cartItems);
 
   if (cartItems.length === 0) {
     return (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getPlatformFee } from '../../../utils/priceCalculations';
+import { getPlatformFee, getTaxRateFromCart } from '../../../utils/priceCalculations';
 import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext }) => {
@@ -27,10 +27,8 @@ const CartReviewStep = ({ onNext }) => {
     return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
   };
 
-  // Get tax rate for display from first item
-  const taxRate = cartItems.length > 0 && cartItems[0].taxAmount 
-    ? cartItems[0].taxAmount / cartItems[0].pricePerYard 
-    : 0;
+  // Get tax rate for display from first item (safe division)
+  const taxRate = getTaxRateFromCart(cartItems);
 
   return (
     <div>

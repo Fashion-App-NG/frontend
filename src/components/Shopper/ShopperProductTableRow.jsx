@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
+import { calculateTaxRate } from '../../utils/priceCalculations';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
 export const ShopperProductTableRow = ({ 
@@ -24,8 +25,8 @@ export const ShopperProductTableRow = ({
   const platformFee = parseFloat(product.platformFee?.amount) || 0;
   const displayPrice = basePrice + tax + platformFee;
 
-  // Calculate VAT rate from actual values
-  const vatRate = basePrice > 0 ? tax / basePrice : 0;
+  // Calculate VAT rate from actual values (safe division)
+  const vatRate = calculateTaxRate(tax, basePrice);
 
   const getProductImage = () => {
     if (imageError) return null;
