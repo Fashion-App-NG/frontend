@@ -1,19 +1,22 @@
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getPlatformFee } from '../../../utils/priceCalculations';
+import { getPlatformFee, roundSubtotalForPayment } from '../../../utils/priceCalculations';
 
 const OrderSummaryCard = ({ cart, order, currentStep }) => {
   const { cartItems } = useCart();
   
   // Calculate all-inclusive subtotal using API taxAmount
   const getAllInclusiveSubtotal = () => {
-    return cartItems.reduce((sum, item) => {
+    const rawSubtotal = cartItems.reduce((sum, item) => {
       const basePrice = parseFloat(item.pricePerYard) || 0;
       const taxAmount = parseFloat(item.taxAmount) || 0;
       const platformFee = getPlatformFee(item);
       const quantity = item.quantity || 1;
       return sum + ((basePrice + taxAmount + platformFee) * quantity);
     }, 0);
+    
+    // ✅ Only round on payment step (step 3)
+    return roundSubtotalForPayment(rawSubtotal, currentStep >= 3);
   };
   
   const subtotal = getAllInclusiveSubtotal();

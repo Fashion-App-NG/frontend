@@ -108,3 +108,14 @@ export const getPlatformFee = (item) => {
   
   return 0;
 };
+
+/**
+ * Conditionally round subtotal to whole Naira
+ * Only rounds on payment step to match backend expectations
+ * @param {number} amount - Amount to potentially round
+ * @param {boolean} shouldRound - Whether to round (true on payment step)
+ * @returns {number} Rounded or original amount
+ */
+export const roundSubtotalForPayment = (amount, shouldRound = false) => {
+  return shouldRound ? Math.round(amount) : amount;
+};

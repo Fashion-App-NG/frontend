@@ -33,15 +33,18 @@ const PaymentMethodStep = ({
   const { user } = useAuth();
   const { cartItems } = useCart();
   
-  // ✅ FIX: Calculate subtotal using API taxAmount (same as OrderSummaryCard)
+  // ✅ Calculate subtotal using API taxAmount and ALWAYS round for payment
   const calculateSubtotal = () => {
-    return cartItems.reduce((sum, item) => {
+    const rawSubtotal = cartItems.reduce((sum, item) => {
       const basePrice = parseFloat(item.pricePerYard) || 0;
       const taxAmount = parseFloat(item.taxAmount) || 0;
       const platformFee = getPlatformFee(item);
       const quantity = item.quantity || 1;
       return sum + ((basePrice + taxAmount + platformFee) * quantity);
     }, 0);
+    
+    // ✅ Always round on payment step
+    return Math.round(rawSubtotal);
   };
   
   const subtotal = calculateSubtotal();
@@ -49,7 +52,7 @@ const PaymentMethodStep = ({
   // Get delivery fee from backend cart data
   const deliveryFee = cart?.shippingCost || 0;
   
-  // Calculate total
+  // Calculate total (automatically whole number since both are rounded)
   const total = subtotal + deliveryFee;
 
   // 🔍 Debug log to compare values - only in development
