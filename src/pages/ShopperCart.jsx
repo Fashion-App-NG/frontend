@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
-import { useTax } from '../contexts/TaxContext';
 import { formatPrice } from '../utils/formatPrice';
-import { calculateSubtotal, getAllInclusiveLineItemTotal, getAllInclusivePricePerYard, getAllInclusiveSubtotal, getPlatformFee } from '../utils/priceCalculations';
+import { calculateSubtotal, getPlatformFee, getTaxRateFromCart } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -14,17 +13,6 @@ const ShopperCart = () => {
     clearCart, 
     error
   } = useCart();
-
-  const { taxRate, isLoading: taxLoading } = useTax(); // Get loading state
-
-  // Wait for tax rate to load
-  if (taxLoading) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-16">Loading tax information...</div>
-      </div>
-    );
-  }
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
@@ -46,12 +34,12 @@ const ShopperCart = () => {
     updateCartItemQuantity(itemId, newQuantity);
   };
 
-  // Calculate total tax amount for all items
+  // Calculate total tax amount using API values
   const calculateTaxTotal = () => {
     return cartItems.reduce((total, item) => {
-      const basePrice = item.pricePerYard || 0;
+      const taxAmount = item.taxAmount || 0;
       const quantity = item.quantity || 1;
-      return total + (basePrice * taxRate * quantity);
+      return total + (taxAmount * quantity);
     }, 0);
   };
 
@@ -62,6 +50,28 @@ const ShopperCart = () => {
       return total + platformFee;
     }, 0);
   };
+
+  // Calculate all-inclusive price per yard using API taxAmount
+  const getAllInclusivePricePerYard = (item) => {
+    const basePrice = item.pricePerYard || 0;
+    const taxAmount = item.taxAmount || 0;
+    const platformFee = getPlatformFee(item);
+    return basePrice + taxAmount + platformFee;
+  };
+
+  // Calculate all-inclusive line item total using API taxAmount
+  const getAllInclusiveLineItemTotal = (item) => {
+    const quantity = item.quantity || 1;
+    return getAllInclusivePricePerYard(item) * quantity;
+  };
+
+  // Calculate all-inclusive subtotal
+  const getAllInclusiveSubtotal = () => {
+    return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
+  };
+
+  // Get tax rate for display from first item (all should have same rate)
+  const taxRate = getTaxRateFromCart(cartItems);
 
   if (cartItems.length === 0) {
     return (
@@ -100,9 +110,8 @@ const ShopperCart = () => {
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-200">
           {cartItems.map((item) => {
-            // ✅ FIX: Generate consistent item key and ID
             const itemKey = item.id || item.productId || `item-${item.name?.replace(/\s+/g, '-')}`;
-            const itemId = item.productId || item.id; // Use productId as primary identifier
+            const itemId = item.productId || item.id;
             
             return (
               <div key={itemKey} className="p-6 flex items-center space-x-4">
@@ -128,20 +137,18 @@ const ShopperCart = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-medium text-gray-900">{item.name}</h3>
                   {item.vendorName && (
-                    <p className="text-sm text-gray-600">
-                      by {item.vendorName}
-                    </p>
+                    <p className="text-sm text-gray-600">by {item.vendorName}</p>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-1">
-                    {formatPrice(getAllInclusivePricePerYard(item, taxRate))} per yard
+                    {formatPrice(getAllInclusivePricePerYard(item))} per yard
                     <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                   </p>
 
-                  {/* Price Breakdown - NEW */}
+                  {/* Price Breakdown */}
                   <div className="mt-1 text-sm text-gray-500">
                     Base: {formatPrice(item.pricePerYard)}
                     <span className="mx-1">+</span>
-                    Tax: {formatPrice(item.pricePerYard * taxRate)}
+                    Tax: {formatPrice(item.taxAmount || 0)}
                     <span className="mx-1">+</span>
                     Fee: {formatPrice(getPlatformFee(item))}
                   </div>
@@ -172,7 +179,7 @@ const ShopperCart = () => {
                 {/* Subtotal */}
                 <div className="text-right">
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatPrice(getAllInclusiveLineItemTotal(item, taxRate))}
+                    {formatPrice(getAllInclusiveLineItemTotal(item))}
                   </p>
                   <button
                     onClick={() => removeFromCart(itemId)}
@@ -188,7 +195,6 @@ const ShopperCart = () => {
 
         {/* Cart Summary */}
         <div className="bg-gray-50 px-6 py-4">
-          {/* Updated Cart Summary with Tax and Fees */}
           <div className="flex justify-between py-2">
             <span>Subtotal:</span>
             <span>{formatPrice(calculateSubtotal(cartItems))}</span>
@@ -203,7 +209,7 @@ const ShopperCart = () => {
           </div>
           <div className="flex justify-between py-2 font-bold">
             <span>Total:</span>
-            <span>{formatPrice(getAllInclusiveSubtotal(cartItems, taxRate))}</span>
+            <span>{formatPrice(getAllInclusiveSubtotal())}</span>
           </div>
           <div className="text-xs text-gray-500 mt-2">
             * VAT is calculated on product price only. Platform fees are not taxed.

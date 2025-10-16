@@ -4,9 +4,8 @@ import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useCart } from '../../../contexts/CartContext';
-import { useTax } from '../../../contexts/TaxContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getAllInclusiveSubtotal } from '../../../utils/priceCalculations';
+import { getPlatformFee } from '../../../utils/priceCalculations';
 
 const PaymentMethodStep = ({ 
   onSubmit, 
@@ -23,27 +22,68 @@ const PaymentMethodStep = ({
     console.log('Dev - [PAGE] PaymentMethodStep rendered');
   }
 
-  // Component mount/unmount debugging - only in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("PaymentMethodStep mounted with ID:", Math.random());
-      return () => console.log("PaymentMethodStep unmounted");
-    }
-  }, []);
-
   const { user } = useAuth();
   const { cartItems } = useCart();
-  const { taxRate } = useTax();
+
+  // 🎯 USE BACKEND VALUES - Backend is the source of truth (with 2 decimal places)
+  const backendBaseAmount = cart?.totalAmount || 0;           // Base prices
+  const backendTaxAmount = cart?.taxAmount || 0;              // Total tax
+  const backendPlatformFees = cart?.totalPlatformFee || 0;    // Total platform fees
+  const backendShipping = cart?.shippingCost || 0;            // Shipping
   
-  // Use all-inclusive subtotal calculation
-  const subtotal = getAllInclusiveSubtotal(cartItems, taxRate);
-  
-  // Calculate delivery fee
-  const deliveryFee = cart?.shippingCost || 3000;
-  
-  // Calculate total (tax is already included in subtotal)
+  // Calculate subtotal = base + tax + platform fees (no rounding needed)
+  const subtotal = backendBaseAmount + backendTaxAmount + backendPlatformFees;
+  const deliveryFee = backendShipping;
   const total = subtotal + deliveryFee;
 
+  // 🔍 Debug log to compare values - only in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Also calculate frontend values for comparison
+      const frontendPlatformFees = cartItems.reduce((sum, item) => {
+        const platformFee = getPlatformFee(item);
+        const quantity = item.quantity || 1;
+        return sum + (platformFee * quantity);
+      }, 0);
+
+      console.log('💰 PAYMENT STEP BREAKDOWN:', {
+        backend: {
+          baseAmount: backendBaseAmount,
+          taxAmount: backendTaxAmount,
+          platformFees: backendPlatformFees,
+          shippingCost: backendShipping,
+          totalWithShipping: cart?.totalWithShipping
+        },
+        calculated: {
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          total: total
+        },
+        verification: {
+          backendExpects: cart?.totalWithShipping,
+          frontendSending: total,
+          match: Math.abs(total - (cart?.totalWithShipping || 0)) <= 0.01 ? '✅ MATCH' : '❌ MISMATCH',
+          difference: cart?.totalWithShipping ? (total - cart.totalWithShipping).toFixed(2) : 0
+        },
+        platformFeeComparison: {
+          backend: backendPlatformFees,
+          frontend: frontendPlatformFees,
+          difference: backendPlatformFees - frontendPlatformFees,
+          note: 'Using backend value for payment'
+        },
+        itemBreakdown: cartItems.map(item => ({
+          name: item.name,
+          basePrice: item.pricePerYard,
+          taxAmount: item.taxAmount,
+          platformFee: item.platformFeeAmount || getPlatformFee(item),
+          quantity: item.quantity,
+          itemTotal: (parseFloat(item.pricePerYard) + parseFloat(item.taxAmount || 0) + (item.platformFeeAmount || getPlatformFee(item))) * item.quantity
+        }))
+      });
+    }
+  }, [cart, cartItems, backendBaseAmount, backendTaxAmount, backendPlatformFees, backendShipping, subtotal, deliveryFee, total]);
+
+  // ...existing state...
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
   const [paymentError, setPaymentError] = useState(null);
@@ -99,37 +139,13 @@ const PaymentMethodStep = ({
     }
   }, [paymentError, paymentErrorProp]);
 
-  // Format payment error message for production
-  const formatErrorForDisplay = (error) => {
-    if (!error) return '';
-    
-    // Common technical errors that need user-friendly messages
-    const errorMap = {
-      'Payment reference is required': 'We couldn\'t process your payment. Please try again.',
-      'Payment amount does not match expected amount': 'There was a price discrepancy. Please refresh and try again.',
-      'Invalid transaction reference': 'Payment verification failed. Please try a different payment method.',
-      'Too many requests': 'Please wait a moment before trying again.',
-      'Invalid card': 'Your card was declined. Please try another card or payment method.'
-    };
-
-    // Check if the error message contains any of our mapped errors
-    for (const [technical, friendly] of Object.entries(errorMap)) {
-      if (error.includes(technical)) {
-        return friendly;
-      }
-    }
-
-    // Default user-friendly message if we don't have a specific mapping
-    return 'There was an issue processing your payment. Please try again.';
-  };
-
-  // Paystack configuration
+  // Paystack configuration using backend total
   const paystackProps = {
     email: customerInfo?.email || user?.email || 'customer@example.com',
     amount: formatAmountForPaystack(total),
     currency: PAYSTACK_CONFIG.currency,
     publicKey: PAYSTACK_CONFIG.publicKey,
-    text: `Pay ${formatPrice(total)}`, // This will now use the imported formatPrice
+    text: `Pay ${formatPrice(total)}`,
     channels: PAYSTACK_CONFIG.channels,
     metadata: {
       customerName: customerInfo?.name,
@@ -235,12 +251,6 @@ const PaymentMethodStep = ({
     setProcessingPayment(false);
   }
 
-  // Handle error dismissal
-  function handleDismissError() {
-    setPaymentError(null);
-    if (clearPaymentError) clearPaymentError();
-  }
-
   // Handle manual card form submission
   const handleManualPayment = async (e) => {
     e.preventDefault();
@@ -275,68 +285,14 @@ const PaymentMethodStep = ({
     }
   };
 
-  const handleRetryPayment = () => {
-    // Clear any errors and reset state to allow new payment attempt
-    setPaymentError(null);
-    if (clearPaymentError) clearPaymentError();
-    setOrderConfirmed(false);
-  };
-
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Select payment method</h2>
 
-      {/* Payment Error Display with dismiss button - improved for production */}
-      {paymentError && (
-        <div 
-          className="payment-error-message bg-red-100 border-2 border-red-500 text-red-700 rounded px-4 py-3 mb-6"
-          style={{ 
-            display: 'block',
-            position: 'relative',
-            zIndex: 50 
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span>
-                {process.env.NODE_ENV === 'development' 
-                  ? `Payment Error: ${paymentError}` 
-                  : formatErrorForDisplay(paymentError)
-                }
-              </span>
-            </div>
-            <button 
-              onClick={handleDismissError}
-              className="text-red-500 hover:text-red-700"
-              aria-label="Dismiss error"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Added for production: retry button */}
-          {paymentError && (
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={handleRetryPayment}
-                className="text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1 rounded transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Payment Summary */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <h3 className="font-medium text-gray-900 mb-3">Payment Summary</h3>
-        <div className="space-y-2 text-sm">
+      {/* Payment Summary using backend values */}
+      <div className="bg-gray-50 rounded-lg p-6 mb-6">
+        <h3 className="text-lg font-semibold mb-4">Payment Summary</h3>
+        <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal (incl. fees & tax)</span>
             <span className="font-medium">{formatPrice(subtotal)}</span>
@@ -346,10 +302,45 @@ const PaymentMethodStep = ({
             <span className="font-medium">{formatPrice(deliveryFee)}</span>
           </div>
           <hr className="my-2" />
-          <div className="flex justify-between text-lg font-semibold">
-            <span>Total</span>
-            <span className="text-blue-600">{formatPrice(total)}</span>
+          <div className="flex justify-between text-lg">
+            <span className="font-bold">Total</span>
+            <span className="font-bold text-blue-600">{formatPrice(total)}</span>
           </div>
+          
+          {/* 🔍 Show calculation breakdown in dev */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-500 mt-4 pt-4 border-t space-y-1">
+              <div className="font-semibold text-gray-700">Backend Values (Dev):</div>
+              <div className="flex justify-between">
+                <span>Base Amount:</span>
+                <span className="font-mono">{formatPrice(backendBaseAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tax:</span>
+                <span className="font-mono">{formatPrice(backendTaxAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Platform Fees:</span>
+                <span className="font-mono">{formatPrice(backendPlatformFees)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Shipping:</span>
+                <span className="font-mono">{formatPrice(backendShipping)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-gray-700 pt-1 border-t">
+                <span>Total:</span>
+                <span className="font-mono">{formatPrice(total)}</span>
+              </div>
+              {cart?.totalWithShipping && (
+                <div className="flex justify-between pt-2 border-t">
+                  <span>Backend Expects:</span>
+                  <span className={`font-mono ${Math.abs(total - cart.totalWithShipping) <= 1 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatPrice(cart.totalWithShipping)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -544,10 +535,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200"
               onClick={() => {
                 setPaymentError("Payment amount does not match expected amount");
-                // Add a timeout before clearing the error
-                setTimeout(() => {
-                  if (clearPaymentError) clearPaymentError();
-                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Payment Mismatch Error
@@ -557,10 +544,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200"
               onClick={() => {
                 setPaymentError("Too many requests. Please wait a moment and try again.");
-                // Add a timeout before clearing the error
-                setTimeout(() => {
-                  if (clearPaymentError) clearPaymentError();
-                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Rate Limit Error

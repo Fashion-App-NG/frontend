@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
+import { calculateTaxRate } from '../../utils/priceCalculations';
 import { ShopperProductActionDropdown } from './ShopperProductActionDropdown';
 
 export const ShopperProductTableRow = ({ 
@@ -12,21 +14,19 @@ export const ShopperProductTableRow = ({
   onClick 
 }) => {
   const [imageError, setImageError] = useState(false);
+  const { isFavorite } = useFavorites();
 
   const productId = product.id || product._id;
+  const isFavorited = isFavorite?.(productId) || false;
 
-  // Calculate display price from API data
-  const basePrice = product.pricePerYard || 0;
-  const tax = product.taxAmount || 0;
-  const platformFee = product.platformFee?.amount || 0;
+  // Calculate prices with proper decimal precision
+  const basePrice = parseFloat(product.pricePerYard) || 0;
+  const tax = parseFloat(product.taxAmount) || 0;
+  const platformFee = parseFloat(product.platformFee?.amount) || 0;
   const displayPrice = basePrice + tax + platformFee;
-  const vatRate = product.taxRate || 0;
 
-  // Use imported formatPrice utility instead of duplicate function
-  const formatPriceDisplay = (price) => {
-    if (!price || price <= 0) return 'Contact vendor';
-    return formatPrice(price);
-  };
+  // Calculate VAT rate from actual values (safe division)
+  const vatRate = calculateTaxRate(tax, basePrice);
 
   const getProductImage = () => {
     if (imageError) return null;
@@ -105,7 +105,6 @@ export const ShopperProductTableRow = ({
   };
 
   const productImage = getProductImage();
-  const isFavorite = favorites?.has(productId);
 
   return (
     <tr 
@@ -200,7 +199,7 @@ export const ShopperProductTableRow = ({
       {/* Price Column with breakdown */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm font-semibold text-blue-600">
-          {formatPriceDisplay(displayPrice)}
+          {formatPrice(displayPrice)}
         </div>
         <div className="text-xs text-gray-500 space-y-0.5 mt-1">
           <div>Base: {formatPrice(basePrice)}</div>
@@ -257,13 +256,13 @@ export const ShopperProductTableRow = ({
               onAction && onAction(product, 'toggle_favorite');
             }}
             className={`inline-flex items-center p-1 rounded text-xs transition-colors ${
-              isFavorite
+              isFavorited
                 ? 'bg-red-100 text-red-800 hover:bg-red-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
-            title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+            title={isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
           >
-            <svg className="w-3 h-3" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </button>

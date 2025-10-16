@@ -108,3 +108,40 @@ export const getPlatformFee = (item) => {
   
   return 0;
 };
+
+/**
+ * Conditionally round subtotal to whole Naira
+ * Only rounds on payment step to match backend expectations
+ * @param {number} amount - Amount to potentially round
+ * @param {boolean} shouldRound - Whether to round (true on payment step)
+ * @returns {number} Rounded or original amount
+ */
+export const roundSubtotalForPayment = (amount, shouldRound = false) => {
+  return shouldRound ? Math.round(amount) : amount;
+};
+
+/**
+ * Calculate VAT/tax rate from tax amount and base price
+ * Safe division with zero-check guard
+ * @param {number} taxAmount - Tax amount
+ * @param {number} basePrice - Base price (before tax)
+ * @returns {number} Tax rate (0 if basePrice is 0 or invalid)
+ */
+export const calculateTaxRate = (taxAmount, basePrice) => {
+  if (!basePrice || basePrice <= 0) return 0;
+  const tax = parseFloat(taxAmount) || 0;
+  const base = parseFloat(basePrice) || 0;
+  return base > 0 ? tax / base : 0;
+};
+
+/**
+ * Get tax rate for display from cart items
+ * Uses first item's tax amount and price
+ * @param {Array} cartItems - Array of cart items
+ * @returns {number} Tax rate (0 if no items or invalid data)
+ */
+export const getTaxRateFromCart = (cartItems) => {
+  if (!cartItems || cartItems.length === 0) return 0;
+  const firstItem = cartItems[0];
+  return calculateTaxRate(firstItem.taxAmount, firstItem.pricePerYard);
+};

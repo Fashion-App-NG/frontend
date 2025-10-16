@@ -50,11 +50,21 @@ export const useCheckoutSession = () => {
     try {
       // Call backend and get full response
       const response = await checkoutService.saveShippingInfo(shippingAddress, customerInfo);
-      setShippingInfo(response);
+      
+      // ✅ Merge totalPlatformFee into cart object before storing
+      const updatedResponse = {
+        ...response,
+        cart: {
+          ...response.cart,
+          totalPlatformFee: response.totalPlatformFee  // Add to cart object
+        }
+      };
+      
+      setShippingInfo(updatedResponse);
       
       // Only log in development environment
       if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] setShippingInfo called with:', response);
+        console.log('[DEBUG] setShippingInfo called with:', updatedResponse);
       }
       
       setCurrentStep(3); // Move to payment step
