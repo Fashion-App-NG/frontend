@@ -25,14 +25,14 @@ const PaymentMethodStep = ({
   const { user } = useAuth();
   const { cartItems } = useCart();
 
-  // 🎯 USE BACKEND VALUES - Backend is the source of truth
+  // 🎯 USE BACKEND VALUES - Backend is the source of truth (with 2 decimal places)
   const backendBaseAmount = cart?.totalAmount || 0;           // Base prices
   const backendTaxAmount = cart?.taxAmount || 0;              // Total tax
-  const backendPlatformFees = cart?.totalPlatformFee || 0;    // ✅ Total platform fees from backend
+  const backendPlatformFees = cart?.totalPlatformFee || 0;    // Total platform fees
   const backendShipping = cart?.shippingCost || 0;            // Shipping
   
-  // Calculate subtotal = base + tax + platform fees
-  const subtotal = Math.round(backendBaseAmount + backendTaxAmount + backendPlatformFees);
+  // Calculate subtotal = base + tax + platform fees (no rounding needed)
+  const subtotal = backendBaseAmount + backendTaxAmount + backendPlatformFees;
   const deliveryFee = backendShipping;
   const total = subtotal + deliveryFee;
 
@@ -62,7 +62,7 @@ const PaymentMethodStep = ({
         verification: {
           backendExpects: cart?.totalWithShipping,
           frontendSending: total,
-          match: Math.abs(total - (cart?.totalWithShipping || 0)) <= 1 ? '✅ MATCH' : '❌ MISMATCH',
+          match: Math.abs(total - (cart?.totalWithShipping || 0)) <= 0.01 ? '✅ MATCH' : '❌ MISMATCH',
           difference: cart?.totalWithShipping ? (total - cart.totalWithShipping).toFixed(2) : 0
         },
         platformFeeComparison: {

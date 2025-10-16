@@ -8,11 +8,10 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
   // 🎯 USE BACKEND VALUES - Backend is the source of truth
   const backendBaseAmount = cart?.totalAmount || 0;
   const backendTaxAmount = cart?.taxAmount || 0;
-  const backendPlatformFees = cart?.totalPlatformFee || 0;  // ✅ From backend
+  const backendPlatformFees = cart?.totalPlatformFee || 0;
   
-  // Subtotal = base + tax + platform fees (only round on payment step)
-  const rawSubtotal = backendBaseAmount + backendTaxAmount + backendPlatformFees;
-  const subtotal = currentStep >= 3 ? Math.round(rawSubtotal) : rawSubtotal;
+  // Subtotal = base + tax + platform fees (no rounding needed)
+  const subtotal = backendBaseAmount + backendTaxAmount + backendPlatformFees;
   
   // Only show delivery fee after shipping info step (step 2)
   const showDetailedBreakdown = currentStep >= 3;
