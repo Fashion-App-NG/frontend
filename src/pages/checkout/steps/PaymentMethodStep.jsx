@@ -81,7 +81,7 @@ const PaymentMethodStep = ({
         }))
       });
     }
-  }, [cart, cartItems, backendBaseAmount, backendTaxAmount, backendPlatformFees, backendShipping, subtotal, total]);
+  }, [cart, cartItems, backendBaseAmount, backendTaxAmount, backendPlatformFees, backendShipping, subtotal, deliveryFee, total]);
 
   // ...existing state...
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -138,30 +138,6 @@ const PaymentMethodStep = ({
       }, 0);
     }
   }, [paymentError, paymentErrorProp]);
-
-  // Format payment error message for production
-  const formatErrorForDisplay = (error) => {
-    if (!error) return '';
-    
-    // Common technical errors that need user-friendly messages
-    const errorMap = {
-      'Payment reference is required': 'We couldn\'t process your payment. Please try again.',
-      'Payment amount does not match expected amount': 'There was a price discrepancy. Please refresh and try again.',
-      'Invalid transaction reference': 'Payment verification failed. Please try a different payment method.',
-      'Too many requests': 'Please wait a moment before trying again.',
-      'Invalid card': 'Your card was declined. Please try another card or payment method.'
-    };
-
-    // Check if the error message contains any of our mapped errors
-    for (const [technical, friendly] of Object.entries(errorMap)) {
-      if (error.includes(technical)) {
-        return friendly;
-      }
-    }
-
-    // Default user-friendly message if we don't have a specific mapping
-    return 'There was an issue processing your payment. Please try again.';
-  };
 
   // Paystack configuration using backend total
   const paystackProps = {
@@ -275,12 +251,6 @@ const PaymentMethodStep = ({
     setProcessingPayment(false);
   }
 
-  // Handle error dismissal
-  function handleDismissError() {
-    setPaymentError(null);
-    if (clearPaymentError) clearPaymentError();
-  }
-
   // Handle manual card form submission
   const handleManualPayment = async (e) => {
     e.preventDefault();
@@ -313,13 +283,6 @@ const PaymentMethodStep = ({
         [name]: value
       });
     }
-  };
-
-  const handleRetryPayment = () => {
-    // Clear any errors and reset state to allow new payment attempt
-    setPaymentError(null);
-    if (clearPaymentError) clearPaymentError();
-    setOrderConfirmed(false);
   };
 
   return (
@@ -572,10 +535,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200"
               onClick={() => {
                 setPaymentError("Payment amount does not match expected amount");
-                // Add a timeout before clearing the error
-                setTimeout(() => {
-                  if (clearPaymentError) clearPaymentError();
-                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Payment Mismatch Error
@@ -585,10 +544,6 @@ const PaymentMethodStep = ({
               className="px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200"
               onClick={() => {
                 setPaymentError("Too many requests. Please wait a moment and try again.");
-                // Add a timeout before clearing the error
-                setTimeout(() => {
-                  if (clearPaymentError) clearPaymentError();
-                }, 5000); // Clear after 5 seconds
               }}
             >
               Test Rate Limit Error
