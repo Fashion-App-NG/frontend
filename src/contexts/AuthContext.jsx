@@ -10,15 +10,49 @@ export const useAuth = () => {
   return context;
 };
 
+// ✅ Add token validation helper
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Check if token expires in less than 5 minutes
+    return payload.exp <= now + 300;
+  } catch (error) {
+    console.error('Failed to validate token:', error);
+    return true;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Add token validation on mount and periodically
   useEffect(() => {
     const initializeAuth = () => {
       try {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
+        
+        // ✅ Check if token is expired
+        if (token && isTokenExpired(token)) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⏰ Token expired on init, redirecting immediately');
+          }
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('guestSessionToken');
+          
+          // ✅ IMMEDIATE redirect, no setState
+          window.location.href = '/user-type-selection';
+          return; // Stop execution
+        }
         
         if (process.env.NODE_ENV === 'development') {
           console.log('🔐 AuthContext initialization:', {
@@ -67,6 +101,19 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
+
+    // ✅ Check token expiry every 1 minute (not 5) for faster detection
+    const intervalId = setInterval(() => {
+      const token = localStorage.getItem('token');
+      if (token && isTokenExpired(token)) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⏰ Token expired during session, logging out');
+        }
+        logout();
+      }
+    }, 60 * 1000); // Every 1 minute
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const login = (userData, token) => {
@@ -87,15 +134,19 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      // ✅ Enhanced user data processing with better role handling
+      // ✅ Check if token is already expired
+      if (isTokenExpired(token)) {
+        console.error('❌ Cannot login with expired token');
+        return false;
+      }
+
       const processedUser = {
         id: userData.id || userData._id,
         email: userData.email,
-        role: userData.role || (userData.storeName ? 'vendor' : 'user'), // ✅ Infer role from context
+        role: userData.role || (userData.storeName ? 'vendor' : 'user'),
         storeName: userData.storeName,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        // Preserve all other fields
         ...userData
       };
       
@@ -128,17 +179,18 @@ export const AuthProvider = ({ children }) => {
       console.log('🔐 AuthContext logout - clearing all auth data');
     }
     
-    setUser(null);
-    
+    // ✅ Clear everything first
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('authToken');
     localStorage.removeItem('vendorToken');
     localStorage.removeItem('adminToken');
+    localStorage.removeItem('guestSessionToken');
     
-    setTimeout(() => {
-      window.location.href = '/user-type-selection';
-    }, 100);
+    setUser(null);
+    
+    // ✅ Immediate redirect, no timeout
+    window.location.href = '/user-type-selection';
   };
 
   const value = {
@@ -149,7 +201,6 @@ export const AuthProvider = ({ children }) => {
     logout
   };
 
-  // ✅ Enhanced debug logging (dev only)
   if (process.env.NODE_ENV === 'development') {
     console.log('🔐 AuthContext current state:', {
       user: user ? {
@@ -170,6 +221,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ Make sure AuthContext is exported
 export { AuthContext };
 export default AuthProvider;

@@ -21,7 +21,7 @@ const FILTER_TABS = [
 const PAGE_SIZE = 10;
 
 const ShopperOrders = () => {
-    const { user } = useAuth(); // ✅ Add user context
+    const { user } = useAuth();
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -31,10 +31,18 @@ const ShopperOrders = () => {
 
     useEffect(() => {
         async function verifyAndFetchOrders() {
+            // ✅ Skip if no user (prevents unnecessary API calls)
+            if (!user?.id) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('⏸️ No user ID, skipping order fetch');
+                }
+                setLoading(false);
+                return;
+            }
+
             // ✅ VERIFICATION: Test the actual endpoint
             await checkoutService.verifyCheckoutOrdersEndpoint();
             
-            // Then run your existing fetch logic...
             setLoading(true);
             setError(null);
             
@@ -95,15 +103,20 @@ const ShopperOrders = () => {
                 setPagination(data.pagination || { currentPage: 1, totalPages: 1 });
             } catch (err) {
                 console.error('❌ SHOPPER ORDERS ERROR:', err);
-                setError(err.message);
+                
+                // ✅ Handle session expiry gracefully
+                if (err.message === 'Session expired' || err.message === 'No authentication token found') {
+                    setError('Your session has expired. Redirecting to login...');
+                    // The redirect happens in the service, just show message
+                } else {
+                    setError(err.message);
+                }
             } finally {
                 setLoading(false);
             }
         }
         
-        if (user?.id) {
-            verifyAndFetchOrders();
-        }
+        verifyAndFetchOrders();
     }, [pagination.currentPage, user?.id]);
 
     const filteredOrders = useMemo(() => {

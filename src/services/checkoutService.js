@@ -6,7 +6,40 @@ class CheckoutService {
     this.shippingService = require('./shippingService').default;
   }
 
+  // ✅ Helper to check token before fetch calls
+  checkTokenValidity() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) throw new Error('Invalid token format');
+      
+      const payload = JSON.parse(atob(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      
+      if (payload.exp <= now + 60) {
+        // Token expired or expires in less than 1 minute
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/user-type-selection';
+        throw new Error('Session expired');
+      }
+    } catch (error) {
+      if (error.message === 'Session expired') {
+        throw error;
+      }
+      console.error('Token validation error:', error);
+      throw new Error('Invalid authentication token');
+    }
+  }
+
   async getShopperOrders(userId, { page = 1, limit = 20, status, paymentStatus } = {}) {
+    // ✅ Check token before making request
+    this.checkTokenValidity();
+    
     // Only log in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 GETTING SHOPPER ORDERS FROM CHECKOUT ENDPOINT:', {
@@ -22,26 +55,45 @@ class CheckoutService {
     if (status) params.append('status', status);
     if (paymentStatus) params.append('paymentStatus', paymentStatus);
 
-    const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
-      headers: this.getAuthHeaders(),
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch checkout orders');
-    
-    const data = await response.json();
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+    try {
+      const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
+        headers: this.getAuthHeaders(),
+      });
+      
+      // ✅ Handle 401 responses
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/user-type-selection';
+        throw new Error('Session expired');
+      }
+      
+      if (!response.ok) throw new Error('Failed to fetch checkout orders');
+      
+      const data = await response.json();
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 CHECKOUT ORDERS ENDPOINT RESPONSE:', data);
+      }
+      
+      return {
+        success: data.success,
+        orders: data.orders || [],
+        pagination: data.pagination || { currentPage: 1, totalPages: 1 }
+      };
+    } catch (error) {
+      // ✅ Don't swallow session expired errors
+      if (error.message === 'Session expired') {
+        throw error;
+      }
+      throw error;
     }
-    
-    return {
-      success: data.success,
-      orders: data.orders || [],
-      pagination: data.pagination || { currentPage: 1, totalPages: 1 }
-    };
   }
 
   async getOrders({ page = 1, limit = 20, status, paymentStatus } = {}) {
+    // ✅ Check token before making request
+    this.checkTokenValidity();
+    
     const params = new URLSearchParams();
     params.append('page', page);
     params.append('limit', limit);
@@ -55,18 +107,33 @@ class CheckoutService {
       });
     }
 
-    const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
-      headers: this.getAuthHeaders(),
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch orders');
-    const data = await response.json();
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+    try {
+      const response = await fetch(`${this.baseURL}/api/checkout/orders?${params.toString()}`, {
+        headers: this.getAuthHeaders(),
+      });
+      
+      // ✅ Handle 401 responses
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/user-type-selection';
+        throw new Error('Session expired');
+      }
+      
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      const data = await response.json();
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 CHECKOUT ENDPOINT RESPONSE:', data);
+      }
+      
+      return data;
+    } catch (error) {
+      if (error.message === 'Session expired') {
+        throw error;
+      }
+      throw error;
     }
-    
-    return data;
   }
 
   async reviewCart() {
@@ -196,6 +263,14 @@ class CheckoutService {
   // Development-only verification method
   async verifyCheckoutOrdersEndpoint() {
     if (process.env.NODE_ENV !== 'development') return;
+    
+    // ✅ Check token before verification calls
+    try {
+      this.checkTokenValidity();
+    } catch (error) {
+      console.log('⏰ Token validation failed during verification, skipping endpoint test');
+      return; // Skip verification if token is invalid
+    }
     
     console.log('🔍 VERIFYING ACTUAL ENDPOINT BEHAVIOR:');
     
