@@ -175,6 +175,34 @@ const ShopperOrderTracking = () => {
     groups[vendorId].items.push(item);
     return groups;
   }, {});
+
+  // ✅ Helper to check if order has trackable shipments
+  const hasTrackableShipment = () => {
+    if (!order.shipments || order.shipments.length === 0) return false;
+    
+    const shipment = vendorId 
+      ? order.shipments.find(s => s.vendorId === vendorId)
+      : order.shipments[0];
+    
+    if (!shipment) return false;
+    
+    // Only show external tracking if:
+    // 1. Has tracking URL
+    // 2. Has tracking number
+    // 3. Status is SHIPPED or DELIVERED (not draft/pending/confirmed)
+    return !!(
+      shipment.trackingUrl && 
+      shipment.trackingNumber && 
+      ['SHIPPED', 'DELIVERED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(shipment.status?.toUpperCase())
+    );
+  };
+
+  const getShipmentForVendor = () => {
+    if (!order.shipments) return null;
+    return vendorId 
+      ? order.shipments.find(s => s.vendorId === vendorId)
+      : order.shipments[0];
+  };
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -244,29 +272,29 @@ const ShopperOrderTracking = () => {
             </div>
           </div>
           
-          {/* Tracking Number */}
-          {order.shipments && 
-           order.shipments.find(s => s.vendorId === vendorId) &&
-           order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-1">Tracking Number:</p>
-              <p className="font-mono text-sm font-medium">
-                {order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Carrier: {order.shipments.find(s => s.vendorId === vendorId)?.carrier || 'Terminal Africa'}
-              </p>
-            </div>
-          )}
+          {/* Tracking Number - Show if exists */}
+          {(() => {
+            const shipment = getShipmentForVendor();
+            return shipment?.trackingNumber && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-1">Tracking Number:</p>
+                <p className="font-mono text-sm font-medium">
+                  {shipment.trackingNumber}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Carrier: {shipment.carrier || 'Terminal Africa'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Status: {shipment.status?.toUpperCase() || 'PENDING'}
+                </p>
+              </div>
+            );
+          })()}
           
-          {/* ✅ Only show "Track with Carrier" if shipment is NOT draft and has external tracking */}
-          {order.shipments && 
-           order.shipments.find(s => s.vendorId === vendorId) &&
-           order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl &&
-           order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber &&
-           order.shipments.find(s => s.vendorId === vendorId)?.status !== 'draft' && (
+          {/* ✅ Only show "Track with Carrier" for SHIPPED/DELIVERED orders */}
+          {hasTrackableShipment() && (
             <a 
-              href={order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl}
+              href={getShipmentForVendor()?.trackingUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center mt-3 px-3 py-2 border border-blue-600 rounded-md text-sm text-blue-600 hover:bg-blue-50 transition-colors"
@@ -279,17 +307,15 @@ const ShopperOrderTracking = () => {
             </a>
           )}
           
-          {/* ✅ Show message if shipment is still in draft/processing */}
-          {(!order.shipments || 
-            !order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl ||
-            order.shipments.find(s => s.vendorId === vendorId)?.status === 'draft') &&
-            ['PROCESSING', 'PICKUP_SCHEDULED'].includes(order.aggregateStatus) && (
+          {/* ✅ Show message for PROCESSING/PICKUP_SCHEDULED/CONFIRMED orders */}
+          {!hasTrackableShipment() && 
+           ['PROCESSING', 'PICKUP_SCHEDULED'].includes(order.aggregateStatus) && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700 flex items-center">
                 <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                Carrier tracking will be available once pickup is scheduled
+                Carrier tracking will be available once your order has been shipped
               </p>
             </div>
           )}
