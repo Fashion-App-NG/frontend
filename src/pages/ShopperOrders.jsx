@@ -1,8 +1,8 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import OrderStatusBadge from '../components/OrderStatusBadge';
-import { useAuth } from "../contexts/AuthContext"; // ✅ Add this import
+import { useAuth } from "../contexts/AuthContext";
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
 import { calculateAggregateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
@@ -21,7 +21,7 @@ const FILTER_TABS = [
 const PAGE_SIZE = 10;
 
 const ShopperOrders = () => {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -29,18 +29,15 @@ const ShopperOrders = () => {
     const [activeTab, setActiveTab] = useState("ALL");
     const [search, setSearch] = useState("");
 
+    // ✅ All hooks BEFORE conditional returns
     useEffect(() => {
         async function verifyAndFetchOrders() {
-            // ✅ Skip if no user (prevents unnecessary API calls)
-            if (!user?.id) {
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('⏸️ No user ID, skipping order fetch');
-                }
+            // Skip if not authenticated
+            if (!isAuthenticated || !user?.id) {
                 setLoading(false);
                 return;
             }
-
-            // ✅ VERIFICATION: Test the actual endpoint
+            
             await checkoutService.verifyCheckoutOrdersEndpoint();
             
             setLoading(true);
@@ -104,10 +101,8 @@ const ShopperOrders = () => {
             } catch (err) {
                 console.error('❌ SHOPPER ORDERS ERROR:', err);
                 
-                // ✅ Handle session expiry gracefully
                 if (err.message === 'Session expired' || err.message === 'No authentication token found') {
                     setError('Your session has expired. Redirecting to login...');
-                    // The redirect happens in the service, just show message
                 } else {
                     setError(err.message);
                 }
@@ -117,13 +112,12 @@ const ShopperOrders = () => {
         }
         
         verifyAndFetchOrders();
-    }, [pagination.currentPage, user?.id]);
+    }, [pagination.currentPage, user?.id, isAuthenticated]);
 
     const filteredOrders = useMemo(() => {
         let filtered = orders;
         if (activeTab !== "ALL") {
             filtered = filtered.filter((order) => {
-                // Use aggregateStatus if available, otherwise fall back to order.status
                 const orderStatus = order.aggregateStatus || normalizeOrderStatus(order.status);
                 return orderStatus === activeTab;
             });
@@ -138,7 +132,6 @@ const ShopperOrders = () => {
         setPagination((prev) => ({ ...prev, currentPage: page }));
     };
 
-    // 🔍 FIXED: Update vendor info extraction for checkout orders
     const getVendorInfo = (order) => {
         console.log('🔍 VENDOR INFO EXTRACTION (CHECKOUT ORDERS):', {
             orderId: order.id,
@@ -148,37 +141,17 @@ const ShopperOrders = () => {
             firstItem: order.items?.[0]
         });
 
-        // ✅ Since checkout orders don't include vendor info, show placeholder
-        // This is expected until we create dedicated shopper orders endpoint
         return {
-            name: 'Multiple Vendors', // Since one order can have items from multiple vendors
+            name: 'Multiple Vendors',
             email: null,
             initial: 'V'
         };
     };
 
-    // eslint-disable-next-line no-unused-vars
-    const getOrderStatusSummary = (order) => {
-        // Extract vendor-specific status information
-        const vendorGroups = {};
-        order.items.forEach(item => {
-            if (!vendorGroups[item.vendorId]) {
-                vendorGroups[item.vendorId] = {
-                    vendorName: item.vendorName || "Vendor",
-                    items: [],
-                    statuses: new Set()
-                };
-            }
-            vendorGroups[item.vendorId].items.push(item);
-            vendorGroups[item.vendorId].statuses.add(item.status || order.status);
-        });
-        
-        return {
-            overallStatus: order.status,
-            vendorCount: Object.keys(vendorGroups).length,
-            vendorGroups
-        };
-    };
+    // ✅ Conditional redirect AFTER all hooks
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
