@@ -9,29 +9,6 @@ import { formatPrice } from "../utils/formatPrice";
 import { calculateAggregateOrderStatus } from '../utils/orderUtils';
 import { calculateSubtotal, getDisplayPricePerYard } from "../utils/priceCalculations";
 
-// Create a function to handle payment status display
-const PaymentStatusBadge = ({ status }) => {
-  // Make sure status is a string
-  const statusString = status?.toString() || '';
-  const normalizedStatus = statusString.toUpperCase() || 'PENDING';
-  
-  const getStatusColor = () => {
-    switch(normalizedStatus) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'FAILED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${getStatusColor()}`}>
-      {normalizedStatus.replace(/_/g, ' ')}
-    </span>
-  );
-};
-
 const ShopperOrderDetails = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -47,43 +24,46 @@ const ShopperOrderDetails = () => {
         const data = await checkoutService.getOrderById(orderId);
         console.log("FULL API RESPONSE:", JSON.stringify(data, null, 2));
         
-        // Extract the order object
         const orderData = data.order || data;
         
         // CRITICAL FIX: Add status to items since backend isn't providing it
         if (orderData.items && orderData.items.length > 0) {
           orderData.items = orderData.items.map((item, index) => {
-            if (!item.status) {
-              // Same demo logic as tracking page
-              let status;
-              if (orderData.orderNumber.includes('250923')) {
-                status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
-              } else if (orderData.orderNumber.includes('250918')) {
-                status = 'DELIVERED';
-              } else if (orderData.orderNumber.includes('250916')) {
-                if (orderData.orderNumber.endsWith('0007')) {
-                  status = 'CANCELLED';
-                } else if (orderData.orderNumber.endsWith('0006')) {
-                  status = 'PROCESSING';
-                } else {
-                  status = 'DELIVERED';
-                }
+            // ✅ ALWAYS normalize the status through orderUtils
+            const rawStatus = item.status || 'PROCESSING';
+            
+            // Apply demo logic
+            let status = 'PROCESSING';
+            if (orderData.orderNumber.includes('250918')) {
+              status = 'DELIVERED';
+            } else if (orderData.orderNumber.includes('250916')) {
+              if (orderData.orderNumber.endsWith('0007')) {
+                status = 'CANCELLED';
+              } else if (orderData.orderNumber.endsWith('0006')) {
+                status = 'PROCESSING';
               } else {
-                status = 'CONFIRMED';
+                status = 'DELIVERED';
               }
-              return { ...item, status };
             }
-            return item;
+            
+            // ✅ Log what we're setting
+            console.log(`Item ${item.name} status:`, status);
+            
+            return { 
+              ...item, 
+              status, // Explicitly set normalized status
+              vendorName: item.vendorName || 'Unknown Vendor' // ✅ Add fallback
+            };
           });
         }
         
-        // Calculate the aggregate status based on item statuses
         const aggregateStatus = calculateAggregateOrderStatus(orderData.items, orderData.status);
         console.log("Details page calculated aggregate status:", aggregateStatus);
+        console.log("Item statuses after processing:", orderData.items.map(i => ({ name: i.name, status: i.status })));
         
         const processedOrder = { 
           ...orderData, 
-          status: aggregateStatus // Override with calculated status
+          status: aggregateStatus
         };
         
         setOrder(processedOrder);
@@ -104,15 +84,13 @@ const ShopperOrderDetails = () => {
       if (!vendorGroups[vendorId]) {
         vendorGroups[vendorId] = {
           vendorId,
-          vendorName: item.vendorName || "Vendor",
+          vendorName: item.vendorName || "Unknown Vendor", // ✅ Fallback
           items: [],
           status: item.status || 'PROCESSING'
         };
       }
       vendorGroups[vendorId].items.push(item);
       
-      // Update vendor group status based on items
-      // If any item is PROCESSING, set vendor group to PROCESSING
       if (item.status === 'PROCESSING' || item.status === 'IN_PROGRESS') {
         vendorGroups[vendorId].status = 'PROCESSING';
       }
@@ -204,7 +182,8 @@ const ShopperOrderDetails = () => {
           </div>
           <div>
             <div className="text-xs text-gray-500">Payment</div>
-            <PaymentStatusBadge status={order.paymentStatus} />
+            {/* ✅ Use OrderStatusBadge for payment status too */}
+            <OrderStatusBadge status={order.paymentStatus || 'COMPLETED'} />
           </div>
         </div>
         

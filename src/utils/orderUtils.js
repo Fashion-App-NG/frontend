@@ -80,11 +80,18 @@ export const getDisplayStatus = (status) => {
   const statusString = status?.toString() || '';
   
   const displayMap = {
+    'PENDING': 'Processing', // ✅ Changed from "Order Placed"
     'PROCESSING': 'Processing',
     'PICKUP_SCHEDULED': 'Pickup Scheduled',
+    'SCHEDULED': 'Pickup Scheduled',
     'SHIPPED': 'Shipped',
+    'IN_TRANSIT': 'Shipped',
+    'OUT_FOR_DELIVERY': 'Shipped',
     'DELIVERED': 'Delivered',
-    'CANCELLED': 'Cancelled'
+    'CANCELLED': 'Cancelled',
+    'COMPLETED': 'Completed',
+    'PAID': 'Paid', // ✅ Add payment status mapping
+    'UNPAID': 'Unpaid'
   };
   
   return displayMap[statusString.toUpperCase()] || statusString;
