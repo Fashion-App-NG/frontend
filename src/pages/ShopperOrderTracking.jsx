@@ -226,41 +226,87 @@ const ShopperOrderTracking = () => {
         />
         
         {/* Vendor Information */}
-        {vendorId && (
-          <div className="mb-6 mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Vendor Information</h3>
-            <p className="text-gray-700"><span className="font-medium">Vendor:</span> {vendorName}</p>
-            {order.shipments && order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber && (
-              <p className="text-gray-700 mt-1">
-                <span className="font-medium">Tracking Number:</span> {order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-medium text-sm text-gray-700 mb-2">Vendor Information</h3>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 font-medium">
+                {order.vendor?.name?.[0] || 'V'}
+              </span>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">
+                {order.vendor?.name || 'Vendor Name'}
               </p>
-            )}
-            {order.shipments && order.shipments.find(s => s.vendorId === vendorId)?.carrier && (
-              <p className="text-gray-700 mt-1">
-                <span className="font-medium">Carrier:</span> {order.shipments.find(s => s.vendorId === vendorId)?.carrier}
-              </p>
-            )}
-            {order.shipments && order.shipments.find(s => s.vendorId === vendorId)?.estimatedDeliveryDate && (
-              <p className="text-gray-700 mt-1">
-                <span className="font-medium">Estimated Delivery:</span> {new Date(order.shipments.find(s => s.vendorId === vendorId)?.estimatedDeliveryDate).toLocaleString()}
-              </p>
-            )}
-            {order.shipments && order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl && (
-              <a 
-                href={order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center mt-3 px-3 py-2 border border-blue-600 rounded-md text-sm text-blue-600 hover:bg-blue-50"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Track with Carrier
-              </a>
-            )}
+              {order.vendor?.email && (
+                <p className="text-sm text-gray-500">{order.vendor.email}</p>
+              )}
+            </div>
           </div>
-        )}
+          
+          {/* Tracking Number */}
+          {order.shipments && 
+           order.shipments.find(s => s.vendorId === vendorId) &&
+           order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <p className="text-sm text-gray-600 mb-1">Tracking Number:</p>
+              <p className="font-mono text-sm font-medium">
+                {order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Carrier: {order.shipments.find(s => s.vendorId === vendorId)?.carrier || 'Terminal Africa'}
+              </p>
+            </div>
+          )}
+          
+          {/* ✅ Only show "Track with Carrier" if shipment is NOT draft and has external tracking */}
+          {order.shipments && 
+           order.shipments.find(s => s.vendorId === vendorId) &&
+           order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl &&
+           order.shipments.find(s => s.vendorId === vendorId)?.trackingNumber &&
+           order.shipments.find(s => s.vendorId === vendorId)?.status !== 'draft' && (
+            <a 
+              href={order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center mt-3 px-3 py-2 border border-blue-600 rounded-md text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Track with Carrier
+            </a>
+          )}
+          
+          {/* ✅ Show message if shipment is still in draft/processing */}
+          {(!order.shipments || 
+            !order.shipments.find(s => s.vendorId === vendorId)?.trackingUrl ||
+            order.shipments.find(s => s.vendorId === vendorId)?.status === 'draft') &&
+            ['PROCESSING', 'PICKUP_SCHEDULED'].includes(order.aggregateStatus) && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700 flex items-center">
+                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Carrier tracking will be available once pickup is scheduled
+              </p>
+            </div>
+          )}
+          
+          <p className="text-xs text-gray-500 mt-3">
+            Estimated Delivery: {order.estimatedDelivery ? 
+              new Date(order.estimatedDelivery).toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 
+              'TBD'
+            }
+          </p>
+        </div>
         
         {/* Items summary */}
         <div className="mt-6 pt-6 border-t">

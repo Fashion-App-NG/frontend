@@ -10,10 +10,9 @@ import { calculateSubtotal } from "../utils/priceCalculations";
 
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
-    { key: "CONFIRMED", label: "Confirmed" },
-    { key: "PROCESSING", label: "In Progress" },
+    { key: "PROCESSING", label: "Processing" },
+    { key: "PICKUP_SCHEDULED", label: "Pickup Scheduled" },
     { key: "SHIPPED", label: "Shipped" },
-    { key: "IN_TRANSIT", label: "In Transit" },
     { key: "DELIVERED", label: "Delivered" },
     { key: "CANCELLED", label: "Cancelled" },
 ];
@@ -294,7 +293,8 @@ const ShopperOrders = () => {
                                                 View Details
                                             </Link>
                                             
-                                            {["CONFIRMED", "PROCESSING", "SHIPPED", "DISPATCHED", "IN_TRANSIT", "DELIVERED"].includes(order.aggregateStatus || order.status) && (
+                                            {/* ✅ Show tracking for orders that have been scheduled or shipped */}
+                                            {["PICKUP_SCHEDULED", "SHIPPED", "DELIVERED"].includes(order.aggregateStatus || order.status) && (
                                                 <Link 
                                                     to={`/shopper/orders/${order.orderId || order.id}/tracking`}
                                                     state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
@@ -302,6 +302,11 @@ const ShopperOrders = () => {
                                                 >
                                                     Track
                                                 </Link>
+                                            )}
+
+                                            {/* ✅ Show "Processing" for orders still being prepared */}
+                                            {order.aggregateStatus === "PROCESSING" && (
+                                                <span className="text-gray-400 text-sm">Processing Order</span>
                                             )}
                                         </td>
                                     </tr>
