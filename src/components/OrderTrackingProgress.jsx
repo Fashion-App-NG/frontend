@@ -2,21 +2,22 @@ import { getDisplayStatus } from '../utils/orderUtils';
 
 const OrderTrackingProgress = ({ status }) => {
   const getProgressPercentage = () => {
-    // Normalize status to ensure consistent display
     const normalizedStatus = status?.toUpperCase();
     
     switch(normalizedStatus) {
-      case 'CONFIRMED': 
-      case 'PENDING': return 25;
+      case 'PENDING': 
+      case 'PROCESSING': return 25;
       
-      case 'PROCESSING': return 50;
+      case 'IN_PROGRESS': return 50; // ✅ NEW
+      
+      case 'PICKUP_SCHEDULED': return 60;
       
       case 'SHIPPED':
-      case 'DISPATCHED':
       case 'IN_TRANSIT': return 75;
       
-      case 'DELIVERED':
-      case 'COMPLETED': return 100;
+      case 'DELIVERED': return 100;
+      
+      case 'COMPLETED': return 100; // ✅ NEW
       
       case 'CANCELLED': return 100;
       
@@ -36,7 +37,9 @@ const OrderTrackingProgress = ({ status }) => {
       <div className="w-full bg-gray-200 rounded-full h-2.5">
         <div 
           className={`h-2.5 rounded-full transition-all duration-500 ${
-            status?.toUpperCase() === 'CANCELLED' ? 'bg-red-600' : 'bg-blue-600'
+            status?.toUpperCase() === 'CANCELLED' ? 'bg-red-600' : 
+            status?.toUpperCase() === 'COMPLETED' ? 'bg-green-600' :
+            'bg-blue-600'
           }`}
           style={{ width: `${progressPercentage}%` }}
         ></div>
@@ -46,6 +49,3 @@ const OrderTrackingProgress = ({ status }) => {
 };
 
 export default OrderTrackingProgress;
-
-// Add to OrderTrackingPage.jsx
-//<OrderTrackingProgress status={order.status} />

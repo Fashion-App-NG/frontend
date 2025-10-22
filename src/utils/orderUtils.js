@@ -20,56 +20,75 @@ export const normalizeOrderStatus = (status) => {
   }
 };
 
-export const calculateAggregateOrderStatus = (items, orderStatus) => {
-  // If no items or empty array, fall back to order status or default
+// ✅ NEW: Calculate Order-Level Status (not item status)
+export const calculateOrderStatus = (items) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return normalizeOrderStatus(orderStatus) || 'PROCESSING';
+    return 'PROCESSING';
   }
   
-  // Extract item statuses, handling missing values
-  const statuses = new Set();
-  items.forEach(item => {
-    if (item && item.status) {
-      statuses.add(normalizeOrderStatus(item.status));
-    }
+  // Normalize all item statuses
+  const normalizedStatuses = items.map(item => 
+    normalizeOrderStatus(item.status || 'PROCESSING')
+  );
+  
+  // Count each status type
+  const statusCounts = {
+    PROCESSING: normalizedStatuses.filter(s => s === 'PROCESSING').length,
+    PICKUP_SCHEDULED: normalizedStatuses.filter(s => s === 'PICKUP_SCHEDULED').length,
+    SHIPPED: normalizedStatuses.filter(s => s === 'SHIPPED').length,
+    DELIVERED: normalizedStatuses.filter(s => s === 'DELIVERED').length,
+    CANCELLED: normalizedStatuses.filter(s => s === 'CANCELLED').length
+  };
+  
+  const totalItems = items.length;
+  
+  console.log('📊 Order Status Calculation:', {
+    totalItems,
+    statusCounts,
+    normalizedStatuses
   });
   
-  console.log('Item statuses found:', Array.from(statuses));
+  // STATE MACHINE LOGIC
   
-  // If no valid statuses found in items, use order status
-  if (statuses.size === 0) {
-    return normalizeOrderStatus(orderStatus) || 'PROCESSING';
-  }
-  
-  // Case 1: All items have the same status
-  if (statuses.size === 1) {
-    return Array.from(statuses)[0];
-  }
-  
-  // Case 2: If any item is shipped or delivered, prioritize that
-  if (statuses.has('SHIPPED')) {
-    return 'SHIPPED';
-  }
-  
-  if (statuses.has('PICKUP_SCHEDULED')) {
-    return 'PICKUP_SCHEDULED';
-  }
-  
-  // Case 3: Mix of delivered and cancelled
-  if (statuses.size === 2 && 
-      statuses.has('DELIVERED') && 
-      statuses.has('CANCELLED')) {
+  // Rule 1: All items DELIVERED → Order is DELIVERED
+  if (statusCounts.DELIVERED === totalItems) {
+    console.log('✅ Order Status: DELIVERED (all items delivered)');
     return 'DELIVERED';
   }
   
-  // Case 4: If all cancelled
-  if (statuses.size === 1 && statuses.has('CANCELLED')) {
+  // Rule 2: All items CANCELLED → Order is CANCELLED
+  if (statusCounts.CANCELLED === totalItems) {
+    console.log('❌ Order Status: CANCELLED (all items cancelled)');
     return 'CANCELLED';
   }
   
-  // Default fallback
-  return normalizeOrderStatus(orderStatus) || 'PROCESSING';
+  // Rule 3: All items finished (DELIVERED or CANCELLED) → Order is COMPLETED
+  if (statusCounts.DELIVERED + statusCounts.CANCELLED === totalItems) {
+    console.log('✅ Order Status: COMPLETED (mixed: delivered + cancelled)');
+    return 'COMPLETED';
+  }
+  
+  // Rule 4: Any item beyond PROCESSING → Order is IN_PROGRESS
+  if (statusCounts.PICKUP_SCHEDULED > 0 || 
+      statusCounts.SHIPPED > 0 || 
+      statusCounts.DELIVERED > 0) {
+    console.log('🚀 Order Status: IN_PROGRESS (some items moving)');
+    return 'IN_PROGRESS';
+  }
+  
+  // Rule 5: All items still PROCESSING → Order is PROCESSING
+  if (statusCounts.PROCESSING === totalItems) {
+    console.log('⏳ Order Status: PROCESSING (all items being prepared)');
+    return 'PROCESSING';
+  }
+  
+  // Fallback (should rarely hit this)
+  console.log('⚠️ Order Status: Default to IN_PROGRESS');
+  return 'IN_PROGRESS';
 };
+
+// ✅ DEPRECATED: Rename old function for backward compatibility
+export const calculateAggregateOrderStatus = calculateOrderStatus;
 
 // Human-readable status mapping for display
 export const getDisplayStatus = (status) => {
@@ -80,8 +99,9 @@ export const getDisplayStatus = (status) => {
   const statusString = status?.toString() || '';
   
   const displayMap = {
-    'PENDING': 'Processing', // ✅ Changed from "Order Placed"
+    'PENDING': 'Processing',
     'PROCESSING': 'Processing',
+    'IN_PROGRESS': 'In Progress', // ✅ NEW
     'PICKUP_SCHEDULED': 'Pickup Scheduled',
     'SCHEDULED': 'Pickup Scheduled',
     'SHIPPED': 'Shipped',
@@ -89,8 +109,8 @@ export const getDisplayStatus = (status) => {
     'OUT_FOR_DELIVERY': 'Shipped',
     'DELIVERED': 'Delivered',
     'CANCELLED': 'Cancelled',
-    'COMPLETED': 'Completed',
-    'PAID': 'Paid', // ✅ Add payment status mapping
+    'COMPLETED': 'Completed', // ✅ NEW
+    'PAID': 'Paid',
     'UNPAID': 'Unpaid'
   };
   
@@ -107,9 +127,11 @@ export const getStatusClass = (status) => {
   
   const statusClass = {
     'PROCESSING': 'bg-yellow-100 text-yellow-800',
-    'PICKUP_SCHEDULED': 'bg-blue-100 text-blue-800',
+    'IN_PROGRESS': 'bg-blue-100 text-blue-800', // ✅ NEW
+    'PICKUP_SCHEDULED': 'bg-purple-100 text-purple-800',
     'SHIPPED': 'bg-indigo-100 text-indigo-800',
     'DELIVERED': 'bg-green-100 text-green-800',
+    'COMPLETED': 'bg-green-100 text-green-800', // ✅ NEW
     'CANCELLED': 'bg-red-100 text-red-800'
   };
   

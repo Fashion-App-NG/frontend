@@ -5,14 +5,14 @@ import OrderStatusBadge from '../components/OrderStatusBadge';
 import { useAuth } from "../contexts/AuthContext";
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
-import { calculateAggregateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
+import { calculateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
 import { calculateSubtotal } from "../utils/priceCalculations";
 
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
     { key: "PROCESSING", label: "Processing" },
-    { key: "PICKUP_SCHEDULED", label: "Pickup Scheduled" },
-    { key: "SHIPPED", label: "Shipped" },
+    { key: "IN_PROGRESS", label: "In Progress" }, // ✅ NEW
+    { key: "COMPLETED", label: "Completed" }, // ✅ NEW
     { key: "DELIVERED", label: "Delivered" },
     { key: "CANCELLED", label: "Cancelled" },
 ];
@@ -58,40 +58,41 @@ const ShopperOrders = () => {
                 
                 // Process orders to calculate aggregate status
                 const processedOrders = (data.orders || []).map(order => {
-                    // CRITICAL FIX: Add status to items since backend isn't providing it
+                    // ✅ FIX: Use backend status if available
                     if (order.items && order.items.length > 0) {
                         order.items = order.items.map((item, index) => {
-                            if (!item.status) {
-                                // Same demo logic as other pages
-                                let status;
-                                if (order.orderNumber.includes('250923')) {
-                                  status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
-                                } else if (order.orderNumber.includes('250918')) {
-                                  status = 'DELIVERED';
-                                } else if (order.orderNumber.includes('250916')) {
-                                  if (order.orderNumber.endsWith('0007')) {
-                                    status = 'CANCELLED';
-                                  } else if (order.orderNumber.endsWith('0006')) {
-                                    status = 'PROCESSING';
-                                  } else {
-                                    status = 'DELIVERED';
-                                  }
-                                } else {
-                                  status = 'CONFIRMED';
-                                }
-                                return { ...item, status };
+                            // ✅ Use backend status if it exists
+                            if (item.status) {
+                                return item; // Keep backend status as-is
                             }
-                            return item;
+                            
+                            // ⚠️ Only apply demo logic as fallback
+                            let status = 'PROCESSING';
+                            if (order.orderNumber.includes('250923')) {
+                              status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
+                            } else if (order.orderNumber.includes('250918')) {
+                              status = 'DELIVERED';
+                            } else if (order.orderNumber.includes('250916')) {
+                              if (order.orderNumber.endsWith('0007')) {
+                                status = 'CANCELLED';
+                              } else if (order.orderNumber.endsWith('0006')) {
+                                status = 'PROCESSING';
+                              } else {
+                                status = 'DELIVERED';
+                              }
+                            }
+                            return { ...item, status };
                         });
                     }
                     
                     // Calculate aggregate status consistently
-                    const aggregateStatus = calculateAggregateOrderStatus(order.items, order.status);
-                    console.log(`Order ${order.orderNumber} calculated status:`, aggregateStatus);
-                    
+                    const orderStatus = calculateOrderStatus(order.items);
+                    console.log(`Order ${order.orderNumber} calculated status:`, orderStatus);
+
                     return {
                         ...order,
-                        status: aggregateStatus
+                        aggregateStatus: orderStatus, // ✅ Use new function
+                        status: orderStatus // ✅ Override order.status with calculated value
                     };
                 });
                 
@@ -293,8 +294,8 @@ const ShopperOrders = () => {
                                                 View Details
                                             </Link>
                                             
-                                            {/* ✅ Show tracking for orders that have been scheduled or shipped */}
-                                            {["PICKUP_SCHEDULED", "SHIPPED", "DELIVERED"].includes(order.aggregateStatus || order.status) && (
+                                            {/* ✅ Show tracking for orders IN_PROGRESS, COMPLETED, or final states */}
+                                            {["IN_PROGRESS", "PICKUP_SCHEDULED", "SHIPPED", "DELIVERED", "COMPLETED"].includes(order.aggregateStatus || order.status) && (
                                                 <Link 
                                                     to={`/shopper/orders/${order.orderId || order.id}/tracking`}
                                                     state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}

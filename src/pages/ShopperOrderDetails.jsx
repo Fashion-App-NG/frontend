@@ -6,7 +6,7 @@ import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
-import { calculateAggregateOrderStatus } from '../utils/orderUtils';
+import { calculateOrderStatus } from '../utils/orderUtils';
 import { calculateSubtotal, getDisplayPricePerYard } from "../utils/priceCalculations";
 
 const ShopperOrderDetails = () => {
@@ -26,14 +26,22 @@ const ShopperOrderDetails = () => {
         
         const orderData = data.order || data;
         
-        // CRITICAL FIX: Add status to items since backend isn't providing it
+        // ✅ FIX: Use backend status if available, only apply demo logic as fallback
         if (orderData.items && orderData.items.length > 0) {
           orderData.items = orderData.items.map((item, index) => {
-            // ✅ ALWAYS normalize the status through orderUtils
-            const rawStatus = item.status || 'PROCESSING';
+            // ✅ Use backend status if it exists
+            if (item.status) {
+              console.log(`Item ${item.name} using backend status:`, item.status);
+              return { 
+                ...item, 
+                vendorName: item.vendorName || 'Unknown Vendor'
+              };
+            }
             
-            // Apply demo logic
+            // ⚠️ Only apply demo logic if backend doesn't provide status
+            console.warn(`Item ${item.name} missing backend status, applying demo logic`);
             let status = 'PROCESSING';
+            
             if (orderData.orderNumber.includes('250918')) {
               status = 'DELIVERED';
             } else if (orderData.orderNumber.includes('250916')) {
@@ -44,26 +52,30 @@ const ShopperOrderDetails = () => {
               } else {
                 status = 'DELIVERED';
               }
+            } else if (orderData.orderNumber.includes('250923')) {
+              status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
             }
             
-            // ✅ Log what we're setting
-            console.log(`Item ${item.name} status:`, status);
+            console.log(`Item ${item.name} using demo status:`, status);
             
             return { 
               ...item, 
-              status, // Explicitly set normalized status
-              vendorName: item.vendorName || 'Unknown Vendor' // ✅ Add fallback
+              status,
+              vendorName: item.vendorName || 'Unknown Vendor'
             };
           });
         }
         
-        const aggregateStatus = calculateAggregateOrderStatus(orderData.items, orderData.status);
-        console.log("Details page calculated aggregate status:", aggregateStatus);
-        console.log("Item statuses after processing:", orderData.items.map(i => ({ name: i.name, status: i.status })));
-        
+        const orderStatus = calculateOrderStatus(orderData.items);
+        console.log("Details page calculated order status:", orderStatus);
+        console.log("Item statuses after processing:", orderData.items.map(i => ({ 
+          name: i.name, 
+          status: i.status 
+        })));
+
         const processedOrder = { 
           ...orderData, 
-          status: aggregateStatus
+          status: orderStatus
         };
         
         setOrder(processedOrder);
