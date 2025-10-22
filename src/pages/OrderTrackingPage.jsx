@@ -166,12 +166,7 @@ const OrderTrackingPage = () => {
   };
 
   const goBack = () => {
-    const path = window.location.pathname;
-    if (path.includes('/shopper/')) {
-      navigate('/shopper/orders');
-    } else {
-      navigate('/orders');
-    }
+    navigate('/shopper/orders');
   };
 
   // Enhanced delivery time display

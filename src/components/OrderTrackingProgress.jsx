@@ -1,23 +1,46 @@
 import { getDisplayStatus } from '../utils/orderUtils';
 
 const OrderTrackingProgress = ({ status }) => {
-  const getProgressPercentage = () => {
-    const normalizedStatus = status?.toUpperCase();
+  // Normalize shipment statuses to standard progress steps
+  const normalizeStatus = (status) => {
+    const statusUpper = status?.toUpperCase();
     
+    // Map shipment-specific statuses to standard progress steps
+    const statusMapping = {
+      'CONFIRMED': 'CONFIRMED',
+      'PROCESSING': 'PROCESSING',
+      'PICKUP_SCHEDULED': 'PROCESSING',
+      'PICKED_UP': 'SHIPPED',
+      'SHIPPED': 'SHIPPED',
+      'IN_TRANSIT': 'SHIPPED',
+      'OUT_FOR_DELIVERY': 'SHIPPED',
+      'DELIVERED': 'DELIVERED',
+      'CANCELLED': 'CANCELLED'
+    };
+    
+    return statusMapping[statusUpper] || 'CONFIRMED';
+  };
+  
+  const normalizedStatus = normalizeStatus(status);
+  
+  const steps = [
+    { name: 'Confirmed', status: 'CONFIRMED' },
+    { name: 'Processing', status: 'PROCESSING' },
+    { name: 'Shipped', status: 'SHIPPED' },
+    { name: 'Delivered', status: 'DELIVERED' }
+  ];
+  
+  const currentStepIndex = steps.findIndex(step => step.status === normalizedStatus);
+  const isCancelled = normalizedStatus === 'CANCELLED';
+  
+  const getProgressPercentage = () => {
     switch(normalizedStatus) {
-      case 'PENDING': 
+      case 'CONFIRMED': 
       case 'PROCESSING': return 25;
       
-      case 'IN_PROGRESS': return 50; // ✅ NEW
-      
-      case 'PICKUP_SCHEDULED': return 60;
-      
-      case 'SHIPPED':
-      case 'IN_TRANSIT': return 75;
+      case 'SHIPPED': return 75;
       
       case 'DELIVERED': return 100;
-      
-      case 'COMPLETED': return 100; // ✅ NEW
       
       case 'CANCELLED': return 100;
       
@@ -25,7 +48,8 @@ const OrderTrackingProgress = ({ status }) => {
     }
   };
 
-  const displayText = getDisplayStatus(status);
+  // Use normalized status for display to avoid showing raw shipment statuses
+  const displayText = getDisplayStatus(normalizedStatus);
   const progressPercentage = getProgressPercentage();
   
   return (
@@ -37,8 +61,7 @@ const OrderTrackingProgress = ({ status }) => {
       <div className="w-full bg-gray-200 rounded-full h-2.5">
         <div 
           className={`h-2.5 rounded-full transition-all duration-500 ${
-            status?.toUpperCase() === 'CANCELLED' ? 'bg-red-600' : 
-            status?.toUpperCase() === 'COMPLETED' ? 'bg-green-600' :
+            isCancelled ? 'bg-red-600' : 
             'bg-blue-600'
           }`}
           style={{ width: `${progressPercentage}%` }}

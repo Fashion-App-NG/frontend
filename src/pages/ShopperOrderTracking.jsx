@@ -73,7 +73,7 @@ const ShopperOrderTracking = () => {
   }, [orderId, vendorId]);
   
   const goBack = () => {
-    navigate(`/shopper/orders/${orderId}`);
+    navigate('/shopper/orders');
   };
   
   if (loading) return <LoadingSpinner />;
@@ -175,6 +175,41 @@ const ShopperOrderTracking = () => {
       : order.shipments[0];
   };
   
+  const getTrackingStatus = () => {
+    if (vendorId) {
+      // When tracking a specific vendor, prioritize shipment status
+      const shipment = getShipmentForVendor();
+      if (shipment?.status) {
+        return shipment.status; // Pass raw shipment status, let OrderTrackingProgress normalize
+      }
+      
+      // Fallback: calculate status from vendor's items
+      const vendorItems = order.items.filter(item => item.vendorId === vendorId);
+      if (vendorItems.length > 0) {
+        const allDelivered = vendorItems.every(item => item.status === 'DELIVERED');
+        const allCancelled = vendorItems.every(item => item.status === 'CANCELLED');
+        
+        if (allDelivered) return 'DELIVERED';
+        if (allCancelled) return 'CANCELLED';
+        
+        const anyShipped = vendorItems.some(item => 
+          ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(item.status?.toUpperCase())
+        );
+        if (anyShipped) return 'SHIPPED';
+        
+        const anyProcessing = vendorItems.some(item => 
+          ['PROCESSING', 'PICKUP_SCHEDULED'].includes(item.status?.toUpperCase())
+        );
+        if (anyProcessing) return 'PROCESSING';
+        
+        return 'CONFIRMED';
+      }
+    }
+    
+    // When tracking complete order, show aggregate order status
+    return order.aggregateStatus || order.status;
+  };
+  
   return (
     <>
       <OrderBreadcrumbs 
@@ -189,15 +224,20 @@ const ShopperOrderTracking = () => {
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold">
-          {vendorId ? `${vendorName} - Order Tracking` : 'Order Tracking'}
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {vendorId ? `${vendorName} - Order Tracking` : 'Order Tracking'}
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Order #{order.orderNumber || order.id?.substring(0, 8)}
+          </p>
+        </div>
       </div>
       
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
-            Order #{order.orderNumber || order.id?.substring(0, 8)}
+            {vendorId ? `Tracking ${vendorName}` : `Order #${order.orderNumber || order.id?.substring(0, 8)}`}
           </h2>
           <div className="text-right">
             <span className="text-sm text-gray-600">
@@ -216,7 +256,7 @@ const ShopperOrderTracking = () => {
           </div>
         </div>
         
-        <OrderTrackingProgress status={order.aggregateStatus || order.status} />
+        <OrderTrackingProgress status={getTrackingStatus()} />
         
         <OrderTrackingTimeline 
           items={displayItems}
