@@ -176,7 +176,7 @@ const ShopperOrderTracking = () => {
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <OrderBreadcrumbs 
         orderId={order.id || order._id} 
         orderNumber={order.orderNumber} 
@@ -308,32 +308,27 @@ const ShopperOrderTracking = () => {
         </div>
       </div>
       
-      <div className="flex justify-between">
-        <Link
-          to={`/shopper/orders/${orderId}`}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-        >
-          View Order Details
-        </Link>
-        
-        {!vendorId && order.items.length > 1 && (
-          <div className="text-right">
-            <p className="text-sm text-gray-600 mb-2">Track items by vendor:</p>
-            <div className="flex flex-wrap gap-2">
-              {Object.values(vendorGroups).map((vendor) => (
-                <Link
-                  key={vendor.vendorId}
-                  to={`/shopper/orders/${orderId}/tracking/${vendor.vendorId}`}
-                  className="px-3 py-1 text-xs border rounded-full hover:bg-gray-50"
-                >
-                  {vendor.vendorName}
-                </Link>
-              ))}
-            </div>
+      {/* ✅ REPLACE WITH: Only keep "Track items by vendor" if multiple vendors */}
+      {!vendorId && order.items.length > 1 && Object.keys(vendorGroups).length > 1 && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-sm font-medium text-gray-700 mb-3">Track items by vendor:</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(vendorGroups).map((vendor) => (
+              <Link
+                key={vendor.vendorId}
+                to={`/shopper/orders/${orderId}/tracking/${vendor.vendorId}`}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                {vendor.vendorName}
+                <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 
