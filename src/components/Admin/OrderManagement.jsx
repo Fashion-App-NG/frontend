@@ -75,7 +75,7 @@ const OrderManagement = () => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminService.getAllOrders(
+        const data = await adminService.getAllOrders(
         pagination.currentPage, // current page from pagination state
         pagination.limit, // limit per page
         filters // current filters state

@@ -36,6 +36,8 @@ import AdminMaterialPage from './pages/AdminMaterialPage';
 import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminTaxPage from './pages/AdminTaxPage.jsx';
+import AdminUserManagementPage from './pages/AdminUserManagementPage';
+import AdminVendorManagementPage from './pages/AdminVendorManagementPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
@@ -85,7 +87,6 @@ import ShopperOrderDetails from './pages/ShopperOrderDetails';
 import VendorProfilePage from './pages/VendorProfilePage';
 
 // Import order tracking component
-import OrderTrackingPage from './pages/OrderTrackingPage';
 import ShopperOrderTracking from './pages/ShopperOrderTracking';
 
 function App() {
@@ -195,17 +196,19 @@ function App() {
                   <Route path="profile" element={<VendorProfilePage />} /> {/* New profile route */}
                 </Route>
 
-                {/* Admin routes */}
-                <Route path="/admin" element={<AdminDashboardPage />} />
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
-                <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
-                <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
-                <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
-                <Route path="/admin/fees-management" element={<AdminFeesPage />} />
-                <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
-                <Route path="/admin/earnings" element={<AdminEarningsPage />} />
-                <Route path="/admin/tax" element={<AdminTaxPage />} />
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/admin-orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/admin-materials" element={<AdminMaterialPage />} />
+              <Route path="/admin/create-material" element={<AdminCreateMaterialPage />} />
+              <Route path="/admin/create-fee" element={<AdminCreateFeePage />} />
+              <Route path="/admin/fees-management" element={<AdminFeesPage />} />
+              <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
+              <Route path="/admin/earnings" element={<AdminEarningsPage />} />
+              <Route path="/admin/tax" element={<AdminTaxPage />} />
+              <Route path="/admin/user-management" element={<AdminUserManagementPage />} />
+              <Route path="/admin/vendor-management" element={<AdminVendorManagementPage />} />
 
                 {/* Legal routes */}
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
