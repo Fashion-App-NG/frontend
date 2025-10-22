@@ -287,7 +287,8 @@ const ShopperOrderDetails = () => {
           ))}
         </div>
         <OrderDeliveryInfo order={order} />
-        {["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(order.status) && (
+        {/* ✅ Show Track Complete Order for ALL paid orders */}
+        {order.paymentStatus === "PAID" && (
           <Link 
             to={`/shopper/orders/${order.orderId || order._id || order.id}/tracking`}
             state={{ orderId: order.orderId || order._id || order.id, orderNumber: order.orderNumber }}

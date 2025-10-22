@@ -286,29 +286,22 @@ const ShopperOrders = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             <OrderStatusBadge status={order.aggregateStatus || normalizeOrderStatus(order.status)} />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-4 justify-end">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                                             <Link
                                                 to={`/shopper/orders/${order.orderId || order.id}`}
                                                 className="text-blue-600 hover:text-blue-900"
                                             >
                                                 View Details
                                             </Link>
-                                            
-                                            {/* ✅ Show tracking for orders IN_PROGRESS, COMPLETED, or final states */}
-                                            {["IN_PROGRESS", "PICKUP_SCHEDULED", "SHIPPED", "DELIVERED", "COMPLETED"].includes(order.aggregateStatus || order.status) && (
-                                                <Link 
-                                                    to={`/shopper/orders/${order.orderId || order.id}/tracking`}
-                                                    state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
-                                                    className="text-blue-600 hover:text-blue-800"
-                                                >
-                                                    Track
-                                                </Link>
-                                            )}
 
-                                            {/* ✅ Show "Processing" for orders still being prepared */}
-                                            {order.aggregateStatus === "PROCESSING" && (
-                                                <span className="text-gray-400 text-sm">Processing Order</span>
-                                            )}
+                                            {/* ✅ ALWAYS show Track link for ALL orders */}
+                                            <Link
+                                                to={`/shopper/orders/${order.orderId || order.id}/tracking`}
+                                                state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
+                                                className="text-blue-600 hover:text-blue-900"
+                                            >
+                                                Track
+                                            </Link>
                                         </td>
                                     </tr>
                                 );
