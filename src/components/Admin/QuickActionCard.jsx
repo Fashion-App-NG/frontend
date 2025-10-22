@@ -18,7 +18,13 @@ const QuickActionsCard = () => {
                     actions={[
                         {
                             text: 'View Users',
-                            link: '/admin/users',
+                            link: '/admin/user-management',
+                            color: 'bg-blue-600',
+                            hoverColor: 'bg-blue-700',
+                        },
+                        {
+                            text: 'View Vendors',
+                            link: '/admin/vendor-management',
                             color: 'bg-blue-600',
                             hoverColor: 'bg-blue-700',
                         },

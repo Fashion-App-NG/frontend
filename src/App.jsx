@@ -37,6 +37,8 @@ import AdminOrderBreakdownPage from './pages/AdminOrderBreakdownPage.jsx';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminTaxPage from './pages/AdminTaxPage.jsx';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
+import AdminUserManagementPage from './pages/AdminUserManagementPage';
+import AdminVendorManagementPage from './pages/AdminVendorManagementPage';
 
 // Import legal pages
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -201,6 +203,8 @@ function App() {
               <Route path="/admin/order-breakdown" element={<AdminOrderBreakdownPage />} />
               <Route path="/admin/earnings" element={<AdminEarningsPage />} />
               <Route path="/admin/tax" element={<AdminTaxPage />} />
+              <Route path="/admin/user-management" element={<AdminUserManagementPage />} />
+              <Route path="/admin/vendor-management" element={<AdminVendorManagementPage />} />
 
                 {/* Legal routes */}
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
