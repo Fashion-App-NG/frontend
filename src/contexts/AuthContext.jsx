@@ -29,6 +29,8 @@ const isTokenExpired = (token) => {
   }
 };
 
+const TOKEN_CHECK_INTERVAL_MS = 60 * 1000; // Every 1 minute
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,7 @@ export const AuthProvider = ({ children }) => {
         }
         logout();
       }
-    }, 60 * 1000); // Every 1 minute
+    }, TOKEN_CHECK_INTERVAL_MS); // Every 1 minute
 
     return () => clearInterval(intervalId);
   }, []);

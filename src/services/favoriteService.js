@@ -71,7 +71,8 @@ class FavoriteService {
         return { isFavorite: false };
       }
 
-      return await response.json();
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('❌ Check favorite failed:', error);
       return { isFavorite: false };

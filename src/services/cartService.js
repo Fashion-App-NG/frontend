@@ -97,6 +97,9 @@ class CartService {
     
     // Redirect to login
     window.location.href = '/user-type-selection';
+    
+    // Prevent further code execution after redirect
+    throw new Error('Unauthorized: Redirecting to login');
   }
 
   async getCart() {

@@ -78,12 +78,16 @@ export const calculateOrderStatus = (items) => {
   
   // Rule 5: All items still PROCESSING → Order is PROCESSING
   if (statusCounts.PROCESSING === totalItems) {
-    console.log('⏳ Order Status: PROCESSING (all items being prepared)');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('⏳ Order Status: PROCESSING (all items being prepared)');
+    }
     return 'PROCESSING';
   }
   
   // Fallback (should rarely hit this)
-  console.log('⚠️ Order Status: Default to IN_PROGRESS');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚠️ Order Status: Default to IN_PROGRESS');
+  }
   return 'IN_PROGRESS';
 };
 

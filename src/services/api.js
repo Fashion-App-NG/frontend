@@ -2,6 +2,9 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
+// Token expiry buffer in seconds
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+
 // ✅ Token validation helper
 const isTokenExpired = (token) => {
   if (!token) return true;
@@ -14,7 +17,7 @@ const isTokenExpired = (token) => {
     const now = Math.floor(Date.now() / 1000);
     
     // Token is expired if it expires in less than 1 minute
-    return payload.exp <= now + 60;
+    return payload.exp <= now + TOKEN_EXPIRY_BUFFER_SECONDS;
   } catch (error) {
     console.error('Failed to validate token:', error);
     return true;

@@ -1,5 +1,7 @@
 import api from './api';
 
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+
 class CheckoutService {
   constructor() {
     this.baseURL = process.env.REACT_APP_API_BASE_URL || '';
@@ -20,7 +22,7 @@ class CheckoutService {
       const payload = JSON.parse(atob(parts[1]));
       const now = Math.floor(Date.now() / 1000);
       
-      if (payload.exp <= now + 60) {
+      if (payload.exp <= now + TOKEN_EXPIRY_BUFFER_SECONDS) {
         // Token expired or expires in less than 1 minute
         localStorage.removeItem('token');
         localStorage.removeItem('user');
