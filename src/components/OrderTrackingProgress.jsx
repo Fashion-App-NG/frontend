@@ -22,15 +22,6 @@ const OrderTrackingProgress = ({ status }) => {
   };
   
   const normalizedStatus = normalizeStatus(status);
-  
-  const steps = [
-    { name: 'Confirmed', status: 'CONFIRMED' },
-    { name: 'Processing', status: 'PROCESSING' },
-    { name: 'Shipped', status: 'SHIPPED' },
-    { name: 'Delivered', status: 'DELIVERED' }
-  ];
-  
-  const currentStepIndex = steps.findIndex(step => step.status === normalizedStatus);
   const isCancelled = normalizedStatus === 'CANCELLED';
   
   const getProgressPercentage = () => {

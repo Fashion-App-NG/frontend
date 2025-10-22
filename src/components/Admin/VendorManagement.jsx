@@ -1,10 +1,10 @@
 // VendorManagement.jsx
-import React, { useState, useEffect, useCallback } from "react";
-import { FaTimes, FaEdit, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import React, { useCallback, useEffect, useState } from "react";
+import { FaChevronDown, FaChevronUp, FaEdit, FaTimes } from "react-icons/fa";
 import { adminService } from "../../services/adminService";
+import ErrorMessage from "./AdminError";
 import FilterSection from "./AdminFilter";
 import Pagination from "./AdminPagination";
-import ErrorMessage from "./AdminError";
 import UpdateModal from "./AdminUpdateModal";
 
 const VendorManagement = () => {
@@ -265,134 +265,132 @@ const VendorManagement = () => {
           ) : vendors.length === 0 ? (
             <div className="text-center py-4 text-gray-500">No vendors found.</div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left pb-4" />
-                  <th className="text-left pb-4">ID</th>
-                  <th className="text-left pb-4">Store Name</th>
-                  <th className="text-left pb-4">Phone</th>
-                  <th className="text-left pb-4">Status</th>
-                  <th className="text-left pb-4">Created At</th>
-                  <th className="text-left pb-4">Updated At</th>
-                  <th className="text-left pb-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vendors.map((vendor) => (
-                  <div key={vendor._id} /> /* placeholder to satisfy React key linting in fragment below */
-                ))}
-
-                {vendors.map((vendor) => (
-                  <React.Fragment key={vendor._id || vendor.id}>
-                    <tr className="border-b hover:bg-gray-50">
-                      <td className="py-4">
-                        <button
-                          onClick={() => setExpandedVendorId(expandedVendorId === (vendor._id || vendor.id) ? null : (vendor._id || vendor.id))}
-                          className="flex items-center gap-2"
-                        >
-                          {expandedVendorId === (vendor._id || vendor.id) ? <FaChevronUp /> : <FaChevronDown />}
-                        </button>
-                      </td>
-                      <td className="py-4 text-sm">{vendor.email || vendor.email}</td>
-                      <td className="py-4">
-                        <div>
-                          <p className="font-medium">{vendor.vendorProfile?.storeName || "-"}</p>
-                        </div>
-                      </td>
-                      <td>{vendor.vendorProfile?.businessInfo?.contactPerson?.phone || "-"}</td>
-                      <td>
-                        <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
-                          {vendor.role || "vendor"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          (vendor.vendorProfile?.status || vendor.status) === "APPROVED" ? "bg-green-100 text-green-800" :
-                          (vendor.vendorProfile?.status || vendor.status) === "PENDING" ? "bg-yellow-200 text-yellow-700" :
-                          "bg-red-100 text-red-800"
-                        }`}>
-                          {vendor.vendorProfile?.status}
-                        </span>
-
-                        <div className="mt-2 flex gap-2">
-                          {(vendor.vendorProfile?.status || vendor.status) === "SUSPENDED" ? (
-                            <button
-                              onClick={() => handleUnsuspend(vendor._id || vendor.id)}
-                              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
-                            >
-                              Unsuspend
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleSuspend(vendor._id || vendor.id)}
-                              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
-                            >
-                              Suspend
-                            </button>
-                          )}
-
-                          {(vendor.vendorProfile?.status || vendor.status) !== "APPROVED" ? (
-                            <button
-                              onClick={() => handleApprove(vendor._id || vendor.id)}
-                              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
-                            >
-                              Approve
-                            </button>
-                          ) : null}
-
-                        </div>
-                      </td>
-                      <td>{formatDate(vendor.createdAt)}</td>
-                      <td>{formatDate(vendor.updatedAt)}</td>
-                      <td>
-                        <div className="flex gap-2">
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left pb-4" />
+                    <th className="text-left pb-4">ID</th>
+                    <th className="text-left pb-4">Store Name</th>
+                    <th className="text-left pb-4">Phone</th>
+                    <th className="text-left pb-4">Status</th>
+                    <th className="text-left pb-4">Created At</th>
+                    <th className="text-left pb-4">Updated At</th>
+                    <th className="text-left pb-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vendors.map((vendor) => (
+                    <React.Fragment key={vendor._id}>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="py-4">
                           <button
-                            onClick={() => handleUpdateClick(vendor._id || vendor.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            onClick={() => setExpandedVendorId(expandedVendorId === (vendor._id || vendor.id) ? null : (vendor._id || vendor.id))}
+                            className="flex items-center gap-2"
                           >
-                            <FaEdit />
+                            {expandedVendorId === (vendor._id || vendor.id) ? <FaChevronUp /> : <FaChevronDown />}
                           </button>
-                          <button
-                            onClick={() => {
-                              // Quick delete/disable is not exposed in adminService as deleteVendor,
-                              // so we reuse DisableVendor for hard disabling (if backend supports).
-                              handleDisable(vendor._id || vendor.id);
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <FaTimes />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="py-4 text-sm">{vendor.email || vendor.id}</td>
+                        <td className="py-4">
+                          <div>
+                            <p className="font-medium">{vendor.vendorProfile?.storeName || "-"}</p>
+                          </div>
+                        </td>
+                        <td>{vendor.vendorProfile?.businessInfo?.contactPerson?.phone || "-"}</td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+                            {vendor.role || "vendor"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            (vendor.vendorProfile?.status || vendor.status) === "APPROVED" ? "bg-green-100 text-green-800" :
+                            (vendor.vendorProfile?.status || vendor.status) === "PENDING" ? "bg-yellow-200 text-yellow-700" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {vendor.vendorProfile?.status}
+                          </span>
 
-                    {expandedVendorId === (vendor._id || vendor.id) && (
-                      <tr>
-                        <td colSpan="9" className="bg-gray-50 p-4">
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <h4 className="font-medium mb-2">Contact</h4>
-                              <p className="text-sm">{vendor.vendorProfile?.businessInfo?.contactPerson?.name || "N/A"}</p>
-                              <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.street || "N/A"}</p>
-                              <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.city || "N/A"}</p>
-                              <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.state || "N/A"}</p>
-                              <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.country || "N/A"}</p>
+                          <div className="mt-2 flex gap-2">
+                            {(vendor.vendorProfile?.status || vendor.status) === "SUSPENDED" ? (
+                              <button
+                                onClick={() => handleUnsuspend(vendor._id || vendor.id)}
+                                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                              >
+                                Unsuspend
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSuspend(vendor._id || vendor.id)}
+                                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                              >
+                                Suspend
+                              </button>
+                            )}
 
-                            </div>
-                            <div>
-                              <h4 className="font-medium mb-2">Meta</h4>
-                              <p className="text-sm">Rating: {vendor.vendorProfile?.reliabilityMetrics?.rating || "N/A"}</p>
-                              <p className="text-sm">level: {vendor.vendorProfile?.reliabilityMetrics?.level || "N/A"}</p>
-                            </div>
+                            {(vendor.vendorProfile?.status || vendor.status) !== "APPROVED" ? (
+                              <button
+                                onClick={() => handleApprove(vendor._id || vendor.id)}
+                                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                              >
+                                Approve
+                              </button>
+                            ) : null}
+
+                          </div>
+                        </td>
+                        <td>{formatDate(vendor.createdAt)}</td>
+                        <td>{formatDate(vendor.updatedAt)}</td>
+                        <td>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateClick(vendor._id || vendor.id)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Quick delete/disable is not exposed in adminService as deleteVendor,
+                                // so we reuse DisableVendor for hard disabling (if backend supports).
+                                handleDisable(vendor._id || vendor.id);
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <FaTimes />
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+
+                      {expandedVendorId === (vendor._id || vendor.id) && (
+                        <tr>
+                          <td colSpan="9" className="bg-gray-50 p-4">
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Contact</h4>
+                                <p className="text-sm">{vendor.vendorProfile?.businessInfo?.contactPerson?.name || "N/A"}</p>
+                                <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.street || "N/A"}</p>
+                                <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.city || "N/A"}</p>
+                                <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.state || "N/A"}</p>
+                                <p className="text-sm">{vendor.vendorProfile?.pickupAddress?.country || "N/A"}</p>
+
+                              </div>
+                              <div>
+                                <h4 className="font-medium mb-2">Meta</h4>
+                                <p className="text-sm">Rating: {vendor.vendorProfile?.reliabilityMetrics?.rating || "N/A"}</p>
+                                <p className="text-sm">level: {vendor.vendorProfile?.reliabilityMetrics?.level || "N/A"}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

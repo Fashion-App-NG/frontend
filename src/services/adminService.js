@@ -735,7 +735,7 @@ class AdminService {
         }
     }
 
-    async GetUserPerferences(userId) {
+    async GetUserPreferences(userId) {
         if (!userId) throw new Error('User ID is required');
 
         try {
