@@ -89,7 +89,6 @@ export const CartProvider = ({ children }) => {
 
   // --- Add Item to Cart ---
   const addToCart = useCallback(async (product) => {
-    // Debug logging
     console.log('🔍 DEBUG - addToCart payload:', {
       productData: product,
       basePrice: product.pricePerYard || product.price || 0,
@@ -110,7 +109,16 @@ export const CartProvider = ({ children }) => {
         }
       }
     } catch (err) {
-      setError(err.message);
+      // ✅ Show session expired errors to user
+      if (err.message.includes('Session expired')) {
+        setError('Your session has expired. Redirecting to login...');
+        setTimeout(() => {
+          window.location.href = '/user-type-selection';
+        }, 2000);
+      } else {
+        setError(err.message);
+      }
+      
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to add item to cart:', err);
       }

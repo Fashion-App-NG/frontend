@@ -1,19 +1,18 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import OrderStatusBadge from '../components/OrderStatusBadge';
-import { useAuth } from "../contexts/AuthContext"; // ✅ Add this import
+import { useAuth } from "../contexts/AuthContext";
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
-import { calculateAggregateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
+import { calculateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
 import { calculateSubtotal } from "../utils/priceCalculations";
 
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
-    { key: "CONFIRMED", label: "Confirmed" },
-    { key: "PROCESSING", label: "In Progress" },
-    { key: "SHIPPED", label: "Shipped" },
-    { key: "IN_TRANSIT", label: "In Transit" },
+    { key: "PROCESSING", label: "Processing" },
+    { key: "IN_PROGRESS", label: "In Progress" }, // ✅ NEW
+    { key: "COMPLETED", label: "Completed" }, // ✅ NEW
     { key: "DELIVERED", label: "Delivered" },
     { key: "CANCELLED", label: "Cancelled" },
 ];
@@ -21,7 +20,7 @@ const FILTER_TABS = [
 const PAGE_SIZE = 10;
 
 const ShopperOrders = () => {
-    const { user } = useAuth(); // ✅ Add user context
+    const { user, isAuthenticated } = useAuth();
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -29,12 +28,17 @@ const ShopperOrders = () => {
     const [activeTab, setActiveTab] = useState("ALL");
     const [search, setSearch] = useState("");
 
+    // ✅ All hooks BEFORE conditional returns
     useEffect(() => {
         async function verifyAndFetchOrders() {
-            // ✅ VERIFICATION: Test the actual endpoint
+            // Skip if not authenticated
+            if (!isAuthenticated || !user?.id) {
+                setLoading(false);
+                return;
+            }
+            
             await checkoutService.verifyCheckoutOrdersEndpoint();
             
-            // Then run your existing fetch logic...
             setLoading(true);
             setError(null);
             
@@ -54,40 +58,41 @@ const ShopperOrders = () => {
                 
                 // Process orders to calculate aggregate status
                 const processedOrders = (data.orders || []).map(order => {
-                    // CRITICAL FIX: Add status to items since backend isn't providing it
+                    // ✅ FIX: Use backend status if available
                     if (order.items && order.items.length > 0) {
                         order.items = order.items.map((item, index) => {
-                            if (!item.status) {
-                                // Same demo logic as other pages
-                                let status;
-                                if (order.orderNumber.includes('250923')) {
-                                  status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
-                                } else if (order.orderNumber.includes('250918')) {
-                                  status = 'DELIVERED';
-                                } else if (order.orderNumber.includes('250916')) {
-                                  if (order.orderNumber.endsWith('0007')) {
-                                    status = 'CANCELLED';
-                                  } else if (order.orderNumber.endsWith('0006')) {
-                                    status = 'PROCESSING';
-                                  } else {
-                                    status = 'DELIVERED';
-                                  }
-                                } else {
-                                  status = 'CONFIRMED';
-                                }
-                                return { ...item, status };
+                            // ✅ Use backend status if it exists
+                            if (item.status) {
+                                return item; // Keep backend status as-is
                             }
-                            return item;
+                            
+                            // ⚠️ Only apply demo logic as fallback
+                            let status = 'PROCESSING';
+                            if (order.orderNumber.includes('250923')) {
+                              status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
+                            } else if (order.orderNumber.includes('250918')) {
+                              status = 'DELIVERED';
+                            } else if (order.orderNumber.includes('250916')) {
+                              if (order.orderNumber.endsWith('0007')) {
+                                status = 'CANCELLED';
+                              } else if (order.orderNumber.endsWith('0006')) {
+                                status = 'PROCESSING';
+                              } else {
+                                status = 'DELIVERED';
+                              }
+                            }
+                            return { ...item, status };
                         });
                     }
                     
                     // Calculate aggregate status consistently
-                    const aggregateStatus = calculateAggregateOrderStatus(order.items, order.status);
-                    console.log(`Order ${order.orderNumber} calculated status:`, aggregateStatus);
-                    
+                    const orderStatus = calculateOrderStatus(order.items);
+                    console.log(`Order ${order.orderNumber} calculated status:`, orderStatus);
+
                     return {
                         ...order,
-                        status: aggregateStatus
+                        aggregateStatus: orderStatus, // ✅ Use new function
+                        status: orderStatus // ✅ Override order.status with calculated value
                     };
                 });
                 
@@ -95,22 +100,24 @@ const ShopperOrders = () => {
                 setPagination(data.pagination || { currentPage: 1, totalPages: 1 });
             } catch (err) {
                 console.error('❌ SHOPPER ORDERS ERROR:', err);
-                setError(err.message);
+                
+                if (err.message === 'Session expired' || err.message === 'No authentication token found') {
+                    setError('Your session has expired. Redirecting to login...');
+                } else {
+                    setError(err.message);
+                }
             } finally {
                 setLoading(false);
             }
         }
         
-        if (user?.id) {
-            verifyAndFetchOrders();
-        }
-    }, [pagination.currentPage, user?.id]);
+        verifyAndFetchOrders();
+    }, [pagination.currentPage, user?.id, isAuthenticated]);
 
     const filteredOrders = useMemo(() => {
         let filtered = orders;
         if (activeTab !== "ALL") {
             filtered = filtered.filter((order) => {
-                // Use aggregateStatus if available, otherwise fall back to order.status
                 const orderStatus = order.aggregateStatus || normalizeOrderStatus(order.status);
                 return orderStatus === activeTab;
             });
@@ -125,7 +132,6 @@ const ShopperOrders = () => {
         setPagination((prev) => ({ ...prev, currentPage: page }));
     };
 
-    // 🔍 FIXED: Update vendor info extraction for checkout orders
     const getVendorInfo = (order) => {
         console.log('🔍 VENDOR INFO EXTRACTION (CHECKOUT ORDERS):', {
             orderId: order.id,
@@ -135,37 +141,17 @@ const ShopperOrders = () => {
             firstItem: order.items?.[0]
         });
 
-        // ✅ Since checkout orders don't include vendor info, show placeholder
-        // This is expected until we create dedicated shopper orders endpoint
         return {
-            name: 'Multiple Vendors', // Since one order can have items from multiple vendors
+            name: 'Multiple Vendors',
             email: null,
             initial: 'V'
         };
     };
 
-    // eslint-disable-next-line no-unused-vars
-    const getOrderStatusSummary = (order) => {
-        // Extract vendor-specific status information
-        const vendorGroups = {};
-        order.items.forEach(item => {
-            if (!vendorGroups[item.vendorId]) {
-                vendorGroups[item.vendorId] = {
-                    vendorName: item.vendorName || "Vendor",
-                    items: [],
-                    statuses: new Set()
-                };
-            }
-            vendorGroups[item.vendorId].items.push(item);
-            vendorGroups[item.vendorId].statuses.add(item.status || order.status);
-        });
-        
-        return {
-            overallStatus: order.status,
-            vendorCount: Object.keys(vendorGroups).length,
-            vendorGroups
-        };
-    };
+    // ✅ Conditional redirect AFTER all hooks
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
 
     return (
         <div className="p-6 max-w-4xl mx-auto">
@@ -300,23 +286,22 @@ const ShopperOrders = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             <OrderStatusBadge status={order.aggregateStatus || normalizeOrderStatus(order.status)} />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-4 justify-end">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                                             <Link
                                                 to={`/shopper/orders/${order.orderId || order.id}`}
                                                 className="text-blue-600 hover:text-blue-900"
                                             >
                                                 View Details
                                             </Link>
-                                            
-                                            {["CONFIRMED", "PROCESSING", "SHIPPED", "DISPATCHED", "IN_TRANSIT", "DELIVERED"].includes(order.aggregateStatus || order.status) && (
-                                                <Link 
-                                                    to={`/shopper/orders/${order.orderId || order.id}/tracking`}
-                                                    state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
-                                                    className="text-blue-600 hover:text-blue-800"
-                                                >
-                                                    Track
-                                                </Link>
-                                            )}
+
+                                            {/* ✅ ALWAYS show Track link for ALL orders */}
+                                            <Link
+                                                to={`/shopper/orders/${order.orderId || order.id}/tracking`}
+                                                state={{ orderId: order.orderId || order.id, orderNumber: order.orderNumber }}
+                                                className="text-blue-600 hover:text-blue-900"
+                                            >
+                                                Track
+                                            </Link>
                                         </td>
                                     </tr>
                                 );

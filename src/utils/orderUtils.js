@@ -2,71 +2,100 @@
 // filepath: /Users/abioyebankole/fashion-app/frontend/src/utils/orderUtils.js
 export const normalizeOrderStatus = (status) => {
   // Handle null/undefined/object cases
-  if (!status) return 'CONFIRMED';
+  if (!status) return 'PROCESSING';
   
   // Convert to string if it's not already
   const statusStr = typeof status === 'object' ? status.status?.toString() : status.toString();
   
   switch(statusStr.toUpperCase()) {
-    case 'DRAFT': return 'CONFIRMED';
-    case 'PENDING': return 'CONFIRMED';
+    case 'DRAFT': return 'PROCESSING';
+    case 'PENDING': return 'PROCESSING';
+    case 'CONFIRMED': return 'PROCESSING';
+    case 'READY': return 'PICKUP_SCHEDULED';
+    case 'READY_FOR_PICKUP': return 'PICKUP_SCHEDULED';
     case 'DISPATCHED': return 'SHIPPED';
+    case 'IN_TRANSIT': return 'SHIPPED';
+    case 'OUT_FOR_DELIVERY': return 'SHIPPED';
     default: return statusStr.toUpperCase();
   }
 };
 
-export const calculateAggregateOrderStatus = (items, orderStatus) => {
-  // If no items or empty array, fall back to order status or default
+// ✅ NEW: Calculate Order-Level Status (not item status)
+export const calculateOrderStatus = (items) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return normalizeOrderStatus(orderStatus) || 'CONFIRMED';
-  }
-  
-  // Extract item statuses, handling missing values
-  const statuses = new Set();
-  items.forEach(item => {
-    // If item has status property and it's not empty
-    if (item && item.status) {
-      statuses.add(normalizeOrderStatus(item.status));
-    }
-  });
-  
-  console.log('Item statuses found:', Array.from(statuses));
-  
-  // If no valid statuses found in items, use order status
-  if (statuses.size === 0) {
-    return normalizeOrderStatus(orderStatus) || 'CONFIRMED';
-  }
-  
-  // Now apply business rules for status calculation
-  // Case 1: All items have the same status
-  if (statuses.size === 1) {
-    return Array.from(statuses)[0];
-  }
-  
-  // Case 2: If any item is in progress/shipped/transit
-  if (statuses.has('PROCESSING') || statuses.has('SHIPPED') || statuses.has('IN_TRANSIT')) {
     return 'PROCESSING';
   }
   
-  // Case 3: Mix of delivered and cancelled
-  if (statuses.size === 2 && 
-      statuses.has('DELIVERED') && 
-      statuses.has('CANCELLED')) {
+  // Normalize all item statuses
+  const normalizedStatuses = items.map(item => 
+    normalizeOrderStatus(item.status || 'PROCESSING')
+  );
+  
+  // Count each status type
+  const statusCounts = {
+    PROCESSING: normalizedStatuses.filter(s => s === 'PROCESSING').length,
+    PICKUP_SCHEDULED: normalizedStatuses.filter(s => s === 'PICKUP_SCHEDULED').length,
+    SHIPPED: normalizedStatuses.filter(s => s === 'SHIPPED').length,
+    DELIVERED: normalizedStatuses.filter(s => s === 'DELIVERED').length,
+    CANCELLED: normalizedStatuses.filter(s => s === 'CANCELLED').length
+  };
+  
+  const totalItems = items.length;
+  
+  console.log('📊 Order Status Calculation:', {
+    totalItems,
+    statusCounts,
+    normalizedStatuses
+  });
+  
+  // STATE MACHINE LOGIC
+  
+  // Rule 1: All items DELIVERED → Order is DELIVERED
+  if (statusCounts.DELIVERED === totalItems) {
+    console.log('✅ Order Status: DELIVERED (all items delivered)');
+    return 'DELIVERED';
+  }
+  
+  // Rule 2: All items CANCELLED → Order is CANCELLED
+  if (statusCounts.CANCELLED === totalItems) {
+    console.log('❌ Order Status: CANCELLED (all items cancelled)');
+    return 'CANCELLED';
+  }
+  
+  // Rule 3: All items finished (DELIVERED or CANCELLED) → Order is COMPLETED
+  if (statusCounts.DELIVERED + statusCounts.CANCELLED === totalItems) {
+    console.log('✅ Order Status: COMPLETED (mixed: delivered + cancelled)');
     return 'COMPLETED';
   }
   
-  // Case 4: If any items still CONFIRMED but others in different status
-  if (statuses.has('CONFIRMED')) {
-    return 'PROCESSING'; // Some in process, some still pending
+  // Rule 4: Any item beyond PROCESSING → Order is IN_PROGRESS
+  if (statusCounts.PICKUP_SCHEDULED > 0 || 
+      statusCounts.SHIPPED > 0 || 
+      statusCounts.DELIVERED > 0) {
+    console.log('🚀 Order Status: IN_PROGRESS (some items moving)');
+    return 'IN_PROGRESS';
   }
   
-  // Default fallback
-  return normalizeOrderStatus(orderStatus) || 'PROCESSING';
+  // Rule 5: All items still PROCESSING → Order is PROCESSING
+  if (statusCounts.PROCESSING === totalItems) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('⏳ Order Status: PROCESSING (all items being prepared)');
+    }
+    return 'PROCESSING';
+  }
+  
+  // Fallback (should rarely hit this)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚠️ Order Status: Default to IN_PROGRESS');
+  }
+  return 'IN_PROGRESS';
 };
+
+// ✅ DEPRECATED: Rename old function for backward compatibility
+export const calculateAggregateOrderStatus = calculateOrderStatus;
 
 // Human-readable status mapping for display
 export const getDisplayStatus = (status) => {
-  // Handle cases where we receive an object
   if (typeof status === 'object' && status !== null) {
     status = status.status;
   }
@@ -74,13 +103,19 @@ export const getDisplayStatus = (status) => {
   const statusString = status?.toString() || '';
   
   const displayMap = {
-    'CONFIRMED': 'Order Confirmed',
-    'PROCESSING': 'In Progress',
+    'PENDING': 'Processing',
+    'PROCESSING': 'Processing',
+    'IN_PROGRESS': 'In Progress', // ✅ NEW
+    'PICKUP_SCHEDULED': 'Pickup Scheduled',
+    'SCHEDULED': 'Pickup Scheduled',
     'SHIPPED': 'Shipped',
-    'IN_TRANSIT': 'In Transit',
+    'IN_TRANSIT': 'Shipped',
+    'OUT_FOR_DELIVERY': 'Shipped',
     'DELIVERED': 'Delivered',
     'CANCELLED': 'Cancelled',
-    'COMPLETED': 'Completed'
+    'COMPLETED': 'Completed', // ✅ NEW
+    'PAID': 'Paid',
+    'UNPAID': 'Unpaid'
   };
   
   return displayMap[statusString.toUpperCase()] || statusString;
@@ -88,7 +123,6 @@ export const getDisplayStatus = (status) => {
 
 // Get status CSS classes
 export const getStatusClass = (status) => {
-  // Handle cases where we receive an object
   if (typeof status === 'object' && status !== null) {
     status = status.status;
   }
@@ -96,13 +130,13 @@ export const getStatusClass = (status) => {
   const statusString = status?.toString() || '';
   
   const statusClass = {
-    'CONFIRMED': 'bg-blue-100 text-blue-800',
     'PROCESSING': 'bg-yellow-100 text-yellow-800',
+    'IN_PROGRESS': 'bg-blue-100 text-blue-800', // ✅ NEW
+    'PICKUP_SCHEDULED': 'bg-purple-100 text-purple-800',
     'SHIPPED': 'bg-indigo-100 text-indigo-800',
-    'IN_TRANSIT': 'bg-indigo-100 text-indigo-800',
     'DELIVERED': 'bg-green-100 text-green-800',
-    'CANCELLED': 'bg-red-100 text-red-800',
-    'COMPLETED': 'bg-green-100 text-green-800'
+    'COMPLETED': 'bg-green-100 text-green-800', // ✅ NEW
+    'CANCELLED': 'bg-red-100 text-red-800'
   };
   
   return statusClass[statusString.toUpperCase()] || 'bg-gray-100 text-gray-800';

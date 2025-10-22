@@ -14,8 +14,11 @@ const ProductCard = ({
   showAddToCartButton = true
 }) => {
   const [imageError, setImageError] = useState(false);
+  // ✅ Add local loading state for this specific product
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToCart, isInCart, isLoading, error } = useCart();
+  const { addToCart, isInCart, error } = useCart(); // ✅ Remove global isLoading
   const { isAuthenticated } = useAuth();
 
   const productId = product._id || product.id;
@@ -57,16 +60,26 @@ const ProductCard = ({
     }
   };
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.stopPropagation();
+    
+    // ✅ Set local loading state
+    setIsAddingToCart(true);
+    
     if (process.env.NODE_ENV === 'development') {
       console.log('[DEBUG] ProductCard handleAddToCart called with:', product);
     }
-    addToCart({
-      ...product,
-      vendorId: product.vendorId || product.vendor?.id,
-      quantity: 1,
-    });
+    
+    try {
+      await addToCart({
+        ...product,
+        vendorId: product.vendorId || product.vendor?.id,
+        quantity: 1,
+      });
+    } finally {
+      // ✅ Clear local loading state after operation
+      setIsAddingToCart(false);
+    }
   };
 
   const handleCardClick = () => {
@@ -216,13 +229,18 @@ const ProductCard = ({
             )}
             <button
               onClick={handleAddToCart}
-              disabled={isLoading || isInCart(product._id || product.id)}
-              className={`mt-4 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors ${isInCart?.(product._id || product.id)
-                ? 'bg-green-600 hover:bg-green-700'
-                : ''
-                }`}
+              disabled={isAddingToCart || isInCart(product._id || product.id)}
+              className={`mt-4 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isInCart?.(product._id || product.id)
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : ''
+              }`}
             >
-              {isInCart(product._id || product.id) ? 'In Cart' : isLoading ? 'Adding...' : 'Add to Cart'}
+              {isInCart(product._id || product.id) 
+                ? 'In Cart' 
+                : isAddingToCart 
+                  ? 'Adding...' 
+                  : 'Add to Cart'}
             </button>
           </>
         )}

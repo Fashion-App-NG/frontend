@@ -6,31 +6,8 @@ import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
-import { calculateAggregateOrderStatus } from '../utils/orderUtils';
+import { calculateOrderStatus } from '../utils/orderUtils';
 import { calculateSubtotal, getDisplayPricePerYard } from "../utils/priceCalculations";
-
-// Create a function to handle payment status display
-const PaymentStatusBadge = ({ status }) => {
-  // Make sure status is a string
-  const statusString = status?.toString() || '';
-  const normalizedStatus = statusString.toUpperCase() || 'PENDING';
-  
-  const getStatusColor = () => {
-    switch(normalizedStatus) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'FAILED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${getStatusColor()}`}>
-      {normalizedStatus.replace(/_/g, ' ')}
-    </span>
-  );
-};
 
 const ShopperOrderDetails = () => {
   const { orderId } = useParams();
@@ -47,43 +24,58 @@ const ShopperOrderDetails = () => {
         const data = await checkoutService.getOrderById(orderId);
         console.log("FULL API RESPONSE:", JSON.stringify(data, null, 2));
         
-        // Extract the order object
         const orderData = data.order || data;
         
-        // CRITICAL FIX: Add status to items since backend isn't providing it
+        // ✅ FIX: Use backend status if available, only apply demo logic as fallback
         if (orderData.items && orderData.items.length > 0) {
           orderData.items = orderData.items.map((item, index) => {
-            if (!item.status) {
-              // Same demo logic as tracking page
-              let status;
-              if (orderData.orderNumber.includes('250923')) {
-                status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
-              } else if (orderData.orderNumber.includes('250918')) {
-                status = 'DELIVERED';
-              } else if (orderData.orderNumber.includes('250916')) {
-                if (orderData.orderNumber.endsWith('0007')) {
-                  status = 'CANCELLED';
-                } else if (orderData.orderNumber.endsWith('0006')) {
-                  status = 'PROCESSING';
-                } else {
-                  status = 'DELIVERED';
-                }
-              } else {
-                status = 'CONFIRMED';
-              }
-              return { ...item, status };
+            // ✅ Use backend status if it exists
+            if (item.status) {
+              console.log(`Item ${item.name} using backend status:`, item.status);
+              return { 
+                ...item, 
+                vendorName: item.vendorName || 'Unknown Vendor'
+              };
             }
-            return item;
+            
+            // ⚠️ Only apply demo logic if backend doesn't provide status
+            console.warn(`Item ${item.name} missing backend status, applying demo logic`);
+            let status = 'PROCESSING';
+            
+            if (orderData.orderNumber.includes('250918')) {
+              status = 'DELIVERED';
+            } else if (orderData.orderNumber.includes('250916')) {
+              if (orderData.orderNumber.endsWith('0007')) {
+                status = 'CANCELLED';
+              } else if (orderData.orderNumber.endsWith('0006')) {
+                status = 'PROCESSING';
+              } else {
+                status = 'DELIVERED';
+              }
+            } else if (orderData.orderNumber.includes('250923')) {
+              status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
+            }
+            
+            console.log(`Item ${item.name} using demo status:`, status);
+            
+            return { 
+              ...item, 
+              status,
+              vendorName: item.vendorName || 'Unknown Vendor'
+            };
           });
         }
         
-        // Calculate the aggregate status based on item statuses
-        const aggregateStatus = calculateAggregateOrderStatus(orderData.items, orderData.status);
-        console.log("Details page calculated aggregate status:", aggregateStatus);
-        
+        const orderStatus = calculateOrderStatus(orderData.items);
+        console.log("Details page calculated order status:", orderStatus);
+        console.log("Item statuses after processing:", orderData.items.map(i => ({ 
+          name: i.name, 
+          status: i.status 
+        })));
+
         const processedOrder = { 
           ...orderData, 
-          status: aggregateStatus // Override with calculated status
+          status: orderStatus
         };
         
         setOrder(processedOrder);
@@ -102,17 +94,19 @@ const ShopperOrderDetails = () => {
     items.forEach(item => {
       const vendorId = item.vendorId;
       if (!vendorGroups[vendorId]) {
+        // ✅ Get vendor name from shipments
+        const shipment = order?.shipments?.find(s => s.vendorId === vendorId);
+        const vendorName = shipment?.vendorName || item.vendorName || "Unknown Vendor";
+        
         vendorGroups[vendorId] = {
           vendorId,
-          vendorName: item.vendorName || "Vendor",
+          vendorName,
           items: [],
           status: item.status || 'PROCESSING'
         };
       }
       vendorGroups[vendorId].items.push(item);
       
-      // Update vendor group status based on items
-      // If any item is PROCESSING, set vendor group to PROCESSING
       if (item.status === 'PROCESSING' || item.status === 'IN_PROGRESS') {
         vendorGroups[vendorId].status = 'PROCESSING';
       }
@@ -204,7 +198,8 @@ const ShopperOrderDetails = () => {
           </div>
           <div>
             <div className="text-xs text-gray-500">Payment</div>
-            <PaymentStatusBadge status={order.paymentStatus} />
+            {/* ✅ Use OrderStatusBadge for payment status too */}
+            <OrderStatusBadge status={order.paymentStatus || 'COMPLETED'} />
           </div>
         </div>
         
@@ -292,7 +287,8 @@ const ShopperOrderDetails = () => {
           ))}
         </div>
         <OrderDeliveryInfo order={order} />
-        {["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(order.status) && (
+        {/* ✅ Show Track Complete Order for ALL paid orders */}
+        {order.paymentStatus === "PAID" && (
           <Link 
             to={`/shopper/orders/${order.orderId || order._id || order.id}/tracking`}
             state={{ orderId: order.orderId || order._id || order.id, orderNumber: order.orderNumber }}

@@ -85,13 +85,29 @@ class CartService {
     return response;
   }
 
+  async handleUnauthorized() {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔒 Unauthorized request detected - token may be expired');
+    }
+    
+    // Clear invalid tokens
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('guestSessionToken');
+    
+    // Redirect to login
+    window.location.href = '/user-type-selection';
+    
+    // Prevent further code execution after redirect
+    throw new Error('Unauthorized: Redirecting to login');
+  }
+
   async getCart() {
     try {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Fetching cart contents...');
       }
       
-      // ✅ ENHANCED: Ensure valid token before request
       await this.ensureValidAuth();
       
       const headers = this.getAuthHeaders();
@@ -107,32 +123,22 @@ class CartService {
         headers 
       });
       
-      // ✅ ENHANCED: Better 401 handling with recovery
       if (response.status === 401) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('🔒 Cart API returned 401 - attempting token recovery...');
-        }
-
+        // ✅ User token expired - force re-login
         const userToken = this.getAuthToken();
         if (userToken) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('🚨 User token rejected - auth system issue');
-          }
-          throw new Error('Authentication failed - please log in again');
+          await this.handleUnauthorized();
+          throw new Error('Session expired. Please log in again.');
         }
         
-        // ✅ GUEST SESSION RECOVERY
+        // Guest session recovery
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Recovering guest session...');
         }
         try {
-          // Clear invalid token
           localStorage.removeItem('guestSessionToken');
-          
-          // Force create new guest session
           await this.createGuestSession();
           
-          // Retry request with new token
           const newHeaders = this.getAuthHeaders();
           const retryResponse = await fetch(`${this.baseURL}/cart`, { 
             method: 'GET', 
@@ -155,7 +161,6 @@ class CartService {
           if (process.env.NODE_ENV === 'development') {
             console.error('❌ Guest session recovery failed:', recoveryError);
           }
-          // ✅ GRACEFUL FALLBACK: Return empty cart
           return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
         }
       }
@@ -175,11 +180,14 @@ class CartService {
       
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-      console.error('❌ Failed to fetch cart:', error);
-      
-      // ✅ GRACEFUL FALLBACK: Don't throw errors for cart failures
-      console.log('🔄 Returning empty cart as fallback');
+        console.error('❌ Failed to fetch cart:', error);
       }
+      
+      // Don't swallow session expired errors
+      if (error.message.includes('Session expired')) {
+        throw error;
+      }
+      
       return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
     }
   }
@@ -247,6 +255,13 @@ class CartService {
         headers,
         body: JSON.stringify(requestBody)
       });
+      
+      // ✅ Handle 401 for add to cart
+      if (response.status === 401) {
+        await this.handleUnauthorized();
+        throw new Error('Session expired. Please log in again.');
+      }
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         throw new Error(errorData.message || `Failed to add item to cart: ${response.status}`);

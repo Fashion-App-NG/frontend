@@ -12,9 +12,10 @@ const ProductDetailPage = () => {
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const { isAuthenticated } = useAuth();
-  const { addToCart, isInCart, isLoading, error: cartError } = useCart();
+  const { addToCart, isInCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   console.log('[DEBUG] NODE_ENV:', process.env.NODE_ENV);
@@ -44,29 +45,17 @@ const ProductDetailPage = () => {
     loadProduct();
   }, [productId]);
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    console.log('[ALWAYS] handleAddToCart called');
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] handleAddToCart called with:', {
-        id: product._id || product.id,
-        name: product.name,
-        price: product.pricePerYard,
-        quantity,
-        image: product.images?.[0] || '/images/default-product.jpg',
+  const handleAddToCart = async () => {
+    setIsAddingToCart(true);
+    try {
+      await addToCart({
+        ...product,
         vendorId: product.vendorId || product.vendor?.id,
-        vendorName: product.vendorName || product.vendor?.name,
+        quantity: quantity,
       });
+    } finally {
+      setIsAddingToCart(false);
     }
-    addToCart({
-      id: product._id || product.id,
-      name: product.name,
-      price: product.pricePerYard,
-      image: product.images?.[0] || '/images/default-product.jpg',
-      quantity: parseInt(quantity),
-      vendorId: product.vendorId || product.vendor?.id,
-      vendorName: product.vendorName || product.vendor?.name,
-    });
   };
 
   const handleToggleFavorite = async () => {
@@ -157,13 +146,6 @@ const ProductDetailPage = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Cart error display */}
-        {cartError && (
-          <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
-            {cartError}
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Images */}
           <div>
@@ -287,10 +269,14 @@ const ProductDetailPage = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleAddToCart}
-                disabled={isLoading || isInCart(product._id || product.id)}
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={isAddingToCart || isInCart(product._id || product.id)}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isInCart(product._id || product.id) ? 'In Cart' : isLoading ? 'Adding...' : 'Add to Cart'}
+                {isInCart(product._id || product.id) 
+                  ? 'In Cart' 
+                  : isAddingToCart 
+                    ? 'Adding...' 
+                    : 'Add to Cart'}
               </button>
               <button
                 onClick={handleToggleFavorite}
