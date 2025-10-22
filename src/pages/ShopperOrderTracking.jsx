@@ -29,16 +29,12 @@ const ShopperOrderTracking = () => {
         
         const orderData = response.order || response;
         
-        // CRITICAL FIX: Add status to items since backend isn't providing it
-        // ✅ FIX: Use backend status if available
         if (orderData.items && orderData.items.length > 0) {
           orderData.items = orderData.items.map((item, index) => {
-            // ✅ Use backend status if it exists
             if (item.status) {
-              return item; // Keep backend status as-is
+              return item;
             }
             
-            // ⚠️ Only apply demo logic as fallback
             let status = 'CONFIRMED';
             if (orderData.orderNumber.includes('250923')) {
               status = index % 2 === 0 ? 'PROCESSING' : 'CONFIRMED';
@@ -57,14 +53,12 @@ const ShopperOrderTracking = () => {
           });
         }
         
-        // Calculate order status from items
         const orderStatus = calculateOrderStatus(orderData.items);
-        console.log("Tracking page calculated order status:", orderStatus);
         
         setOrder({
           ...orderData,
-          aggregateStatus: orderStatus, // ✅ Use new function
-          status: orderStatus // Override with calculated status
+          aggregateStatus: orderStatus,
+          status: orderStatus
         });
         
       } catch (err) {
@@ -95,14 +89,9 @@ const ShopperOrderTracking = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">
-                {error || 'Order not found'}
-              </p>
+              <p className="text-sm text-red-700">{error || 'Order not found'}</p>
               <p className="mt-2 text-sm">
-                <button 
-                  onClick={goBack}
-                  className="font-medium text-red-700 hover:text-red-600"
-                >
+                <button onClick={goBack} className="font-medium text-red-700 hover:text-red-600">
                   Return to order details
                 </button>
               </p>
@@ -113,9 +102,7 @@ const ShopperOrderTracking = () => {
     );
   }
   
-  // Get vendor information from shipments if available
   const getVendorName = (vendorId) => {
-    // First check if we can find the vendor in shipments
     if (order.shipments && order.shipments.length > 0) {
       const shipment = order.shipments.find(s => s.vendorId === vendorId);
       if (shipment?.vendorName) {
@@ -123,30 +110,20 @@ const ShopperOrderTracking = () => {
       }
     }
     
-    // Next check if any items have the vendor name
     const itemWithVendor = order.items.find(i => i.vendorId === vendorId && i.vendorName);
     if (itemWithVendor?.vendorName) {
       return itemWithVendor.vendorName;
     }
     
-    // If we found the ID in the "Lulu Fabrics" example hardcoded in the JSON
-    if (vendorId === "68639e9efc546f7b1083a421") {
-      return "Lulu Fabrics";
-    }
-    
-    // Fallback to showing the ID with a prefix for clarity
-    return `Vendor ${vendorId.substring(0, 8)}...`;
+    return 'Unknown Vendor';
   };
   
-  // Filter items by vendor if vendorId is provided
   const displayItems = vendorId 
     ? order.items.filter(item => item.vendorId === vendorId)
     : order.items;
   
-  // Get vendor name for the filtered view
   const vendorName = vendorId ? getVendorName(vendorId) : "All Vendors";
   
-  // Group items by status for the timeline display
   const itemsByStatus = {
     CONFIRMED: [],
     PROCESSING: [],
@@ -162,7 +139,6 @@ const ShopperOrderTracking = () => {
     }
   });
 
-  // Get vendors with their items
   const vendorGroups = displayItems.reduce((groups, item) => {
     const vendorId = item.vendorId;
     if (!groups[vendorId]) {
@@ -176,7 +152,6 @@ const ShopperOrderTracking = () => {
     return groups;
   }, {});
 
-  // ✅ Helper to check if order has trackable shipments
   const hasTrackableShipment = () => {
     if (!order.shipments || order.shipments.length === 0) return false;
     
@@ -186,10 +161,6 @@ const ShopperOrderTracking = () => {
     
     if (!shipment) return false;
     
-    // Only show external tracking if:
-    // 1. Has tracking URL
-    // 2. Has tracking number
-    // 3. Status is SHIPPED or DELIVERED (not draft/pending/confirmed)
     return !!(
       shipment.trackingUrl && 
       shipment.trackingNumber && 
@@ -253,30 +224,13 @@ const ShopperOrderTracking = () => {
           order={order} 
         />
         
-        {/* Vendor Information */}
+        {/* ✅ Tracking Info WITHOUT vendor name header */}
         <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-medium text-sm text-gray-700 mb-2">Vendor Information</h3>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-medium">
-                {order.vendor?.name?.[0] || 'V'}
-              </span>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900">
-                {order.vendor?.name || 'Vendor Name'}
-              </p>
-              {order.vendor?.email && (
-                <p className="text-sm text-gray-500">{order.vendor.email}</p>
-              )}
-            </div>
-          </div>
-          
           {/* Tracking Number - Show if exists */}
           {(() => {
             const shipment = getShipmentForVendor();
             return shipment?.trackingNumber && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div>
                 <p className="text-sm text-gray-600 mb-1">Tracking Number:</p>
                 <p className="font-mono text-sm font-medium">
                   {shipment.trackingNumber}
@@ -291,7 +245,6 @@ const ShopperOrderTracking = () => {
             );
           })()}
           
-          {/* ✅ Only show "Track with Carrier" for SHIPPED/DELIVERED orders */}
           {hasTrackableShipment() && (
             <a 
               href={getShipmentForVendor()?.trackingUrl}
@@ -307,10 +260,9 @@ const ShopperOrderTracking = () => {
             </a>
           )}
           
-          {/* ✅ Show message for PROCESSING/PICKUP_SCHEDULED/CONFIRMED orders */}
           {!hasTrackableShipment() && 
            ['PROCESSING', 'PICKUP_SCHEDULED'].includes(order.aggregateStatus) && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700 flex items-center">
                 <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -334,7 +286,7 @@ const ShopperOrderTracking = () => {
           </p>
         </div>
         
-        {/* Items summary */}
+        {/* ✅ Items Being Tracked with FIXED vendor names */}
         <div className="mt-6 pt-6 border-t">
           <h3 className="font-medium text-lg mb-3">Items Being Tracked</h3>
           <div className="space-y-4">
@@ -347,7 +299,7 @@ const ShopperOrderTracking = () => {
                     Quantity: {item.quantity} • {formatPrice(getDisplayPricePerYard(item))} per yard
                   </p>
                   <p className="text-xs text-gray-500">
-                    Vendor: {item.vendorName || 'Unknown'}
+                    Vendor: {getVendorName(item.vendorId)}
                   </p>
                 </div>
               </div>
@@ -356,7 +308,6 @@ const ShopperOrderTracking = () => {
         </div>
       </div>
       
-      {/* Actions */}
       <div className="flex justify-between">
         <Link
           to={`/shopper/orders/${orderId}`}

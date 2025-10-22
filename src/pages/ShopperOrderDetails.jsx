@@ -94,9 +94,13 @@ const ShopperOrderDetails = () => {
     items.forEach(item => {
       const vendorId = item.vendorId;
       if (!vendorGroups[vendorId]) {
+        // ✅ Get vendor name from shipments
+        const shipment = order?.shipments?.find(s => s.vendorId === vendorId);
+        const vendorName = shipment?.vendorName || item.vendorName || "Unknown Vendor";
+        
         vendorGroups[vendorId] = {
           vendorId,
-          vendorName: item.vendorName || "Unknown Vendor", // ✅ Fallback
+          vendorName,
           items: [],
           status: item.status || 'PROCESSING'
         };
