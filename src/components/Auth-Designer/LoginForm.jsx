@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import SocialLogin from './SocialLogin';
 
 export const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth(); // ✅ Use login instead of setUser, setIsAuthenticated
+  const { login } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,14 +44,30 @@ export const LoginForm = () => {
     try {
       console.log('🔐 Shopper login attempt:', { email: data.email, password: '***' });
       
-      // ✅ Use regular login for shoppers (not vendor-specific)
+      // ✅ Import authService dynamically
+      const authService = (await import('../../services/authService')).default;
+      
       const response = await authService.login({
-        identifier: data.email, // Can be email or username
+        identifier: data.email,
         password: data.password,
-        role: "shopper" // Specify shopper role
+        role: "shopper"
       });
 
       console.log('✅ Shopper login successful:', response);
+
+      // After successful login response
+      const userData = {
+        id: response.user?.id || response.user?._id,
+        email: response.user?.email,
+        role: 'shopper',
+        firstName: response.user?.firstName,
+        lastName: response.user?.lastName,
+        ...response.user
+      };
+
+      // ✅ authService already imported above
+      authService.setAuthToken(response.token, 'shopper');
+      authService.setUser(userData);
 
       // ✅ Use the new login function from AuthContext
       if (response.user && response.token) {

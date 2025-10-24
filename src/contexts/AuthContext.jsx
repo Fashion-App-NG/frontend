@@ -39,28 +39,53 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const token = localStorage.getItem('token');
-        const userData = localStorage.getItem('user');
+        // ✅ Try to detect which role is logged in by checking role-specific keys
+        const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+        let foundToken = null;
+        let foundUser = null;
+        let foundRole = null;
+
+        for (const role of roles) {
+          const roleToken = localStorage.getItem(`${role}_token`);
+          const roleUser = localStorage.getItem(`${role}_user`);
+          
+          if (roleToken && roleUser) {
+            foundToken = roleToken;
+            foundUser = roleUser;
+            foundRole = role;
+            break;
+          }
+        }
+
+        // Fallback to default keys if no role-specific found
+        const token = foundToken || localStorage.getItem('token');
+        const userData = foundUser || localStorage.getItem('user');
         
         // ✅ Check if token is expired
         if (token && isTokenExpired(token)) {
           if (process.env.NODE_ENV === 'development') {
             console.log('⏰ Token expired on init, redirecting immediately');
           }
+          
+          // Clear all storage
+          roles.forEach(role => {
+            localStorage.removeItem(`${role}_token`);
+            localStorage.removeItem(`${role}_user`);
+          });
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           localStorage.removeItem('guestSessionToken');
           
-          // ✅ IMMEDIATE redirect, no setState
           window.location.href = '/user-type-selection';
-          return; // Stop execution
+          return;
         }
         
         if (process.env.NODE_ENV === 'development') {
           console.log('🔐 AuthContext initialization:', {
             hasToken: !!token,
             hasUserData: !!userData,
-            tokenLength: token?.length || 0
+            tokenLength: token?.length || 0,
+            foundRole: foundRole || 'default'
           });
         }
 
@@ -75,13 +100,18 @@ export const AuthProvider = ({ children }) => {
                 id: parsedUser.id,
                 email: parsedUser.email,
                 role: parsedUser.role || 'unknown',
-                storeName: parsedUser.storeName
+                storeName: parsedUser.storeName,
+                source: foundRole ? `${foundRole}_user` : 'user'
               });
             }
           } else {
             if (process.env.NODE_ENV === 'development') {
               console.warn('⚠️ Invalid user data found, clearing storage');
             }
+            roles.forEach(role => {
+              localStorage.removeItem(`${role}_token`);
+              localStorage.removeItem(`${role}_user`);
+            });
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
@@ -94,6 +124,11 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('❌ Failed to restore auth state:', error);
+        const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+        roles.forEach(role => {
+          localStorage.removeItem(`${role}_token`);
+          localStorage.removeItem(`${role}_user`);
+        });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
@@ -196,7 +231,14 @@ export const AuthProvider = ({ children }) => {
       console.log('🔐 AuthContext logout - clearing all auth data');
     }
     
-    // ✅ Clear everything first
+    // ✅ Clear all role-specific keys
+    const roles = ['shopper', 'vendor', 'admin', 'superadmin'];
+    roles.forEach(role => {
+      localStorage.removeItem(`${role}_token`);
+      localStorage.removeItem(`${role}_user`);
+    });
+    
+    // Clear legacy keys
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('authToken');
@@ -206,7 +248,6 @@ export const AuthProvider = ({ children }) => {
     
     setUser(null);
     
-    // ✅ Immediate redirect, no timeout
     window.location.href = '/user-type-selection';
   };
 

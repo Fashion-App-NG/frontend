@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/authService';
 import SocialLogin from './SocialLogin';
 
 export const VendorLoginForm = () => {
@@ -32,7 +31,6 @@ export const VendorLoginForm = () => {
       password: formData.get('password')
     };
 
-    // ✅ Enhanced validation with debug info (dev only)
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 VendorLoginForm validation:', {
         email: data.email ? 'Present' : 'Missing',
@@ -55,6 +53,9 @@ export const VendorLoginForm = () => {
         console.log('🔄 VendorLoginForm: Attempting vendor login');
       }
 
+      // ✅ Import authService dynamically
+      const authService = (await import('../../services/authService')).default;
+
       const response = await authService.login({
         identifier: data.email,
         password: data.password,
@@ -68,36 +69,16 @@ export const VendorLoginForm = () => {
           userRole: response.user?.role,
           userEmail: response.user?.email,
           userId: response.user?.id,
-          userStoreName: response.user?.storeName,
-          fullUserObject: response.user,
-          // ✅ ENHANCED: Debug the actual response structure
-          rawResponse: response,
-          responseKeys: Object.keys(response),
-          responseType: typeof response,
-          directRole: response.role,
-          directEmail: response.email,
-          directId: response.id,
-          directStoreName: response.storeName
+          userStoreName: response.user?.storeName
         });
       }
 
-      // ✅ FIXED: Extract storeName from the correct location
-      const storeName = response.user?.profile?.storeName ||  // ← The actual location!
+      const storeName = response.user?.profile?.storeName ||
                        response.user?.storeName || 
                        response.data?.storeName || 
                        response.user?.vendorProfile?.storeName ||
                        response.data?.vendorProfile?.storeName ||
                        response.storeName;
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Extracted storeName:', storeName);
-        console.log('🔍 From response:', {
-          'response.user?.profile?.storeName': response.user?.profile?.storeName, // ← Add this
-          'response.user?.storeName': response.user?.storeName,
-          'response.data?.storeName': response.data?.storeName,
-          'response.user?.vendorProfile?.storeName': response.user?.vendorProfile?.storeName
-        });
-      }
 
       const userData = {
         id: response.user?.id || response.user?._id || response.id,
@@ -105,13 +86,10 @@ export const VendorLoginForm = () => {
         role: response.user?.role || response.role || 'vendor',
         firstName: response.user?.firstName || response.firstName,
         lastName: response.user?.lastName || response.lastName,
-        storeName: storeName, // ✅ Now this will have "Aso Lode"
-        profile: response.user?.profile, // ✅ Keep original profile
+        storeName: storeName,
+        profile: response.user?.profile,
         vendorProfile: response.user?.vendorProfile || response.vendorProfile || response.user?.profile
       };
-
-      // Remove the spread that was overwriting storeName
-      // ...response.user // ❌ REMOVED
 
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Final userData before login:', {
@@ -120,6 +98,10 @@ export const VendorLoginForm = () => {
           storeNameValue: userData.storeName
         });
       }
+
+      // ✅ authService already imported above
+      authService.setAuthToken(response.token, 'vendor');
+      authService.setUser(userData);
 
       const token = response.token;
 

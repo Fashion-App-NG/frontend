@@ -9,6 +9,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Authentication service functions
 class AuthService {
+  // ✅ Get storage key based on role
+  getStorageKey(role, suffix = 'token') {
+    return role ? `${role}_${suffix}` : suffix;
+  }
+
   extractUserIdFromToken(token) {
     try {
       if (!token) return null;
@@ -249,31 +254,57 @@ class AuthService {
     }
   }
 
-  setAuthToken(token) {
+  setAuthToken(token, role) {
     if (token) {
+      const key = this.getStorageKey(role, 'token');
+      localStorage.setItem(key, token);
+      // Keep default key for backward compatibility
       localStorage.setItem('token', token);
     }
   }
 
-  removeAuthToken() {
-    localStorage.removeItem('token');
-  }
-
-  getAuthToken() {
+  getAuthToken(role = null) {
+    // Try role-specific first, fallback to default
+    if (role) {
+      const key = this.getStorageKey(role, 'token');
+      const roleToken = localStorage.getItem(key);
+      if (roleToken) return roleToken;
+    }
     return localStorage.getItem('token');
   }
 
   setUser(user) {
     if (user) {
+      const key = this.getStorageKey(user.role, 'user');
+      localStorage.setItem(key, JSON.stringify(user));
+      // Keep default key for backward compatibility
       localStorage.setItem('user', JSON.stringify(user));
     }
   }
 
-  removeUser() {
+  removeAuthToken(role = null) {
+    if (role) {
+      const key = this.getStorageKey(role, 'token');
+      localStorage.removeItem(key);
+    }
+    localStorage.removeItem('token');
+  }
+
+  removeUser(role = null) {
+    if (role) {
+      const key = this.getStorageKey(role, 'user');
+      localStorage.removeItem(key);
+    }
     localStorage.removeItem('user');
   }
 
-  getUser() {
+  getUser(role = null) {
+    // Try role-specific first, fallback to default
+    if (role) {
+      const key = this.getStorageKey(role, 'user');
+      const roleUser = localStorage.getItem(key);
+      if (roleUser) return JSON.parse(roleUser);
+    }
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   }
