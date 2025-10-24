@@ -81,8 +81,46 @@ export const VendorLoginForm = () => {
         });
       }
 
-      // ✅ FIXED: Handle both nested and flat response structures
-      const userData = response.user || response;
+      // ✅ FIXED: Extract storeName from the correct location
+      const storeName = response.user?.profile?.storeName ||  // ← The actual location!
+                       response.user?.storeName || 
+                       response.data?.storeName || 
+                       response.user?.vendorProfile?.storeName ||
+                       response.data?.vendorProfile?.storeName ||
+                       response.storeName;
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Extracted storeName:', storeName);
+        console.log('🔍 From response:', {
+          'response.user?.profile?.storeName': response.user?.profile?.storeName, // ← Add this
+          'response.user?.storeName': response.user?.storeName,
+          'response.data?.storeName': response.data?.storeName,
+          'response.user?.vendorProfile?.storeName': response.user?.vendorProfile?.storeName
+        });
+      }
+
+      const userData = {
+        id: response.user?.id || response.user?._id || response.id,
+        email: response.user?.email || response.email,
+        role: response.user?.role || response.role || 'vendor',
+        firstName: response.user?.firstName || response.firstName,
+        lastName: response.user?.lastName || response.lastName,
+        storeName: storeName, // ✅ Now this will have "Aso Lode"
+        profile: response.user?.profile, // ✅ Keep original profile
+        vendorProfile: response.user?.vendorProfile || response.vendorProfile || response.user?.profile
+      };
+
+      // Remove the spread that was overwriting storeName
+      // ...response.user // ❌ REMOVED
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Final userData before login:', {
+          ...userData,
+          hasStoreName: !!userData.storeName,
+          storeNameValue: userData.storeName
+        });
+      }
+
       const token = response.token;
 
       if (!userData || !token) {

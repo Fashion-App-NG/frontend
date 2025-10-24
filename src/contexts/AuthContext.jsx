@@ -125,7 +125,8 @@ export const AuthProvider = ({ children }) => {
           userData: userData ? {
             id: userData.id,
             email: userData.email,
-            role: userData.role
+            role: userData.role,
+            storeName: userData.storeName // ✅ Log storeName
           } : null,
           token: token ? `${token.substring(0, 20)}...` : 'none'
         });
@@ -146,14 +147,15 @@ export const AuthProvider = ({ children }) => {
         id: userData.id || userData._id,
         email: userData.email,
         role: userData.role || (userData.storeName ? 'vendor' : 'user'),
-        storeName: userData.storeName,
+        storeName: userData.storeName || userData.vendorProfile?.storeName,
         firstName: userData.firstName,
         lastName: userData.lastName,
+        vendorProfile: userData.vendorProfile,
         ...userData
       };
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 AuthContext processed user:', processedUser);
+        console.log('🔐 AuthContext processed user with storeName:', processedUser.storeName);
       }
       
       if (!processedUser.id || !processedUser.email) {
@@ -161,12 +163,15 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
       
+      // ✅ UPDATE STATE FIRST, then persist
       setUser(processedUser);
+      
+      // Then save to localStorage as backup
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(processedUser));
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ AuthContext login successful');
+        console.log('✅ AuthContext login successful with storeName:', processedUser.storeName);
       }
       return true;
       
@@ -174,6 +179,16 @@ export const AuthProvider = ({ children }) => {
       console.error('❌ AuthContext login error:', error);
       return false;
     }
+  };
+
+  // ✅ ADD: Method to update user without full re-login
+  const updateUser = (updates) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, ...updates };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
   };
 
   const logout = () => {
@@ -200,7 +215,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user && !!user.id,
     loading,
     login,
-    logout
+    logout,
+    updateUser // ✅ Expose updateUser
   };
 
   if (process.env.NODE_ENV === 'development') {

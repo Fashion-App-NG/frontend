@@ -108,18 +108,20 @@ class AuthService {
       // ✅ ENHANCED: Debug response structure with request context
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Auth service response analysis:', {
-          requestRole: requestBody.role,           // ✅ What we sent
-          responseHasRole: !!data.role,            // ✅ Does response have role?
-          responseRole: data.role,                 // ✅ What role if any
-          responseHasUser: !!data.user,            // ✅ Nested structure?
-          responseUserRole: data.user?.role,       // ✅ Role in user object?
-          responseKeys: Object.keys(data),         // ✅ All response fields
+          requestRole: requestBody.role,
+          responseHasRole: !!data.role,
+          responseRole: data.role,
+          responseHasUser: !!data.user,
+          responseUserRole: data.user?.role,
+          responseKeys: Object.keys(data),
           tokenLength: data.token?.length,
-          tokenStart: data.token?.substring(0, 20)
+          tokenStart: data.token?.substring(0, 20),
+          // ✅ ADD: Check for storeName in response
+          hasStoreName: !!(data.storeName || data.data?.storeName || data.user?.storeName),
+          storeName: data.storeName || data.data?.storeName || data.user?.storeName
         });
       }
 
-      // ✅ Option 1: Update Response Parsing
       // Extract token and user from data or data.data (for nested API responses)
       let token, user;
       if (data.data && typeof data.data === 'object') {
@@ -130,14 +132,34 @@ class AuthService {
         user = data.user;
       }
 
-      // Normalize user object and preserve role
+      // ✅ FIXED: Extract storeName from the correct location - user.profile.storeName
+      const storeName = user?.profile?.storeName ||  // ← The actual location!
+                       data.storeName || 
+                       data.data?.storeName || 
+                       user?.storeName || 
+                       user?.vendorProfile?.storeName ||
+                       data.data?.vendorProfile?.storeName;
+
+      // ✅ Normalize user object and preserve role AND storeName
       const normalizedUser = user
-        ? { ...user, role: user.role || requestBody.role }
+        ? { 
+            ...user, 
+            role: user.role || requestBody.role,
+            storeName: storeName,  // ← Set at root level for easy access
+            profile: user.profile, // ← Keep original profile
+            vendorProfile: user.vendorProfile || user.profile // ← Alias for compatibility
+          }
         : null;
 
       // Debug sanity check
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Normalized login response:', { token, user: normalizedUser });
+        console.log('🔄 Normalized login response:', { 
+          token, 
+          user: normalizedUser,
+          hasStoreName: !!normalizedUser?.storeName,
+          storeName: normalizedUser?.storeName,
+          profileStoreName: user?.profile?.storeName // ← Debug the source
+        });
       }
 
       // Validate final normalized response
@@ -153,8 +175,14 @@ class AuthService {
       // Store token and user data
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(normalizedUser));
+      
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Token and user stored successfully');
+        console.log('✅ authService.login returning:', {
+          hasToken: !!token,
+          hasUser: !!normalizedUser,
+          userStoreName: normalizedUser?.storeName,
+          fullNormalizedUser: normalizedUser
+        });
       }
 
       return { token, user: normalizedUser };
