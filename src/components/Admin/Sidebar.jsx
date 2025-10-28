@@ -5,11 +5,12 @@ import { useAuth } from '../../contexts/AuthContext'; // ✅ Add this import
 
 const menu = [
   { id: 1, label: "Dashboard", to: "/admin/dashboard" },
-  { id: 2, label: "User Management",  to: "/admin/users" },
-  { id: 3, label: "Order Management", to: "/admin/admin-orders" },
-  { id: 4, label: "Material Management", to: "/admin/admin-materials" },
-  { id: 5, label: "Fee Management", to: "/admin/fees-management" },
-  { id: 6, label: "Sales Reports", to: "/admin/sales" },
+  { id: 2, label: "User Management",  to: "/admin/user-management" },
+  { id: 3, label: "Vendor Management",  to: "/admin/vendor-management" },
+  { id: 4, label: "Order Management", to: "/admin/admin-orders" },
+  { id: 5, label: "Material Management", to: "/admin/admin-materials" },
+  { id: 6, label: "Fee Management", to: "/admin/fees-management" },
+  { id: 7, label: "Sales Reports", to: "/admin/sales" },
 ];
 
 
