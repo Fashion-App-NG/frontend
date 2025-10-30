@@ -7,7 +7,7 @@ import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
 import { calculateOrderStatus } from '../utils/orderUtils';
-import { calculateSubtotal, getDisplayPricePerYard } from "../utils/priceCalculations";
+import { calculateSubtotal } from "../utils/priceCalculations";
 
 const ShopperOrderDetails = () => {
   const { orderId } = useParams();
@@ -114,12 +114,46 @@ const ShopperOrderDetails = () => {
     return Object.values(vendorGroups);
   };
 
-  const calculateOrderSubtotal = (items) => {
-    return (items || []).reduce((total, item) => {
-      const basePrice = (item.pricePerYard || 0) * (item.quantity || 1);
-      const platformFee = (item.platformFeeAmount || item.platformFee?.amount || 0);
-      return total + basePrice + platformFee;
+  const calculateOrderSubtotal = (items, orderTaxAmount, orderTaxRate) => {
+    // Calculate base subtotal (without tax)
+    const baseSubtotal = items.reduce((total, item) => {
+      return total + (item.pricePerYard * item.quantity);
     }, 0);
+    
+    // Calculate total platform fees
+    const totalPlatformFees = items.reduce((total, item) => {
+      return total + (item.platformFeeAmount || 0);
+    }, 0);
+    
+    // ✅ Use order-level taxAmount from API
+    const taxTotal = orderTaxAmount || 0;
+    
+    return baseSubtotal + taxTotal + totalPlatformFees;
+  };
+
+  // ✅ Calculate tax per item proportionally for display
+  const getItemTaxAmount = (item, orderTaxAmount, items) => {
+    if (!orderTaxAmount) return 0;
+    
+    // Calculate this item's proportion of total base price
+    const totalBasePrice = items.reduce((sum, i) => sum + (i.pricePerYard * i.quantity), 0);
+    const itemBasePrice = item.pricePerYard * item.quantity;
+    const proportion = itemBasePrice / totalBasePrice;
+    
+    // Allocate tax proportionally
+    return orderTaxAmount * proportion;
+  };
+
+  // Update the display price function
+  const getDisplayPricePerYard = (item, orderTaxAmount, items) => {
+    const basePrice = item.pricePerYard || 0;
+    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+    
+    // ✅ Calculate tax per yard from proportional allocation
+    const itemTaxTotal = getItemTaxAmount(item, orderTaxAmount, items);
+    const taxPerYard = itemTaxTotal / (item.quantity || 1);
+    
+    return basePrice + taxPerYard + platformFeePerYard;
   };
 
   if (loading) {
@@ -209,7 +243,9 @@ const ShopperOrderDetails = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Subtotal (items):</span>
-              <span className="font-medium">{formatPrice(calculateOrderSubtotal(order.items))}</span>
+              <span className="font-medium">
+                {formatPrice(calculateOrderSubtotal(order.items, order.taxAmount, order.taxRate))}
+              </span>
             </div>
             {order.shippingCost > 0 && (
               <div className="flex justify-between">
@@ -266,11 +302,29 @@ const ShopperOrderDetails = () => {
               
               {/* List items from this vendor */}
               <div className="items">
-                {group.items.map((item) => (
-                  <p key={item.productId}>
-                    <span className="font-medium">{item.name}</span> x{item.quantity} @ {formatPrice(getDisplayPricePerYard(item))}
-                  </p>
-                ))}
+                {group.items.map((item) => {
+                  const displayPrice = getDisplayPricePerYard(item, order.taxAmount, order.items);
+                  const basePrice = item.pricePerYard || 0;
+                  const itemTaxTotal = getItemTaxAmount(item, order.taxAmount, order.items);
+                  const taxPerYard = itemTaxTotal / (item.quantity || 1);
+                  const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+                  
+                  return (
+                    <div key={item.productId} className="py-2">
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {item.quantity} yard{item.quantity > 1 ? 's' : ''} × {formatPrice(displayPrice)}/yard
+                        <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Base: {formatPrice(basePrice)} + Tax: {formatPrice(taxPerYard)} + Fee: {formatPrice(platformFeePerYard)}
+                      </p>
+                      <p className="font-semibold text-blue-600">
+                        {formatPrice(displayPrice * item.quantity)}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
               
               {/* Track button per vendor */}

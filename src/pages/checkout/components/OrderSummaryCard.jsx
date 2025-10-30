@@ -1,25 +1,34 @@
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getTaxRateFromCart } from '../../../utils/priceCalculations';
 
-const OrderSummaryCard = ({ cart, order, currentStep }) => {
+const OrderSummaryCard = ({ cart, currentStep }) => {
   const { cartItems } = useCart();
   
-  // 🎯 USE BACKEND VALUES - Backend is the source of truth
-  const backendBaseAmount = cart?.totalAmount || 0;
-  const backendTaxAmount = cart?.taxAmount || 0;
-  const backendPlatformFees = cart?.totalPlatformFee || 0;
+  // ✅ FIXED: Handle both cart structures
+  // Review Cart: { cart: { totalAmount, taxAmount, totalPlatformFee } }
+  // Shipping/Payment: { cart: { totalAmount, taxAmount }, totalPlatformFee }
+  const hasCartData = cart?.totalAmount !== undefined && cart?.taxAmount !== undefined;
+  const platformFee = cart?.totalPlatformFee || cart?.platformFeeAmount || 0;
+  const useAPIData = hasCartData && platformFee > 0;
   
-  // Subtotal = base + tax + platform fees (no rounding needed)
-  const subtotal = backendBaseAmount + backendTaxAmount + backendPlatformFees;
+  const subtotal = useAPIData
+    ? cart.totalAmount + cart.taxAmount + platformFee  // ✅ Use platformFee variable
+    : cartItems.reduce((sum, item) => {
+        const basePrice = item.pricePerYard || 0;
+        const taxAmount = item.taxAmount || 0;
+        const platformFeeAmt = item.platformFeeAmount || 0;
+        const quantity = item.quantity || 1;
+        return sum + (basePrice * quantity) + taxAmount + platformFeeAmt;
+      }, 0);
   
-  // Only show delivery fee after shipping info step (step 2)
   const showDetailedBreakdown = currentStep >= 3;
-  const deliveryFee = showDetailedBreakdown ? (cart?.shippingCost ?? 0) : 0;
+  const deliveryFee = showDetailedBreakdown ? (cart?.shippingCost || 0) : 0;
   const total = subtotal + deliveryFee;
 
-  // Get tax rate for display (safe division)
-  const taxRate = getTaxRateFromCart(cartItems);
+  // ✅ Get tax rate from API (handle both 2 and 0.02 formats)
+  const taxRate = useAPIData
+    ? (cart.taxRate > 1 ? cart.taxRate / 100 : cart.taxRate)
+    : (cartItems[0]?.taxRate || 0.02);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -45,7 +54,7 @@ const OrderSummaryCard = ({ cart, order, currentStep }) => {
         
         {!showDetailedBreakdown && currentStep < 3 && (
           <p className="text-xs text-gray-500 mt-2">
-            * VAT ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.
+            * VAT ({(taxRate * 100).toFixed(1)}%) is calculated on product price only. Platform fees are not taxed.
           </p>
         )}
       </div>

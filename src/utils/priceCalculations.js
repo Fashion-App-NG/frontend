@@ -136,12 +136,19 @@ export const calculateTaxRate = (taxAmount, basePrice) => {
 
 /**
  * Get tax rate for display from cart items
- * Uses first item's tax amount and price
+ * Uses first item's taxRate field from API
  * @param {Array} cartItems - Array of cart items
  * @returns {number} Tax rate (0 if no items or invalid data)
  */
 export const getTaxRateFromCart = (cartItems) => {
   if (!cartItems || cartItems.length === 0) return 0;
   const firstItem = cartItems[0];
+  
+  // ✅ Use the taxRate field directly from the API response
+  if (firstItem.taxRate !== undefined && firstItem.taxRate !== null) {
+    return parseFloat(firstItem.taxRate);
+  }
+  
+  // Fallback: calculate from taxAmount and pricePerYard if taxRate not present
   return calculateTaxRate(firstItem.taxAmount, firstItem.pricePerYard);
 };
