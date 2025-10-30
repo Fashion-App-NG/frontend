@@ -40,7 +40,7 @@ const ShopperCart = () => {
   const calculateTaxTotal = () => {
     return cartItems.reduce((total, item) => {
       const taxAmount = item.taxAmount || 0;  // ✅ Already total for quantity
-      return total + taxAmount;  // ❌ DON'T multiply by quantity again!
+      return total + taxAmount;  // Note: Don't multiply by quantity again!
     }, 0);
   };
 

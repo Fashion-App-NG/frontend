@@ -258,27 +258,24 @@ class AuthService {
     if (token) {
       const key = this.getStorageKey(role, 'token');
       localStorage.setItem(key, token);
-      // Keep default key for backward compatibility
-      localStorage.setItem('token', token);
+      
+      // ✅ Remove duplicate storage - only store with role-specific key
+      // Removed: localStorage.setItem('token', token);
     }
   }
 
-  getAuthToken(role = null) {
-    // Try role-specific first, fallback to default
-    if (role) {
-      const key = this.getStorageKey(role, 'token');
-      const roleToken = localStorage.getItem(key);
-      if (roleToken) return roleToken;
-    }
-    return localStorage.getItem('token');
+  getAuthToken(role) {
+    const key = this.getStorageKey(role, 'token');
+    return localStorage.getItem(key);
   }
 
   setUser(user) {
     if (user) {
       const key = this.getStorageKey(user.role, 'user');
       localStorage.setItem(key, JSON.stringify(user));
-      // Keep default key for backward compatibility
-      localStorage.setItem('user', JSON.stringify(user));
+      
+      // ✅ Remove duplicate storage - only store with role-specific key
+      // Removed: localStorage.setItem('user', JSON.stringify(user));
     }
   }
 

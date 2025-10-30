@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import authService from '../../services/authService'; // ✅ Static import at top
 
 export const AdminLoginForm = () => {
   const navigate = useNavigate();
@@ -29,9 +30,7 @@ export const AdminLoginForm = () => {
     try {
       console.log('🔐 Admin login attempt:', { email: data.username, password: '***' });
       
-      // ✅ Import authService dynamically
-      const authService = (await import('../../services/authService')).default;
-      
+      // ✅ Use static import - removed dynamic import
       const response = await authService.adminLogin({
         email: data.username,
         password: data.password
@@ -59,7 +58,6 @@ export const AdminLoginForm = () => {
           ...response.user
         };
 
-        // ✅ authService already imported above
         authService.setAuthToken(response.token, userData.role);
         authService.setUser(userData);
         

@@ -136,9 +136,9 @@ export const calculateTaxRate = (taxAmount, basePrice) => {
 
 /**
  * Get tax rate for display from cart items
- * Uses first item's taxRate field from API
+ * Handles both percentage (2) and decimal (0.02) formats
  * @param {Array} cartItems - Array of cart items
- * @returns {number} Tax rate (0 if no items or invalid data)
+ * @returns {number} Tax rate in decimal format (0.02 for 2%)
  */
 export const getTaxRateFromCart = (cartItems) => {
   if (!cartItems || cartItems.length === 0) return 0;
@@ -146,9 +146,49 @@ export const getTaxRateFromCart = (cartItems) => {
   
   // ✅ Use the taxRate field directly from the API response
   if (firstItem.taxRate !== undefined && firstItem.taxRate !== null) {
-    return parseFloat(firstItem.taxRate);
+    const rate = parseFloat(firstItem.taxRate);
+    // ✅ Normalize: if rate >= 1, assume percentage format, convert to decimal
+    return rate >= 1 ? rate / 100 : rate;
   }
   
   // Fallback: calculate from taxAmount and pricePerYard if taxRate not present
   return calculateTaxRate(firstItem.taxAmount, firstItem.pricePerYard);
+};
+
+/**
+ * Calculate tax per item proportionally for display
+ * @param {Object} item - Order item
+ * @param {number} orderTaxAmount - Total tax amount for the order
+ * @param {Array} items - All items in the order
+ * @returns {number} Tax amount allocated to this item
+ */
+export const getItemTaxAmount = (item, orderTaxAmount, items) => {
+  if (!orderTaxAmount) return 0;
+  
+  const totalBasePrice = items.reduce((sum, i) => sum + (i.pricePerYard * i.quantity), 0);
+  
+  // Guard against division by zero
+  if (totalBasePrice === 0) return 0;
+  
+  const itemBasePrice = item.pricePerYard * item.quantity;
+  const proportion = itemBasePrice / totalBasePrice;
+  
+  return orderTaxAmount * proportion;
+};
+
+/**
+ * Get display price per yard including all fees and taxes
+ * @param {Object} item - Order item
+ * @param {number} orderTaxAmount - Total tax amount for the order
+ * @param {Array} items - All items in the order
+ * @returns {number} All-inclusive price per yard
+ */
+export const getDisplayPricePerYardWithTax = (item, orderTaxAmount, items) => {
+  const basePrice = item.pricePerYard || 0;
+  const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+  
+  const itemTaxTotal = getItemTaxAmount(item, orderTaxAmount, items);
+  const taxPerYard = itemTaxTotal / (item.quantity || 1);
+  
+  return basePrice + taxPerYard + platformFeePerYard;
 };

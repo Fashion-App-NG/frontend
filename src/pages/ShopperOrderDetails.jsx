@@ -7,7 +7,7 @@ import OrderStatusBadge from '../components/OrderStatusBadge';
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
 import { calculateOrderStatus } from '../utils/orderUtils';
-import { calculateSubtotal } from "../utils/priceCalculations";
+import { calculateSubtotal, getDisplayPricePerYardWithTax, getItemTaxAmount } from "../utils/priceCalculations";
 
 const ShopperOrderDetails = () => {
   const { orderId } = useParams();
@@ -131,30 +131,7 @@ const ShopperOrderDetails = () => {
     return baseSubtotal + taxTotal + totalPlatformFees;
   };
 
-  // ✅ Calculate tax per item proportionally for display
-  const getItemTaxAmount = (item, orderTaxAmount, items) => {
-    if (!orderTaxAmount) return 0;
-    
-    // Calculate this item's proportion of total base price
-    const totalBasePrice = items.reduce((sum, i) => sum + (i.pricePerYard * i.quantity), 0);
-    const itemBasePrice = item.pricePerYard * item.quantity;
-    const proportion = itemBasePrice / totalBasePrice;
-    
-    // Allocate tax proportionally
-    return orderTaxAmount * proportion;
-  };
-
-  // Update the display price function
-  const getDisplayPricePerYard = (item, orderTaxAmount, items) => {
-    const basePrice = item.pricePerYard || 0;
-    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
-    
-    // ✅ Calculate tax per yard from proportional allocation
-    const itemTaxTotal = getItemTaxAmount(item, orderTaxAmount, items);
-    const taxPerYard = itemTaxTotal / (item.quantity || 1);
-    
-    return basePrice + taxPerYard + platformFeePerYard;
-  };
+  // Remove duplicated helper functions - now imported from utils
 
   if (loading) {
     return (
@@ -303,7 +280,7 @@ const ShopperOrderDetails = () => {
               {/* List items from this vendor */}
               <div className="items">
                 {group.items.map((item) => {
-                  const displayPrice = getDisplayPricePerYard(item, order.taxAmount, order.items);
+                  const displayPrice = getDisplayPricePerYardWithTax(item, order.taxAmount, order.items);
                   const basePrice = item.pricePerYard || 0;
                   const itemTaxTotal = getItemTaxAmount(item, order.taxAmount, order.items);
                   const taxPerYard = itemTaxTotal / (item.quantity || 1);

@@ -7,6 +7,7 @@ import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
 import checkoutService from '../services/checkoutService';
 import { formatPrice } from "../utils/formatPrice";
 import { calculateOrderStatus, getDisplayStatus } from '../utils/orderUtils';
+import { getDisplayPricePerYardWithTax, getItemTaxAmount } from '../utils/priceCalculations';
 
 const ShopperOrderTracking = () => {
   const { orderId, vendorId } = useParams();
@@ -209,27 +210,6 @@ const ShopperOrderTracking = () => {
     return order.aggregateStatus || order.status;
   };
   
-  // ✅ ADD: Same helper functions from ShopperOrderDetails
-  const getItemTaxAmount = (item, orderTaxAmount, items) => {
-    if (!orderTaxAmount) return 0;
-    
-    const totalBasePrice = items.reduce((sum, i) => sum + (i.pricePerYard * i.quantity), 0);
-    const itemBasePrice = item.pricePerYard * item.quantity;
-    const proportion = itemBasePrice / totalBasePrice;
-    
-    return orderTaxAmount * proportion;
-  };
-
-  const getDisplayPricePerYard = (item, orderTaxAmount, items) => {
-    const basePrice = item.pricePerYard || 0;
-    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
-    
-    const itemTaxTotal = getItemTaxAmount(item, orderTaxAmount, items);
-    const taxPerYard = itemTaxTotal / (item.quantity || 1);
-    
-    return basePrice + taxPerYard + platformFeePerYard;
-  };
-
   return (
     <>
       <OrderBreadcrumbs 
@@ -351,7 +331,7 @@ const ShopperOrderTracking = () => {
           <h3 className="font-medium text-lg mb-3">Items Being Tracked</h3>
           <div className="space-y-4">
             {displayItems.map((item) => {
-              const displayPrice = getDisplayPricePerYard(item, order.taxAmount, order.items);
+              const displayPrice = getDisplayPricePerYardWithTax(item, order.taxAmount, order.items);
               const basePrice = item.pricePerYard || 0;
               const itemTaxTotal = getItemTaxAmount(item, order.taxAmount, order.items);
               const taxPerYard = itemTaxTotal / (item.quantity || 1);
