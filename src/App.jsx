@@ -8,6 +8,7 @@ import { TaxProvider } from './contexts/TaxContext';
 
 // Import header component
 import Header from './components/Common/Header';
+import RoleConflictWarning from './components/Common/RoleConflictWarning';
 
 // ✅ Import all page types
 import ExplorePage from './pages/ExplorePage';
@@ -95,6 +96,7 @@ function App() {
       <FavoritesProvider>
         <TaxProvider>
           <Router>
+            <RoleConflictWarning /> {/* ✅ Move it here, inside Router */}
             <div className="App">
               <Header />
               <Routes>

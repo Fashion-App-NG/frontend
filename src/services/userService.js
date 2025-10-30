@@ -13,15 +13,20 @@ class UserService {
       const response = await authFetch(url);
       
       // Transform the API response structure to match our form structure
-      if (response.success && response.data && response.data.vendorProfile) {
+      if (response.success && response.data) {
         const { vendorProfile } = response.data;
+        
+        // ✅ Extract storeName from root level or vendorProfile
+        const storeName = response.data.storeName || 
+                         vendorProfile?.storeName || 
+                         '';
         
         // Return both the original response and the extracted vendorProfile
         return {
           ...response,
           profile: {
-            storeName: response.data.storeName || vendorProfile.storeName || '',
-            pickupAddress: vendorProfile.pickupAddress || {
+            storeName: storeName,
+            pickupAddress: vendorProfile?.pickupAddress || {
               street: '',
               city: '',
               state: '',

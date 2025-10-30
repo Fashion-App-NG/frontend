@@ -7,7 +7,7 @@ import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
 import checkoutService from '../services/checkoutService';
 import { formatPrice } from "../utils/formatPrice";
 import { calculateOrderStatus, getDisplayStatus } from '../utils/orderUtils';
-import { getDisplayPricePerYard } from "../utils/priceCalculations";
+import { getDisplayPricePerYardWithTax, getItemTaxAmount } from '../utils/priceCalculations';
 
 const ShopperOrderTracking = () => {
   const { orderId, vendorId } = useParams();
@@ -326,24 +326,44 @@ const ShopperOrderTracking = () => {
           </p>
         </div>
         
-        {/* ✅ Items Being Tracked with FIXED vendor names */}
+        {/* ✅ Items Being Tracked - UPDATE THIS SECTION */}
         <div className="mt-6 pt-6 border-t">
           <h3 className="font-medium text-lg mb-3">Items Being Tracked</h3>
           <div className="space-y-4">
-            {displayItems.map((item) => (
-              <div key={item.productId} className="flex items-center">
-                <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded mr-4" />
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-sm text-gray-600">
-                    Quantity: {item.quantity} • {formatPrice(getDisplayPricePerYard(item))} per yard
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Vendor: {getVendorName(item.vendorId)}
-                  </p>
+            {displayItems.map((item) => {
+              const displayPrice = getDisplayPricePerYardWithTax(item, order.taxAmount, order.items);
+              const basePrice = item.pricePerYard || 0;
+              const itemTaxTotal = getItemTaxAmount(item, order.taxAmount, order.items);
+              const taxPerYard = itemTaxTotal / (item.quantity || 1);
+              const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+              
+              return (
+                <div key={item.productId} className="flex items-start space-x-3 border-b pb-3">
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="w-16 h-16 object-cover rounded"
+                    onError={e => { e.target.src = '/images/default-product.jpg'; }}
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">{item.name}</h4>
+                    <p className="text-sm text-gray-600">
+                      Quantity: {item.quantity} • {formatPrice(displayPrice)} per yard
+                      <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Base: {formatPrice(basePrice)} + Tax: {formatPrice(taxPerYard)} + Fee: {formatPrice(platformFeePerYard)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Vendor: {getVendorName(item.vendorId)}
+                    </p>
+                    <p className="font-semibold text-blue-600 text-sm mt-1">
+                      Line total: {formatPrice(displayPrice * item.quantity)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

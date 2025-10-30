@@ -9,6 +9,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Authentication service functions
 class AuthService {
+  // ✅ Get storage key based on role
+  getStorageKey(role, suffix = 'token') {
+    return role ? `${role}_${suffix}` : suffix;
+  }
+
   extractUserIdFromToken(token) {
     try {
       if (!token) return null;
@@ -108,18 +113,20 @@ class AuthService {
       // ✅ ENHANCED: Debug response structure with request context
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Auth service response analysis:', {
-          requestRole: requestBody.role,           // ✅ What we sent
-          responseHasRole: !!data.role,            // ✅ Does response have role?
-          responseRole: data.role,                 // ✅ What role if any
-          responseHasUser: !!data.user,            // ✅ Nested structure?
-          responseUserRole: data.user?.role,       // ✅ Role in user object?
-          responseKeys: Object.keys(data),         // ✅ All response fields
+          requestRole: requestBody.role,
+          responseHasRole: !!data.role,
+          responseRole: data.role,
+          responseHasUser: !!data.user,
+          responseUserRole: data.user?.role,
+          responseKeys: Object.keys(data),
           tokenLength: data.token?.length,
-          tokenStart: data.token?.substring(0, 20)
+          tokenStart: data.token?.substring(0, 20),
+          // ✅ ADD: Check for storeName in response
+          hasStoreName: !!(data.storeName || data.data?.storeName || data.user?.storeName),
+          storeName: data.storeName || data.data?.storeName || data.user?.storeName
         });
       }
 
-      // ✅ Option 1: Update Response Parsing
       // Extract token and user from data or data.data (for nested API responses)
       let token, user;
       if (data.data && typeof data.data === 'object') {
@@ -130,14 +137,34 @@ class AuthService {
         user = data.user;
       }
 
-      // Normalize user object and preserve role
+      // ✅ FIXED: Extract storeName from the correct location - user.profile.storeName
+      const storeName = user?.profile?.storeName ||  // ← The actual location!
+                       data.storeName || 
+                       data.data?.storeName || 
+                       user?.storeName || 
+                       user?.vendorProfile?.storeName ||
+                       data.data?.vendorProfile?.storeName;
+
+      // ✅ Normalize user object and preserve role AND storeName
       const normalizedUser = user
-        ? { ...user, role: user.role || requestBody.role }
+        ? { 
+            ...user, 
+            role: user.role || requestBody.role,
+            storeName: storeName,  // ← Set at root level for easy access
+            profile: user.profile, // ← Keep original profile
+            vendorProfile: user.vendorProfile || user.profile // ← Alias for compatibility
+          }
         : null;
 
       // Debug sanity check
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Normalized login response:', { token, user: normalizedUser });
+        console.log('🔄 Normalized login response:', { 
+          token, 
+          user: normalizedUser,
+          hasStoreName: !!normalizedUser?.storeName,
+          storeName: normalizedUser?.storeName,
+          profileStoreName: user?.profile?.storeName // ← Debug the source
+        });
       }
 
       // Validate final normalized response
@@ -153,8 +180,14 @@ class AuthService {
       // Store token and user data
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(normalizedUser));
+      
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Token and user stored successfully');
+        console.log('✅ authService.login returning:', {
+          hasToken: !!token,
+          hasUser: !!normalizedUser,
+          userStoreName: normalizedUser?.storeName,
+          fullNormalizedUser: normalizedUser
+        });
       }
 
       return { token, user: normalizedUser };
@@ -221,31 +254,54 @@ class AuthService {
     }
   }
 
-  setAuthToken(token) {
+  setAuthToken(token, role) {
     if (token) {
-      localStorage.setItem('token', token);
+      const key = this.getStorageKey(role, 'token');
+      localStorage.setItem(key, token);
+      
+      // ✅ Remove duplicate storage - only store with role-specific key
+      // Removed: localStorage.setItem('token', token);
     }
   }
 
-  removeAuthToken() {
-    localStorage.removeItem('token');
-  }
-
-  getAuthToken() {
-    return localStorage.getItem('token');
+  getAuthToken(role) {
+    const key = this.getStorageKey(role, 'token');
+    return localStorage.getItem(key);
   }
 
   setUser(user) {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      const key = this.getStorageKey(user.role, 'user');
+      localStorage.setItem(key, JSON.stringify(user));
+      
+      // ✅ Remove duplicate storage - only store with role-specific key
+      // Removed: localStorage.setItem('user', JSON.stringify(user));
     }
   }
 
-  removeUser() {
+  removeAuthToken(role = null) {
+    if (role) {
+      const key = this.getStorageKey(role, 'token');
+      localStorage.removeItem(key);
+    }
+    localStorage.removeItem('token');
+  }
+
+  removeUser(role = null) {
+    if (role) {
+      const key = this.getStorageKey(role, 'user');
+      localStorage.removeItem(key);
+    }
     localStorage.removeItem('user');
   }
 
-  getUser() {
+  getUser(role = null) {
+    // Try role-specific first, fallback to default
+    if (role) {
+      const key = this.getStorageKey(role, 'user');
+      const roleUser = localStorage.getItem(key);
+      if (roleUser) return JSON.parse(roleUser);
+    }
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   }

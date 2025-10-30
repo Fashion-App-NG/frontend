@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/formatPrice';
-import { calculateSubtotal, getPlatformFee, getTaxRateFromCart } from '../utils/priceCalculations';
+import { calculateSubtotal, getPlatformFee } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -34,44 +34,41 @@ const ShopperCart = () => {
     updateCartItemQuantity(itemId, newQuantity);
   };
 
-  // Calculate total tax amount using API values
+
+  // ✅ Calculate using API values only - NO recalculation
+  // ✅ CORRECTED: taxAmount is already multiplied by quantity in API
   const calculateTaxTotal = () => {
     return cartItems.reduce((total, item) => {
-      const taxAmount = item.taxAmount || 0;
-      const quantity = item.quantity || 1;
-      return total + (taxAmount * quantity);
+      const taxAmount = item.taxAmount || 0;  // ✅ Already total for quantity
+      return total + taxAmount;  // Note: Don't multiply by quantity again!
     }, 0);
   };
 
-  // Calculate total platform fee amount for all items
   const calculatePlatformFeeTotal = () => {
     return cartItems.reduce((total, item) => {
-      const platformFee = getPlatformFee(item) * item.quantity;
+      const platformFee = item.platformFeeAmount || 0;  // ✅ Already total
       return total + platformFee;
     }, 0);
   };
 
-  // Calculate all-inclusive price per yard using API taxAmount
+  // ✅ CORRECTED: Divide taxAmount by quantity to get per-yard amount
   const getAllInclusivePricePerYard = (item) => {
     const basePrice = item.pricePerYard || 0;
-    const taxAmount = item.taxAmount || 0;
-    const platformFee = getPlatformFee(item);
-    return basePrice + taxAmount + platformFee;
+    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);  // ✅ Divide by quantity!
+    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+    return basePrice + taxPerYard + platformFeePerYard;
   };
 
-  // Calculate all-inclusive line item total using API taxAmount
   const getAllInclusiveLineItemTotal = (item) => {
     const quantity = item.quantity || 1;
     return getAllInclusivePricePerYard(item) * quantity;
   };
 
-  // Calculate all-inclusive subtotal
   const getAllInclusiveSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
   };
-
-  // Get tax rate for display from first item (all should have same rate)
-  const taxRate = getTaxRateFromCart(cartItems);
+  // ✅ Get tax rate directly from API
+  const taxRate = cartItems[0]?.taxRate || 0.02;
 
   if (cartItems.length === 0) {
     return (

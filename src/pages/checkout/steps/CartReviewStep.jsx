@@ -1,34 +1,31 @@
 import { useState } from 'react';
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
-import { getPlatformFee, getTaxRateFromCart } from '../../../utils/priceCalculations';
 import { getProductImageUrl } from '../../../utils/productUtils';
 
 const CartReviewStep = ({ onNext }) => {
   const { cartItems, updateCartItemQuantity } = useCart();
   const [shippingCost] = useState(0);
 
-  // Calculate all-inclusive price per yard using API taxAmount
+  // ✅ Use API values only - NO recalculation
   const getAllInclusivePricePerYard = (item) => {
-    const basePrice = parseFloat(item.pricePerYard) || 0;
-    const taxAmount = parseFloat(item.taxAmount) || 0;
-    const platformFee = getPlatformFee(item);
-    return basePrice + taxAmount + platformFee;
+    const basePrice = item.pricePerYard || 0;
+    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);  // ✅ Divide by quantity!
+    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+    return basePrice + taxPerYard + platformFeePerYard;
   };
 
-  // Calculate all-inclusive line item total
   const getAllInclusiveLineItemTotal = (item) => {
     const quantity = item.quantity || 1;
     return getAllInclusivePricePerYard(item) * quantity;
   };
 
-  // Calculate all-inclusive subtotal
   const getAllInclusiveSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
   };
 
-  // Get tax rate for display from first item (safe division)
-  const taxRate = getTaxRateFromCart(cartItems);
+  // ✅ Get tax rate directly from API
+  const taxRate = cartItems[0]?.taxRate || 0.02;
 
   return (
     <div>

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/authService';
+import authService from '../../services/authService'; // ✅ Static import at top
 
 export const AdminLoginForm = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ Use login instead of setUser, setIsAuthenticated
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,7 +16,7 @@ export const AdminLoginForm = () => {
 
     const formData = new FormData(e.target);
     const data = {
-      username: formData.get('username'), // Will be treated as email
+      username: formData.get('username'),
       password: formData.get('password')
     };
 
@@ -30,25 +30,36 @@ export const AdminLoginForm = () => {
     try {
       console.log('🔐 Admin login attempt:', { email: data.username, password: '***' });
       
-      // ✅ Use real API endpoint
+      // ✅ Use static import - removed dynamic import
       const response = await authService.adminLogin({
-        email: data.username, // API expects email field
+        email: data.username,
         password: data.password
       });
 
       console.log('✅ Admin login successful:', response);
 
-      // ✅ Use the new login function from AuthContext
       if (response.admin && response.token) {
-        // ✅ Ensure the admin object has the role field
         const adminWithRole = {
           ...response.admin,
-          role: response.admin.role || 'admin' // Ensure role is set
+          role: response.admin.role || 'admin'
         };
         
         console.log('🔑 Admin user being stored:', adminWithRole);
         
         await login(adminWithRole, response.token);
+        
+        // After successful login response
+        const userData = {
+          id: response.user?.id || response.user?._id,
+          email: response.user?.email,
+          role: response.user?.role || 'admin',
+          firstName: response.user?.firstName,
+          lastName: response.user?.lastName,
+          ...response.user
+        };
+
+        authService.setAuthToken(response.token, userData.role);
+        authService.setUser(userData);
         
         // Navigate to admin dashboard
         navigate('/admin/dashboard', {
