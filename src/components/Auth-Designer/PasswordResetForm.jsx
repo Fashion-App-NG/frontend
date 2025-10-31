@@ -212,7 +212,8 @@ export const PasswordResetForm = () => {
     setLastResendTime(Date.now());
     
     try {
-      const response = await authService.forgotPassword(email);
+      // ✅ Pass as object with identifier field
+      const response = await authService.forgotPassword({ identifier: email });
       setOtp(['', '', '', '', '', '']);
       
       if (inputRefs.current[0]) {

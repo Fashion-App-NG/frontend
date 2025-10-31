@@ -49,7 +49,8 @@ export const ForgotPasswordForm = () => {
     }
 
     try {
-      const response = await authService.forgotPassword(email);
+      // ✅ Pass as object with identifier field (more explicit)
+      const response = await authService.forgotPassword({ identifier: email });
       
       console.log('✅ Forgot password request successful:', response);
       
