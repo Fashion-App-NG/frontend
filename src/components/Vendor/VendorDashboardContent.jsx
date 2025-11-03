@@ -168,22 +168,8 @@ export const VendorDashboardContent = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Search orders, customers..."
-                className="w-80 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 text-gray-700 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                🔍
-              </div>
-            </div>
             
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors">
-                <div className="text-xl">🔔</div>
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
-              </button>
               
               <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">

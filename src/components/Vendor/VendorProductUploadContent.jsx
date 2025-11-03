@@ -306,7 +306,6 @@ export const VendorProductUploadContent = () => {
 
           {/* User Profile */}
           <div className="flex items-center gap-4">
-            <div className="w-6 h-6 text-gray-600">🔔</div>
             <div className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden">
               <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
                 {(user?.firstName?.[0] || user?.storeName?.[0] || 'V').toUpperCase()}
