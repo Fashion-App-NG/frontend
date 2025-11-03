@@ -14,20 +14,19 @@ export const VendorDashboardContent = () => {
   
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
+  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true);
       
       try {
-        // Load summary data
         const summaryData = await vendorAnalyticsService.getDashboardSummary();
         setDashboardData(summaryData);
         
-        // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Load order history
         const historyData = await vendorAnalyticsService.getOrderHistory();
         const processedOrderHistory = Array.isArray(historyData) ? historyData : [];
         setOrderHistory(processedOrderHistory);
@@ -45,7 +44,7 @@ export const VendorDashboardContent = () => {
       setAnalyticsLoading(true);
       
       try {
-        const analytics = await vendorAnalyticsService.getSalesAnalytics('monthly');
+        const analytics = await vendorAnalyticsService.getSalesAnalytics(selectedPeriod);
         console.log('📊 Sales Analytics Loaded:', analytics);
         setSalesAnalytics(analytics);
       } catch (error) {
@@ -59,7 +58,7 @@ export const VendorDashboardContent = () => {
       loadDashboardData();
       loadSalesAnalytics();
     }
-  }, [user?.id]);
+  }, [user?.id, selectedPeriod]);
 
   const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
@@ -89,13 +88,45 @@ export const VendorDashboardContent = () => {
     return fieldMapping[field] !== undefined ? fieldMapping[field] : order[field] !== undefined ? order[field] : fallback;
   };
 
+  const getStatusBadge = (status) => {
+    const normalizedStatus = (status || '').toLowerCase();
+    
+    const statusConfig = {
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡' },
+      confirmed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵' },
+      processing: { bg: 'bg-indigo-100', text: 'text-indigo-800', icon: '🟣' },
+      delivered: { bg: 'bg-green-100', text: 'text-green-800', icon: '🟢' },
+      cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴' },
+    };
+
+    const config = statusConfig[normalizedStatus] || statusConfig.pending;
+    
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.icon} {status || 'Pending'}
+      </span>
+    );
+  };
+
+  const filteredOrders = statusFilter === 'all' 
+    ? orderHistory 
+    : orderHistory.filter(order => {
+        const orderStatus = (order.status || order.paymentStatus || '').toLowerCase();
+        return orderStatus === statusFilter.toLowerCase();
+      });
+
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = orderHistory.slice(indexOfFirstOrder, indexOfLastOrder);
-  const totalPages = Math.ceil(orderHistory.length / ordersPerPage);
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
+  };
+
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    setCurrentPage(1);
   };
 
   return (
@@ -263,10 +294,15 @@ export const VendorDashboardContent = () => {
                 <h2 className="text-xl font-bold text-gray-900">Revenue & Orders Trends</h2>
                 <p className="text-sm text-gray-500">Monthly performance overview</p>
               </div>
-              <select className="text-sm border border-gray-200 rounded-lg px-3 py-2">
-                <option>Last 12 Months</option>
-                <option>Last 6 Months</option>
-                <option>Last 3 Months</option>
+              <select 
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2"
+              >
+                <option value="daily">Last 30 Days</option>
+                <option value="weekly">Last 12 Weeks</option>
+                <option value="monthly">Last 12 Months</option>
+                <option value="yearly">Last 5 Years</option>
               </select>
             </div>
             
@@ -371,15 +407,22 @@ export const VendorDashboardContent = () => {
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Recent Orders</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Showing {indexOfFirstOrder + 1}-{Math.min(indexOfLastOrder, orderHistory.length)} of {orderHistory.length} orders
+                  Showing {indexOfFirstOrder + 1}-{Math.min(indexOfLastOrder, filteredOrders.length)} of {filteredOrders.length} orders
+                  {statusFilter !== 'all' && ` (${orderHistory.length} total)`}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                  <option>All Orders</option>
-                  <option>Pending</option>
-                  <option>Completed</option>
-                  <option>Cancelled</option>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => handleStatusFilterChange(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="all">All Orders</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="processing">Processing</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
                 <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
                   Export
@@ -459,9 +502,7 @@ export const VendorDashboardContent = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          🟡 {getSafeOrderData(order, 'status', 'Pending')}
-                        </span>
+                        {getStatusBadge(getSafeOrderData(order, 'status', 'Pending'))}
                       </td>
                       <td className="px-6 py-4">
                         <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -476,11 +517,14 @@ export const VendorDashboardContent = () => {
           </div>
 
           {/* ✅ FIXED: Complete Pagination */}
-          {orderHistory.length > ordersPerPage && (
+          {filteredOrders.length > ordersPerPage && (
             <div className="px-6 py-4 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  Showing {indexOfFirstOrder + 1} to {Math.min(indexOfLastOrder, orderHistory.length)} of {orderHistory.length} results
+                  Showing {indexOfFirstOrder + 1} to {Math.min(indexOfLastOrder, filteredOrders.length)} of {filteredOrders.length} results
+                  {statusFilter !== 'all' && (
+                    <span className="ml-2 text-gray-400">({orderHistory.length} total)</span>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-2">
