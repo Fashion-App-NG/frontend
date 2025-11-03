@@ -232,13 +232,52 @@ class VendorAnalyticsService {
       console.log('📊 ORDER HISTORY API RESPONSE:', data);
       
       if (data.success && data.data) {
+        let orders = [];
+        
         if (Array.isArray(data.data)) {
-          return data.data;
+          orders = data.data;
         } else if (data.data.orders && Array.isArray(data.data.orders)) {
-          return data.data.orders;
+          orders = data.data.orders;
         } else if (data.data.items && Array.isArray(data.data.items)) {
-          return data.data.items;
+          orders = data.data.items;
         }
+        
+        // ✅ FIX: Transform orders to use vendor-specific status
+        return orders.map(order => {
+          // Derive vendor order status from vendor's items
+          const vendorItems = order.items?.filter(item => 
+            item.vendorId === localStorage.getItem('vendorId') || 
+            item.vendorName?.toLowerCase().includes('aso lode')
+          ) || [];
+          
+          // Calculate vendor order status
+          let vendorOrderStatus = 'CONFIRMED';
+          if (vendorItems.length > 0) {
+            const statusCounts = vendorItems.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            
+            // Priority: PROCESSING > DELIVERED > PENDING > CONFIRMED
+            if (statusCounts['PROCESSING'] > 0) {
+              vendorOrderStatus = 'PROCESSING';
+            } else if (statusCounts['DELIVERED'] === vendorItems.length) {
+              vendorOrderStatus = 'DELIVERED';
+            } else if (statusCounts['PENDING'] > 0) {
+              vendorOrderStatus = 'CONFIRMED'; // Map PENDING to CONFIRMED
+            } else {
+              vendorOrderStatus = 'CONFIRMED';
+            }
+          }
+          
+          return {
+            ...order,
+            // ✅ Use vendorOrderStatus for consistency with Orders page
+            displayStatus: vendorOrderStatus,
+            // Keep original status for reference
+            originalStatus: order.status
+          };
+        });
       }
       
       return this.getDummyOrderHistory();

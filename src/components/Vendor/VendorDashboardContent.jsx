@@ -73,6 +73,19 @@ export const VendorDashboardContent = () => {
     return numValue.toLocaleString();
   };
 
+  // ✅ ADD: New function for price formatting with 2 decimal places
+  const formatPrice = (price) => {
+    if (price === undefined || price === null || isNaN(price)) return '0.00';
+    const numValue = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numValue)) return '0.00';
+    
+    // ✅ Always show 2 decimal places for prices
+    return numValue.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const getSafeOrderData = (order, field, fallback = '') => {
     if (!order || typeof order !== 'object') return fallback;
     
@@ -82,7 +95,8 @@ export const VendorDashboardContent = () => {
       customerName: order.customerInfo?.name || fallback,
       location: order.shippingAddress?.city || order.shippingAddress?.street || fallback,
       amount: order.totalAmount || order.totalWithShipping || 0,
-      status: order.status || order.paymentStatus || fallback
+      // ✅ FIX: Use displayStatus (vendor-specific) instead of overall status
+      status: order.displayStatus || order.vendorOrderStatus || order.status || order.paymentStatus || fallback
     };
     
     return fieldMapping[field] !== undefined ? fieldMapping[field] : order[field] !== undefined ? order[field] : fallback;
@@ -91,19 +105,22 @@ export const VendorDashboardContent = () => {
   const getStatusBadge = (status) => {
     const normalizedStatus = (status || '').toLowerCase();
     
+    // ✅ Map PENDING to CONFIRMED for display
+    const displayStatus = normalizedStatus === 'pending' ? 'confirmed' : normalizedStatus;
+    
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡' },
+      pending: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵' },
       confirmed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🔵' },
       processing: { bg: 'bg-indigo-100', text: 'text-indigo-800', icon: '🟣' },
       delivered: { bg: 'bg-green-100', text: 'text-green-800', icon: '🟢' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴' },
     };
 
-    const config = statusConfig[normalizedStatus] || statusConfig.pending;
+    const config = statusConfig[displayStatus] || statusConfig.confirmed;
     
     return (
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-        {config.icon} {status || 'Pending'}
+        {config.icon} {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
       </span>
     );
   };
@@ -111,8 +128,15 @@ export const VendorDashboardContent = () => {
   const filteredOrders = statusFilter === 'all' 
     ? orderHistory 
     : orderHistory.filter(order => {
-        const orderStatus = (order.status || order.paymentStatus || '').toLowerCase();
-        return orderStatus === statusFilter.toLowerCase();
+        // ✅ Use displayStatus for filtering
+        const orderStatus = (order.displayStatus || order.vendorOrderStatus || order.status || order.paymentStatus || '').toLowerCase();
+        const filterStatus = statusFilter.toLowerCase();
+        
+        // Map PENDING to CONFIRMED for filtering
+        const normalizedOrderStatus = orderStatus === 'pending' ? 'confirmed' : orderStatus;
+        const normalizedFilterStatus = filterStatus === 'pending' ? 'confirmed' : filterStatus;
+        
+        return normalizedOrderStatus === normalizedFilterStatus;
       });
 
   const indexOfLastOrder = currentPage * ordersPerPage;
@@ -259,7 +283,7 @@ export const VendorDashboardContent = () => {
                 </div>
               </div>
 
-              {/* Revenue */}
+              {/* Revenue Card */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -271,11 +295,12 @@ export const VendorDashboardContent = () => {
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-gray-900 mb-1">
-                    ₦{formatNumber(salesAnalytics?.stats?.totalRevenue || dashboardData?.totalRevenue?.value || 0)}
+                    {/* ✅ Use formatPrice for revenue with 2 decimals */}
+                    ₦{formatPrice(salesAnalytics?.stats?.totalRevenue || dashboardData?.totalRevenue?.value || 0)}
                   </div>
                   <div className="text-sm font-medium text-gray-600">Total Revenue</div>
                   <div className="text-xs text-gray-500 mt-2">
-                    📈 Avg: ₦{formatNumber(salesAnalytics?.stats?.averageOrderValue || 0)}/order
+                    📈 Avg: ₦{formatPrice(salesAnalytics?.stats?.averageOrderValue || 0)}/order
                   </div>
                 </div>
               </div>
@@ -385,11 +410,13 @@ export const VendorDashboardContent = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-xs text-gray-600">Revenue</div>
-                      <div className="text-lg font-bold text-gray-900">₦{formatNumber(product.totalRevenue)}</div>
+                      {/* ✅ Use formatPrice for revenue */}
+                      <div className="text-lg font-bold text-gray-900">₦{formatPrice(product.totalRevenue)}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-gray-600">Avg Price</div>
-                      <div className="text-sm font-semibold text-gray-700">₦{formatNumber(product.averagePrice)}</div>
+                      {/* ✅ Use formatPrice for average */}
+                      <div className="text-sm font-semibold text-gray-700">₦{formatPrice(product.averagePrice)}</div>
                     </div>
                   </div>
                 </div>
@@ -418,9 +445,9 @@ export const VendorDashboardContent = () => {
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 >
                   <option value="all">All Orders</option>
-                  <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
                   <option value="processing">Processing</option>
+                  <option value="shipped">Shipped</option>
                   <option value="delivered">Delivered</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -498,7 +525,7 @@ export const VendorDashboardContent = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-bold text-gray-900">
-                          ₦{formatNumber(getSafeOrderData(order, 'amount', 0))}
+                          ₦{formatPrice(getSafeOrderData(order, 'amount', 0))}
                         </span>
                       </td>
                       <td className="px-6 py-4">
