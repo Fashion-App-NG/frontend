@@ -458,7 +458,7 @@ class VendorAnalyticsService {
         },
         {
           productId: '3',
-          name: 'Ankara Headache',
+          name: 'Ankara Headtie',
           totalSold: 95,
           totalRevenue: 190000,
           averagePrice: 2000
