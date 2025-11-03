@@ -11,8 +11,8 @@ const ShopperSidebar = () => {
     { name: 'My Orders', href: '/shopper/orders', icon: 'clipboard' },
     { name: 'Shopping Cart', href: '/shopper/cart', icon: 'cart' },
     { name: 'Favorites', href: '/shopper/favorites', icon: 'heart' },
-    { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' },
-    { name: 'Settings', href: '/shopper/settings', icon: 'settings' },
+    // { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' }, // Hidden - will implement later
+    // { name: 'Settings', href: '/shopper/settings', icon: 'settings' }, // Merged into Profile
     { name: 'Profile', href: '/shopper/profile', icon: 'user' }
   ];
 

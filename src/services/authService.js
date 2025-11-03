@@ -386,12 +386,17 @@ class AuthService {
 
   async forgotPassword(requestData) {
     try {
-      console.log('🔄 Forgot password request for:', requestData.email);
+      // ✅ Handle both string (email) and object input
+      const identifier = typeof requestData === 'string' 
+        ? requestData 
+        : (requestData.identifier || requestData.email);
+      
+      console.log('🔄 Forgot password request for:', identifier);
       
       const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ identifier }) // ✅ Send as object with identifier field
       });
 
       const responseData = await response.json();

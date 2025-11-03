@@ -36,9 +36,7 @@ export const VendorSidebar = () => {
     { path: '/vendor/upload', icon: '⬆️', label: 'Add Product' },
     { path: '/vendor/bulk-upload', icon: '📤', label: 'Bulk Upload' },
     { path: '/vendor/sales', icon: '💰', label: 'Sales' },
-    { path: '/vendor/profile', icon: '👤', label: 'Profile' }, // Added new Profile menu item
-    { path: '/vendor/notifications', icon: '🔔', label: 'Notifications' },
-    { path: '/vendor/settings', icon: '⚙️', label: 'Settings' }
+    { path: '/vendor/profile', icon: '👤', label: 'Profile' },
   ];
 
   return (

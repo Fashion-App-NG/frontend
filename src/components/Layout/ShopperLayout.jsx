@@ -6,14 +6,15 @@ const ShopperLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ✅ FIX: Match ShopperSidebar navigation - hide Notifications and Settings
   const navigation = [
+    { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' },
     { name: 'Browse Products', href: '/shopper/browse', icon: 'grid' },
     { name: 'My Orders', href: '/shopper/orders', icon: 'clipboard' },
     { name: 'Shopping Cart', href: '/shopper/cart', icon: 'cart' },
     { name: 'Favorites', href: '/shopper/favorites', icon: 'heart' },
-    { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' },
-    { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' }, // Moved lower, just before Settings
-    { name: 'Settings', href: '/shopper/settings', icon: 'settings' },
+    // { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' }, // Hidden - will implement later
+    // { name: 'Settings', href: '/shopper/settings', icon: 'settings' }, // Merged into Profile
     { name: 'Profile', href: '/shopper/profile', icon: 'user' }
   ];
 
@@ -137,7 +138,7 @@ const ShopperLayout = () => {
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-6 py-3 text-red-600 hover:bg-red-50 w-full text-left"
+            className="flex items-center gap-3 px-6 py-3 text-red-600 hover:bg-red-50 w-full text-left rounded-lg transition-colors"
           >
             <span>🔴</span>
             Sign out

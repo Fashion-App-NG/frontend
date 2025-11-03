@@ -5,6 +5,7 @@ import { RestockModal } from '../components/Vendor/RestockModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorProducts } from '../hooks/useVendorProducts';
 import productService from '../services/productService';
+import { getProductImageUrl } from '../utils/productUtils'; // ✅ Import shared utility
 
 const VendorProductDetailPage = () => {
   const { id } = useParams();
@@ -90,37 +91,6 @@ const VendorProductDetailPage = () => {
       findProduct();
     }
   }, [id, products, user?.id]);
-
-  const getProductImage = (product) => {
-    if (product?.image && product.image.startsWith('data:image/')) {
-      return product.image;
-    }
-    
-    if (product?.image && typeof product.image === 'string') {
-      if (product.image.startsWith('http')) {
-        return product.image;
-      }
-      if (product.image.startsWith('/')) {
-        return `${process.env.REACT_APP_API_BASE_URL}${product.image}`;
-      }
-      return `${process.env.REACT_APP_API_BASE_URL}/uploads/${product.image}`;
-    }
-    
-    if (product?.images && product.images.length > 0) {
-      const firstImage = product.images[0];
-      if (typeof firstImage === 'string') {
-        if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
-          return firstImage;
-        }
-        return `${process.env.REACT_APP_API_BASE_URL}/uploads/${firstImage}`;
-      }
-      if (typeof firstImage === 'object' && firstImage.url) {
-        return firstImage.url;
-      }
-    }
-    
-    return null;
-  };
 
   const handleProductAction = (product, action) => {
     console.log('🎯 Product action triggered:', action, 'for product:', product.name);
@@ -246,7 +216,8 @@ const VendorProductDetailPage = () => {
     );
   }
 
-  const productImage = getProductImage(product);
+  // ✅ Use shared utility directly
+  const productImage = getProductImageUrl(product);
 
   return (
     <>
@@ -275,7 +246,10 @@ const VendorProductDetailPage = () => {
                     src={productImage}
                     alt={product.name}
                     className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
+                    onError={() => {
+                      console.error('❌ Image failed to load:', productImage);
+                      setImageError(true);
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
