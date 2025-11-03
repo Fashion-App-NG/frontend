@@ -6,15 +6,13 @@ const ShopperLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ FIX: Match ShopperSidebar navigation - hide Notifications and Settings
+  // ✅ FIX: Hide Dashboard - shoppers land on Browse Products
   const navigation = [
-    { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' },
+    // { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' }, // ✅ HIDDEN
     { name: 'Browse Products', href: '/shopper/browse', icon: 'grid' },
     { name: 'My Orders', href: '/shopper/orders', icon: 'clipboard' },
     { name: 'Shopping Cart', href: '/shopper/cart', icon: 'cart' },
     { name: 'Favorites', href: '/shopper/favorites', icon: 'heart' },
-    // { name: 'Notifications', href: '/shopper/notifications', icon: 'bell' }, // Hidden - will implement later
-    // { name: 'Settings', href: '/shopper/settings', icon: 'settings' }, // Merged into Profile
     { name: 'Profile', href: '/shopper/profile', icon: 'user' }
   ];
 
