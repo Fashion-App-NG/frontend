@@ -161,7 +161,7 @@ export const AuthProvider = ({ children }) => {
             id: userData.id,
             email: userData.email,
             role: userData.role,
-            storeName: userData.storeName // ✅ Log storeName
+            storeName: userData.storeName
           } : null,
           token: token ? `${token.substring(0, 20)}...` : 'none'
         });
@@ -216,14 +216,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ ADD: Method to update user without full re-login
-  const updateUser = (updates) => {
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      const updatedUser = { ...prevUser, ...updates };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      return updatedUser;
-    });
+  // ✅ ADD: Register function (placeholder for now)
+  const register = async (userData, token) => {
+    // For now, register works the same as login
+    // You can enhance this later with specific registration logic
+    return login(userData, token);
   };
 
   const logout = () => {
@@ -253,11 +250,25 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    isAuthenticated: !!user && !!user.id,
     loading,
     login,
     logout,
-    updateUser // ✅ Expose updateUser
+    register,
+    isAuthenticated: !!user,
+    updateUser: (updatedUserData) => {
+      const mergedUser = { ...user, ...updatedUserData };
+      setUser(mergedUser);
+      
+      // Update localStorage
+      const userRole = mergedUser.role || 'shopper';
+      
+      localStorage.setItem(`${userRole}_user`, JSON.stringify(mergedUser));
+      localStorage.setItem('user', JSON.stringify(mergedUser));
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ User data updated in context and localStorage:', mergedUser);
+      }
+    }
   };
 
   if (process.env.NODE_ENV === 'development') {
