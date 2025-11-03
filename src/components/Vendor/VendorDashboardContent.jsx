@@ -1,83 +1,39 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorAnalyticsService from '../../services/vendorAnalyticsService';
+import { RevenueChart } from './charts/RevenueChart';
+import { SalesStatusChart } from './charts/SalesStatusChart';
 
 export const VendorDashboardContent = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
+  const [salesAnalytics, setSalesAnalytics] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  //const [error, setError] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   
-  // ✅ ADD: Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true);
-      //setError(null);
       
       try {
-        // ✅ FIX: Load sequentially to avoid 429 rate limiting
+        // Load summary data
         const summaryData = await vendorAnalyticsService.getDashboardSummary();
-        console.log('🔍 DASHBOARD SUMMARY DETAILED:', {
-          rawData: summaryData,
-          keys: Object.keys(summaryData || {}),
-          totalOrdersPath: summaryData?.totalOrders,
-          totalOrdersValue: summaryData?.totalOrders?.value,
-          allValues: summaryData
-        });
-        
         setDashboardData(summaryData);
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
+        // Load order history
         const historyData = await vendorAnalyticsService.getOrderHistory();
-        console.log('🔍 ORDER HISTORY DETAILED:', {
-          rawData: historyData,
-          isArray: Array.isArray(historyData),
-          length: Array.isArray(historyData) ? historyData.length : 'N/A',
-          firstItem: Array.isArray(historyData) ? historyData[0] : 'N/A',
-          keys: historyData && typeof historyData === 'object' ? Object.keys(historyData) : 'N/A'
-        });
-        
-        // ✅ ENHANCED: Better data validation with detailed logging
-        let processedOrderHistory = [];
-        if (Array.isArray(historyData)) {
-          processedOrderHistory = historyData;
-          console.log('📊 Using direct array data');
-        } else if (historyData && typeof historyData === 'object') {
-          if (historyData.orders && Array.isArray(historyData.orders)) {
-            processedOrderHistory = historyData.orders;
-            console.log('📊 Using historyData.orders');
-          } else if (historyData.data && Array.isArray(historyData.data)) {
-            processedOrderHistory = historyData.data;
-            console.log('📊 Using historyData.data');
-          } else {
-            console.log('🔍 Searching for arrays in:', Object.keys(historyData));
-            // Look for any array property
-            const arrayValues = Object.values(historyData).filter(val => Array.isArray(val));
-            if (arrayValues.length > 0) {
-              processedOrderHistory = arrayValues[0];
-              console.log('📊 Found array property with length:', arrayValues[0].length);
-            } else {
-              console.warn('⚠️ No arrays found in historyData');
-            }
-          }
-        }
-        
+        const processedOrderHistory = Array.isArray(historyData) ? historyData : [];
         setOrderHistory(processedOrderHistory);
-        console.log('✅ Final processed data:', {
-          dashboardData: summaryData,
-          orderHistoryLength: processedOrderHistory.length,
-          firstOrder: processedOrderHistory[0]
-        });
         
       } catch (error) {
         console.error('❌ Failed to load dashboard data:', error);
-        //setError(error.message);
         setDashboardData(null);
         setOrderHistory([]);
       } finally {
@@ -85,12 +41,26 @@ export const VendorDashboardContent = () => {
       }
     };
 
+    const loadSalesAnalytics = async () => {
+      setAnalyticsLoading(true);
+      
+      try {
+        const analytics = await vendorAnalyticsService.getSalesAnalytics('monthly');
+        console.log('📊 Sales Analytics Loaded:', analytics);
+        setSalesAnalytics(analytics);
+      } catch (error) {
+        console.error('❌ Failed to load sales analytics:', error);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
     if (user?.id) {
       loadDashboardData();
+      loadSalesAnalytics();
     }
   }, [user?.id]);
 
-  // ✅ ENHANCED: Better number formatting
   const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
     const numValue = typeof num === 'string' ? parseFloat(num) : num;
@@ -107,7 +77,6 @@ export const VendorDashboardContent = () => {
   const getSafeOrderData = (order, field, fallback = '') => {
     if (!order || typeof order !== 'object') return fallback;
     
-    // ✅ FIX: Map API fields to expected frontend fields
     const fieldMapping = {
       id: order.orderNumber || order._id || fallback,
       date: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : fallback,
@@ -120,7 +89,6 @@ export const VendorDashboardContent = () => {
     return fieldMapping[field] !== undefined ? fieldMapping[field] : order[field] !== undefined ? order[field] : fallback;
   };
 
-  // ✅ ADD: Pagination logic
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = orderHistory.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -132,7 +100,7 @@ export const VendorDashboardContent = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* ✅ ENHANCED: Better Header Design */}
+      {/* Header */}
       <header className="bg-white shadow-sm border-b px-8 py-6">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div>
@@ -178,7 +146,7 @@ export const VendorDashboardContent = () => {
         </div>
       </header>
 
-      {/* ✅ ENHANCED: Better Stats Cards */}
+      {/* Stats Cards */}
       <div className="px-8 py-8">
         <div className="max-w-7xl mx-auto">
           {loading ? (
@@ -200,7 +168,7 @@ export const VendorDashboardContent = () => {
                     <span className="text-2xl">📊</span>
                   </div>
                   <div className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                    +{dashboardData?.totalOrders?.change || '0%'}
+                    {dashboardData?.totalOrders?.change || '0%'}
                   </div>
                 </div>
                 <div>
@@ -209,7 +177,7 @@ export const VendorDashboardContent = () => {
                   </div>
                   <div className="text-sm font-medium text-gray-600">Total Orders</div>
                   <div className="text-xs text-gray-500 mt-2">
-                    📈 +10.2 this week
+                    📈 {dashboardData?.totalOrders?.period || 'this week'}
                   </div>
                 </div>
               </div>
@@ -221,7 +189,7 @@ export const VendorDashboardContent = () => {
                     <span className="text-2xl">⚡</span>
                   </div>
                   <div className="text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
-                    +{dashboardData?.activeOrders?.change || '0%'}
+                    {dashboardData?.activeOrders?.change || '0%'}
                   </div>
                 </div>
                 <div>
@@ -230,7 +198,7 @@ export const VendorDashboardContent = () => {
                   </div>
                   <div className="text-sm font-medium text-gray-600">Active Orders</div>
                   <div className="text-xs text-gray-500 mt-2">
-                    📈 +3.1 this week
+                    📈 {dashboardData?.activeOrders?.period || 'this week'}
                   </div>
                 </div>
               </div>
@@ -241,7 +209,11 @@ export const VendorDashboardContent = () => {
                   <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                     <span className="text-2xl">✅</span>
                   </div>
-                  <div className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-full">
+                  <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    dashboardData?.completedOrders?.change?.startsWith('-') 
+                      ? 'text-red-600 bg-red-100' 
+                      : 'text-green-600 bg-green-100'
+                  }`}>
                     {dashboardData?.completedOrders?.change || '0%'}
                   </div>
                 </div>
@@ -251,7 +223,7 @@ export const VendorDashboardContent = () => {
                   </div>
                   <div className="text-sm font-medium text-gray-600">Completed Orders</div>
                   <div className="text-xs text-gray-500 mt-2">
-                    📉 -2.56 this week
+                    {dashboardData?.completedOrders?.change?.startsWith('-') ? '📉' : '📈'} {dashboardData?.completedOrders?.period || 'this week'}
                   </div>
                 </div>
               </div>
@@ -263,16 +235,16 @@ export const VendorDashboardContent = () => {
                     <span className="text-2xl">💰</span>
                   </div>
                   <div className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                    +12.5%
+                    {salesAnalytics?.stats?.growth?.revenue > 0 ? '+' : ''}{salesAnalytics?.stats?.growth?.revenue?.toFixed(1) || '0'}%
                   </div>
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-gray-900 mb-1">
-                    ₦{formatNumber(59492)}
+                    ₦{formatNumber(salesAnalytics?.stats?.totalRevenue || dashboardData?.totalRevenue?.value || 0)}
                   </div>
                   <div className="text-sm font-medium text-gray-600">Total Revenue</div>
                   <div className="text-xs text-gray-500 mt-2">
-                    📈 +₦7.2K this week
+                    📈 Avg: ₦{formatNumber(salesAnalytics?.stats?.averageOrderValue || 0)}/order
                   </div>
                 </div>
               </div>
@@ -281,105 +253,117 @@ export const VendorDashboardContent = () => {
         </div>
       </div>
 
-      {/* ✅ ENHANCED: Better Charts Section */}
+      {/* Charts Section */}
       <div className="px-8 pb-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Order Analytics Chart */}
+          {/* Revenue Trends Chart */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Order Analytics</h2>
-                <p className="text-sm text-gray-500">Monthly order trends</p>
+                <h2 className="text-xl font-bold text-gray-900">Revenue & Orders Trends</h2>
+                <p className="text-sm text-gray-500">Monthly performance overview</p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600">Online</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600">Offline</span>
-                </div>
-                <select className="text-sm border border-gray-200 rounded-lg px-3 py-1">
-                  <option>Monthly</option>
-                  <option>Weekly</option>
-                  <option>Daily</option>
-                </select>
-              </div>
+              <select className="text-sm border border-gray-200 rounded-lg px-3 py-2">
+                <option>Last 12 Months</option>
+                <option>Last 6 Months</option>
+                <option>Last 3 Months</option>
+              </select>
             </div>
             
-            {/* Enhanced Chart Placeholder */}
-            <div className="h-64 bg-gradient-to-br from-blue-50 to-orange-50 rounded-xl border-2 border-dashed border-blue-200 flex flex-col items-center justify-center">
-              <div className="text-6xl mb-4">📈</div>
-              <div className="text-lg font-semibold text-gray-700 mb-2">Order Trends Chart</div>
-              <div className="text-sm text-gray-500 text-center max-w-xs">
-                Beautiful line chart showing online vs offline order trends over the last 12 months
-              </div>
-              <div className="mt-4 flex gap-2">
-                <div className="w-2 h-8 bg-blue-400 rounded animate-pulse"></div>
-                <div className="w-2 h-12 bg-orange-400 rounded animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                <div className="w-2 h-6 bg-blue-400 rounded animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                <div className="w-2 h-10 bg-orange-400 rounded animate-pulse" style={{animationDelay: '0.6s'}}></div>
-                <div className="w-2 h-8 bg-blue-400 rounded animate-pulse" style={{animationDelay: '0.8s'}}></div>
-              </div>
+            <div className="h-80">
+              {analyticsLoading ? (
+                <div className="h-full bg-gradient-to-br from-blue-50 to-orange-50 rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin text-4xl mb-2">⏳</div>
+                    <div className="text-sm text-gray-600">Loading analytics...</div>
+                  </div>
+                </div>
+              ) : salesAnalytics?.revenueTrends ? (
+                <RevenueChart data={salesAnalytics.revenueTrends} />
+              ) : (
+                <div className="h-full bg-gradient-to-br from-blue-50 to-orange-50 rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div className="text-sm text-gray-600">No data available</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Earnings Donut Chart */}
+          {/* Sales by Status Chart */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Revenue</h2>
-                <p className="text-sm text-gray-500">By sales channel</p>
+                <h2 className="text-xl font-bold text-gray-900">Sales by Status</h2>
+                <p className="text-sm text-gray-500">Revenue breakdown</p>
               </div>
-              <button className="text-gray-400 hover:text-gray-600">⋯</button>
             </div>
             
-            {/* Enhanced Donut Chart Placeholder */}
-            <div className="h-48 flex items-center justify-center mb-6">
-              <div className="relative w-32 h-32">
-                <div className="absolute inset-0 rounded-full border-8 border-gray-100"></div>
-                <div className="absolute inset-0 rounded-full border-8 border-green-400 border-r-transparent border-b-transparent animate-spin" style={{animationDuration: '3s'}}></div>
-                <div className="absolute inset-4 rounded-full border-6 border-orange-400 border-l-transparent border-t-transparent"></div>
-                <div className="absolute inset-8 rounded-full border-4 border-blue-400 border-r-transparent border-b-transparent"></div>
-                
-                <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-72">
+              {analyticsLoading ? (
+                <div className="h-full flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-gray-900">₦59.5K</div>
-                    <div className="text-xs text-gray-500">Total</div>
+                    <div className="animate-spin text-4xl mb-2">⏳</div>
+                    <div className="text-sm text-gray-600">Loading...</div>
                   </div>
                 </div>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600">Online Sales</span>
+              ) : salesAnalytics?.salesByStatus ? (
+                <SalesStatusChart data={salesAnalytics.salesByStatus} />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div className="text-sm text-gray-600">No data available</div>
+                  </div>
                 </div>
-                <div className="text-sm font-bold text-gray-900">45%</div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600">Offline Sales</span>
-                </div>
-                <div className="text-sm font-bold text-gray-900">35%</div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                  <span className="text-sm font-medium text-gray-600">Wholesale</span>
-                </div>
-                <div className="text-sm font-bold text-gray-900">20%</div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ ENHANCED: Better Order List with Pagination */}
+      {/* Top Products Section */}
+      {salesAnalytics?.topProducts && salesAnalytics.topProducts.length > 0 && (
+        <div className="px-8 pb-8">
+          <div className="max-w-7xl mx-auto bg-white rounded-2xl p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Top Selling Products</h2>
+                <p className="text-sm text-gray-500">Best performers this period</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {salesAnalytics.topProducts.slice(0, 3).map((product, index) => (
+                <div key={product.productId} className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                      #{index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                      <p className="text-xs text-gray-500">{product.totalSold} units sold</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-gray-600">Revenue</div>
+                      <div className="text-lg font-bold text-gray-900">₦{formatNumber(product.totalRevenue)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-600">Avg Price</div>
+                      <div className="text-sm font-semibold text-gray-700">₦{formatNumber(product.averagePrice)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order History Table - keep existing implementation */}
       <div className="px-8 pb-8">
         <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border">
           <div className="p-6 border-b border-gray-100">
