@@ -136,7 +136,7 @@ class VendorAnalyticsService {
     ];
   }
 
-  // ✅ REAL IMPLEMENTATION: Dashboard Summary
+  // ✅ ENHANCED: Dashboard Summary with Sales Analytics fallback
   async getDashboardSummary() {
     try {
       const response = await fetch(`${this.baseURL}/api/vendor-dashboard/summary`, {
@@ -150,41 +150,98 @@ class VendorAnalyticsService {
       
       if (data.success && data.data?.sales) {
         const sales = data.data.sales;
-        console.log('✅ Using sales data:', sales);
+        
+        // ✅ FIX: Check if summary has actual data, if not use sales analytics
+        if (sales.totalOrders > 0 || sales.totalRevenue > 0) {
+          console.log('✅ Using Dashboard Summary sales data:', sales);
+          
+          return {
+            totalOrders: {
+              value: sales.totalOrders || 0,
+              change: sales.growth?.orders > 0 ? `+${sales.growth.orders.toFixed(1)}%` : `${sales.growth?.orders?.toFixed(1) || '0'}%`,
+              trend: sales.growth?.orders >= 0 ? 'up' : 'down',
+              period: 'this week'
+            },
+            activeOrders: {
+              value: Math.floor((sales.totalOrders || 0) * 0.3),
+              change: '+0.49%',
+              trend: 'up',
+              period: 'this week'  
+            },
+            completedOrders: {
+              value: Math.floor((sales.totalOrders || 0) * 0.6),
+              change: '-0.91%',
+              trend: 'down',
+              period: 'this week'
+            },
+            totalRevenue: {
+              value: sales.totalRevenue || 0,
+              change: sales.growth?.revenue > 0 ? `+${sales.growth.revenue.toFixed(1)}%` : `${sales.growth?.revenue?.toFixed(1) || '0'}%`,
+              trend: sales.growth?.revenue >= 0 ? 'up' : 'down',
+              period: 'this week'
+            }
+          };
+        }
+      }
+      
+      // ✅ FIX: If summary is empty, try to get from sales analytics
+      console.warn('⚠️ Dashboard Summary returned zero values, fetching from Sales Analytics');
+      const salesAnalytics = await this.getSalesAnalytics('monthly');
+      
+      if (salesAnalytics?.stats) {
+        console.log('✅ Using Sales Analytics data for dashboard:', salesAnalytics.stats);
         
         return {
           totalOrders: {
-            value: sales.totalOrders || 0,
-            change: sales.orderGrowth || '+0%',
-            trend: 'up',
-            period: 'this week'
+            value: salesAnalytics.stats.totalOrders || 0,
+            change: salesAnalytics.stats.growth?.orders > 0 ? `+${salesAnalytics.stats.growth.orders.toFixed(1)}%` : `${salesAnalytics.stats.growth?.orders?.toFixed(1) || '0'}%`,
+            trend: salesAnalytics.stats.growth?.orders >= 0 ? 'up' : 'down',
+            period: 'all time'
           },
           activeOrders: {
-            value: Math.floor((sales.totalOrders || 0) * 0.3),
+            value: Math.floor((salesAnalytics.stats.totalOrders || 0) * 0.5), // Assume 50% active
             change: '+0.49%',
             trend: 'up',
-            period: 'this week'  
+            period: 'current'
           },
           completedOrders: {
-            value: Math.floor((sales.totalOrders || 0) * 0.6),
+            value: Math.floor((salesAnalytics.stats.totalOrders || 0) * 0.5), // Assume 50% completed
             change: '-0.91%',
-            trend: 'down',
-            period: 'this week'
+            trend: 'up',
+            period: 'all time'
           },
           totalRevenue: {
-            value: sales.totalRevenue || 0,
-            change: sales.revenueGrowth || '+12.5%',
-            trend: 'up',
-            period: 'this week'
+            value: salesAnalytics.stats.totalRevenue || 0,
+            change: salesAnalytics.stats.growth?.revenue > 0 ? `+${salesAnalytics.stats.growth.revenue.toFixed(1)}%` : `${salesAnalytics.stats.growth?.revenue?.toFixed(1) || '0'}%`,
+            trend: salesAnalytics.stats.growth?.revenue >= 0 ? 'up' : 'down',
+            period: 'all time'
           }
         };
       }
       
-      console.warn('⚠️ Dashboard Summary has empty sales data, calculating from order history');
+      console.warn('⚠️ Both APIs failed, calculating from order history');
       return await this.calculateStatsFromOrderHistory();
       
     } catch (error) {
-      console.warn('⚠️ Dashboard Summary API failed:', error);
+      console.error('❌ Dashboard Summary API failed:', error);
+      
+      // Try sales analytics as fallback
+      try {
+        const salesAnalytics = await this.getSalesAnalytics('monthly');
+        if (salesAnalytics?.stats) {
+          console.log('✅ Using Sales Analytics fallback');
+          return {
+            totalOrders: { value: salesAnalytics.stats.totalOrders || 0, change: '+0%', trend: 'up', period: 'all time' },
+            activeOrders: { value: Math.floor((salesAnalytics.stats.totalOrders || 0) * 0.5), change: '+0%', trend: 'up', period: 'current' },
+            completedOrders: { value: Math.floor((salesAnalytics.stats.totalOrders || 0) * 0.5), change: '+0%', trend: 'up', period: 'all time' },
+            totalRevenue: { value: salesAnalytics.stats.totalRevenue || 0, change: '+0%', trend: 'up', period: 'all time' }
+          };
+        }
+      } catch (analyticsError) {
+        console.error('❌ Sales Analytics fallback also failed:', analyticsError);
+      }
+      
+      // Last resort: calculate from order history
       return await this.calculateStatsFromOrderHistory();
     }
   }
@@ -197,8 +254,18 @@ class VendorAnalyticsService {
       if (!Array.isArray(orderHistory)) return this.getDummyDashboardData();
       
       const totalOrders = orderHistory.length;
-      const activeOrders = orderHistory.filter(o => o.status === 'PENDING' || o.paymentStatus === 'PENDING').length;
-      const completedOrders = orderHistory.filter(o => o.status === 'COMPLETED' || o.status === 'DELIVERED').length;
+      
+      // ✅ FIX: Use displayStatus (vendor-specific) instead of overall status
+      const activeOrders = orderHistory.filter(o => {
+        const status = (o.displayStatus || o.vendorOrderStatus || o.status || '').toLowerCase();
+        return status === 'confirmed' || status === 'processing';
+      }).length;
+      
+      const completedOrders = orderHistory.filter(o => {
+        const status = (o.displayStatus || o.vendorOrderStatus || o.status || '').toLowerCase();
+        return status === 'delivered';
+      }).length;
+      
       const totalRevenue = orderHistory.reduce((sum, o) => sum + (o.totalAmount || o.totalWithShipping || 0), 0);
       
       console.log('📊 Calculated real stats from order data:', {
@@ -209,12 +276,13 @@ class VendorAnalyticsService {
       });
       
       return {
-        totalOrders: { value: totalOrders, change: '+0%', trend: 'up', period: 'calculated' },
-        activeOrders: { value: activeOrders, change: '+0%', trend: 'up', period: 'calculated' },
-        completedOrders: { value: completedOrders, change: '+0%', trend: 'up', period: 'calculated' },
-        totalRevenue: { value: totalRevenue, change: '+0%', trend: 'up', period: 'calculated' }
+        totalOrders: { value: totalOrders, change: '+0%', trend: 'up', period: 'all time' },
+        activeOrders: { value: activeOrders, change: '+0%', trend: 'up', period: 'current' },
+        completedOrders: { value: completedOrders, change: '+0%', trend: 'up', period: 'all time' },
+        totalRevenue: { value: totalRevenue, change: '+0%', trend: 'up', period: 'all time' }
       };
     } catch (error) {
+      console.error('❌ Failed to calculate stats from order history:', error);
       return this.getDummyDashboardData();
     }
   }
