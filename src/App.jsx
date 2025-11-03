@@ -66,7 +66,6 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import ShopperLayout from './components/Layout/ShopperLayout';
 import VendorLayout from './components/Layout/VendorLayout';
 import ShopperCart from './pages/ShopperCart';
-import ShopperDashboardPage from './pages/ShopperDashboardPage';
 import ShopperNotifications from './pages/ShopperNotifications';
 import ShopperOrders from './pages/ShopperOrders';
 import ShopperProfile from './pages/ShopperProfile';
@@ -156,9 +155,11 @@ function App() {
                     </CartProvider>
                   }
                 >
-                  <Route index element={<ShopperProductListPage />} />
+                  {/* ✅ FIX: Redirect dashboard routes to Browse Products */}
+                  <Route index element={<Navigate to="/shopper/browse" replace />} />
+                  <Route path="dashboard" element={<Navigate to="/shopper/browse" replace />} />
+                  
                   <Route path="browse" element={<ShopperProductListPage />} />
-                  <Route path="dashboard" element={<ShopperDashboardPage />} />
                   <Route path="product/:productId" element={<ProductDetailPage />} />
                   <Route path="orders" element={<ShopperOrders />} />
                   <Route path="orders/:orderId" element={<ShopperOrderDetails />} />
@@ -176,7 +177,7 @@ function App() {
                 </Route>
 
                 {/* Legacy shopper routes */}
-                <Route path="/dashboard" element={<Navigate to="/shopper" replace />} />
+                <Route path="/dashboard" element={<Navigate to="/shopper/browse" replace />} />
                 <Route path="/explore-page" element={<ExplorePage />} />
                 <Route path="/favourites" element={<FavouritesPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
