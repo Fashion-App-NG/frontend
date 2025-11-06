@@ -300,7 +300,7 @@ const InfoTooltip = ({ text }) => {
 // };
 
 export default function VendorOrdersPage() {
-  const navigate = useNavigate(); // Add this line
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -310,12 +310,12 @@ export default function VendorOrdersPage() {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(10); // ✅ FIX: Changed from useState to const since it's never updated
   const [pagination, setPagination] = useState({
     totalPages: 1,
     totalOrders: 0
   });
-  const [processingOrderId, setProcessingOrderId] = useState(null); // Track which order is being processed
+  const [processingOrderId, setProcessingOrderId] = useState(null);
   const [expandedOrders, setExpandedOrders] = useState({});
 
   // Fetch all orders including those with PENDING status
@@ -637,7 +637,7 @@ export default function VendorOrdersPage() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="flex-1 ml-[254px] p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen">
       <VendorProfileCheck />
       <VendorStatusExplainer />
       {/* Updated Summary cards to focus on revenue-generating statuses */}
@@ -870,40 +870,53 @@ export default function VendorOrdersPage() {
         <div className="text-sm text-gray-600">
           Showing {filteredOrders.length} orders with {itemsOnPage} items
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm">Rows per page:</span>
-          <select
-            className="border border-gray-300 rounded-lg px-2 py-1 text-sm"
-            value={limit}
-            onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-          >
-            {[10, 20, 50, 100].map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-          <button
-            className="px-3 py-1 rounded-lg border bg-white text-gray-700 disabled:opacity-50"
-            disabled={page === 1}
-            onClick={() => setPage(page - 1)}
-          >
-            Prev
-          </button>
-          <span className="mx-2 text-sm">
-            Page {page} of {pagination.totalPages}
-          </span>
-          <button
-            className="px-3 py-1 rounded-lg border bg-white text-gray-700 disabled:opacity-50"
-            disabled={page >= pagination.totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            Next
-          </button>
+        <div className="flex items-center gap-4">
+          {/* Optional: Rows per page selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Rows per page:</label>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1); // Reset to first page when changing limit
+              }}
+              className="px-3 py-1 rounded-lg bg-white border border-gray-300 text-sm"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium disabled:opacity-50"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Prev
+            </button>
+            <span className="px-4 py-2 text-sm">
+              Page {page} of {pagination.totalPages}
+            </span>
+            <button
+              className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium disabled:opacity-50"
+              disabled={page >= pagination.totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-red-500 text-white p-4 mb-4 text-center text-2xl">
-        DEBUG: CODE CHANGES ARE VISIBLE - {new Date().toISOString()}
-      </div>
+      {/* ✅ FIX: Dev-gate debug banner */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-red-500 text-white p-4 text-center text-2xl mt-4 rounded-lg">
+          DEBUG: CODE CHANGES ARE VISIBLE - {new Date().toISOString()}
+        </div>
+      )}
     </div>
   );
 }

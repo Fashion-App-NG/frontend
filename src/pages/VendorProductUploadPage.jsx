@@ -20,7 +20,11 @@ export const VendorProductUploadPage = () => {
     }
   }
 
-  return <VendorProductUploadContent />;
+  return (
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <VendorProductUploadContent />
+    </div>
+  );
 };
 
 export default VendorProductUploadPage;
