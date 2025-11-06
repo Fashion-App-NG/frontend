@@ -629,7 +629,7 @@ const VendorProfilePage = () => {
   };
 
   return (
-    <div className="flex-1 ml-[254px] p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Vendor Profile</h1>
         <p className="text-gray-600 mt-1">
