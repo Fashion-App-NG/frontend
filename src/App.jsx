@@ -235,7 +235,7 @@ function App() {
                   draggable={true}
                   pauseOnHover={true}
                   theme="light"
-                  limit={3}
+                  limit={5}  // ✅ Increased from 3 to 5 to accommodate loading toasts
                   transition={Slide}
                 />
               </div>

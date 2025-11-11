@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react'; // ✅ Add useCallback
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
@@ -147,7 +147,8 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, status: !prev.status }));
   };
 
-  const handleSubmit = async () => {
+  // ✅ Wrap handleSubmit in useCallback
+  const handleSubmit = useCallback(async () => {
     // Validation
     if (!formData.productName.trim()) {
       alert('Please enter a product name');
@@ -167,30 +168,20 @@ export const VendorProductUploadContent = () => {
     try {
       setIsUploading(true);
 
-      // ✅ FIX: Wrap single product in array to match bulk upload format
       const productData = [{
         name: formData.productName.trim(),
         pricePerYard: parseFloat(formData.pricePerYard),
         quantity: parseInt(formData.quantity) || 1,
         materialType: formData.materialType,
         vendorId: user?.id,
-        idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}`,
+        idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}-${Math.floor(Math.random()).toString(36).substr(2, 9)}`,
         description: formData.description?.trim() || 'Product description',
         pattern: formData.pattern || 'Solid',
         status: formData.status ? 'Available' : 'Unavailable',
-        images: formData.images || [] // ✅ Images already processed with File objects
+        images: formData.images || []
       }];
 
-      console.log('📤 Sending product array to API:', {
-        productCount: productData.length,
-        totalImages: productData[0].images.length,
-        firstProduct: productData[0]
-      });
-
-      // ✅ Use createBulkProducts (which accepts arrays) instead of createSingleProduct
       const result = await vendorService.createBulkProducts(productData);
-
-      console.log('✅ Upload successful:', result);
 
       // Reset form
       setFormData({
@@ -205,12 +196,10 @@ export const VendorProductUploadContent = () => {
         images: []
       });
 
-      // Clear file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
-      // Navigate with success message
       navigate('/vendor/products', {
         state: {
           message: result.createdCount === 1 
@@ -226,7 +215,7 @@ export const VendorProductUploadContent = () => {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [formData, navigate, user?.id]);  // ✅ Add dependencies
 
   const handleCancel = () => {
     // Confirm before leaving if form has data

@@ -161,7 +161,6 @@ const VendorProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Use the shared validation function
     if (!validateVendorProfileCompleteness(formData)) {
       toast.warning('Please fill in all required fields');
       return;
@@ -169,40 +168,71 @@ const VendorProfilePage = () => {
     
     setSaving(true);
     
-    // ✅ ADD: Show loading toast that persists
+    // ✅ FIX: Show loading toast with close button and timeout
     const loadingToastId = toast.loading('Saving your profile...', {
       position: 'top-center',
       autoClose: false,
-      closeOnClick: false,
+      closeOnClick: true,  // ✅ Allow users to dismiss
       draggable: false
     });
+    
+    // ✅ ADD: Auto-timeout after 45 seconds
+    const timeoutId = setTimeout(() => {
+      try {
+        toast.update(loadingToastId, {
+          render: '⏱️ Request is taking longer than expected. Please check your connection.',
+          type: 'warning',
+          isLoading: false,
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: true
+        });
+      } catch (error) {
+        // Toast might already be closed by user
+        console.log('Toast already dismissed');
+      }
+    }, 45000);
     
     try {
       const response = await userService.updateVendorProfile(formData);
       
-      // ✅ MODIFIED: Update the loading toast to success
+      clearTimeout(timeoutId);  // ✅ Clear timeout on success
+      
       if (response.success) {
-        toast.update(loadingToastId, {
-          render: '✅ Profile updated successfully!',
-          type: 'success',
-          isLoading: false,
-          autoClose: 3000,
-          closeOnClick: true,
-          draggable: true
-        });
+        // ✅ FIX: Wrap in try-catch in case toast was dismissed
+        try {
+          toast.update(loadingToastId, {
+            render: '✅ Profile updated successfully!',
+            type: 'success',
+            isLoading: false,
+            autoClose: 3000,
+            closeOnClick: true,
+            draggable: true
+          });
+        } catch (error) {
+          // Toast was already closed, show new one
+          toast.success('✅ Profile updated successfully!');
+        }
       } else {
         throw new Error(response.message || 'Failed to update profile');
       }
     } catch (error) {
-      // ✅ MODIFIED: Update the loading toast to error
-      toast.update(loadingToastId, {
-        render: `❌ ${error.message || 'Failed to update profile'}`,
-        type: 'error',
-        isLoading: false,
-        autoClose: 5000,
-        closeOnClick: true,
-        draggable: true
-      });
+      clearTimeout(timeoutId);  // ✅ Clear timeout on error
+      
+      // ✅ FIX: Wrap in try-catch
+      try {
+        toast.update(loadingToastId, {
+          render: `❌ ${error.message || 'Failed to update profile'}`,
+          type: 'error',
+          isLoading: false,
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: true
+        });
+      } catch (updateError) {
+        // Toast was already closed, show new one
+        toast.error(`❌ ${error.message || 'Failed to update profile'}`);
+      }
     } finally {
       setSaving(false);
     }

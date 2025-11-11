@@ -115,9 +115,10 @@ class VendorAnalyticsService {
     };
   }
 
-  // ✅ NEW: Calculate sales by status from revenue trends when not provided by backend
+  // ✅ FIXED: Calculate sales by status from revenue trends when not provided by backend
   calculateSalesByStatus(revenueTrends) {
     if (!revenueTrends || revenueTrends.length === 0) {
+      // ✅ FIX: Return structure with 0 values instead of null/undefined
       return [
         { status: 'PENDING', totalAmount: 0 },
         { status: 'COMPLETED', totalAmount: 0 },
@@ -128,11 +129,20 @@ class VendorAnalyticsService {
     // Estimate distribution based on total revenue
     const totalRevenue = revenueTrends.reduce((sum, item) => sum + (item.revenue || 0), 0);
     
+    // ✅ FIX: If no revenue, return zeros instead of calculating percentages
+    if (totalRevenue === 0 || isNaN(totalRevenue)) {
+      return [
+        { status: 'PENDING', totalAmount: 0 },
+        { status: 'COMPLETED', totalAmount: 0 },
+        { status: 'CANCELLED', totalAmount: 0 }
+      ];
+    }
+    
     // Typical e-commerce distribution: 70% completed, 20% pending, 10% cancelled
     return [
-      { status: 'PENDING', totalAmount: totalRevenue * 0.20 },
-      { status: 'COMPLETED', totalAmount: totalRevenue * 0.70 },
-      { status: 'CANCELLED', totalAmount: totalRevenue * 0.10 }
+      { status: 'PENDING', totalAmount: Math.round(totalRevenue * 0.20) },
+      { status: 'COMPLETED', totalAmount: Math.round(totalRevenue * 0.70) },
+      { status: 'CANCELLED', totalAmount: Math.round(totalRevenue * 0.10) }
     ];
   }
 

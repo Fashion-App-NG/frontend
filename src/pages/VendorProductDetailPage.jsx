@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify'; // ✅ ADD: Import toast
 import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
 import { RestockModal } from '../components/Vendor/RestockModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,9 +16,14 @@ const VendorProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
   const [productLoading, setProductLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
+
+  // ✅ ADD: Reset selectedImage when product changes
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [product?.id]);
 
   useEffect(() => {
     const findProduct = async () => {
@@ -102,18 +108,21 @@ const VendorProductDetailPage = () => {
     }
   };
 
-  const handleRestock = async (productId, quantity) => {
+  const handleRestock = async (stockData) => {
     try {
+      // ✅ FIX: Remove unused variables
+      const { productId, change, newQuantity } = stockData;
+      
       const product = products.find(p => (p.id || p._id) === productId);
       if (!product) return;
 
       const currentQuantity = parseInt(product.quantity) || 0;
-      const additionalQuantity = parseInt(quantity) || 0;
-      const newQuantity = currentQuantity + additionalQuantity;
+      const additionalQuantity = parseInt(change) || 0;
+      const finalQuantity = newQuantity !== undefined ? newQuantity : currentQuantity + additionalQuantity;
 
       const updates = {
-        quantity: newQuantity,
-        status: newQuantity > 0 ? 'Available' : 'Unavailable',
+        quantity: finalQuantity,
+        status: finalQuantity > 0 ? 'Available' : 'Unavailable',
         display: true
       };
 
@@ -127,10 +136,10 @@ const VendorProductDetailPage = () => {
       setShowRestockModal(false);
       setSelectedProduct(null);
 
-      alert(`Successfully restocked! New quantity: ${newQuantity} yards`);
+      toast.success(`Successfully restocked! New quantity: ${finalQuantity} yards`);
     } catch (error) {
       console.error('Failed to update stock:', error);
-      alert('Failed to update stock. Please try again.');
+      toast.error('Failed to update stock. Please try again.');
     }
   };
 
@@ -222,12 +231,15 @@ const VendorProductDetailPage = () => {
             <div className="md:w-1/2 p-4">
               {/* Main Image */}
               <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
-                {!imageError && productImages[selectedImage] ? (
+                {!imageErrors[selectedImage] && productImages[selectedImage] ? (
                   <img 
                     src={productImages[selectedImage]}
                     alt={product.name}
                     className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
+                    onError={() => {
+                      // ✅ FIX: Per-image error handling
+                      setImageErrors(prev => ({ ...prev, [selectedImage]: true }));
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -251,14 +263,23 @@ const VendorProductDetailPage = () => {
                           : 'hover:ring-2 hover:ring-gray-300'
                       }`}
                     >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = '/assets/img/placeholder.png';
-                        }}
-                      />
+                      {!imageErrors[`thumb-${index}`] ? (
+                        <img
+                          src={image}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={() => {
+                            // ✅ FIX: Per-thumbnail error handling
+                            setImageErrors(prev => ({ ...prev, [`thumb-${index}`]: true }));
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
