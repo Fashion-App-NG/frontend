@@ -36,7 +36,6 @@ const VendorProfilePage = () => {
         email: ''
       }
     },
-    categories: [],
     description: '',
     socialMedia: {
       website: '',
@@ -50,12 +49,6 @@ const VendorProfilePage = () => {
     { value: 'INDIVIDUAL', label: 'Individual/Sole Proprietor' },
     { value: 'CORPORATE', label: 'Corporate/Limited Company' },
     { value: 'PARTNERSHIP', label: 'Partnership' }
-  ];
-
-  const categoryOptions = [
-    'Fashion', 'Clothing', 'Accessories', 'Shoes', 'Fabrics', 
-    'Traditional Wear', 'Formal Wear', 'Casual Wear', 'Children Clothing',
-    'Jewelry', 'Bags', 'Hats'
   ];
 
   // Load vendor profile data
@@ -96,7 +89,6 @@ const VendorProfilePage = () => {
                 email: profileData.businessInfo?.contactPerson?.email || user?.email || ''
               }
             },
-            categories: profileData.categories || [],
             description: profileData.description || '',
             socialMedia: {
               website: profileData.socialMedia?.website || '',
@@ -164,22 +156,6 @@ const VendorProfilePage = () => {
         [name]: value
       }));
     }
-  };
-
-  const handleCategoryChange = (category) => {
-    setFormData(prev => {
-      if (prev.categories.includes(category)) {
-        return {
-          ...prev,
-          categories: prev.categories.filter(c => c !== category)
-        };
-      } else {
-        return {
-          ...prev,
-          categories: [...prev.categories, category]
-        };
-      }
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -251,28 +227,6 @@ const VendorProfilePage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Tell customers about your store"
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Categories
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {categoryOptions.map(category => (
-                    <div key={category} className="flex items-center">
-                      <input
-                        id={`category-${category}`}
-                        type="checkbox"
-                        checked={formData.categories.includes(category)}
-                        onChange={() => handleCategoryChange(category)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
-                        {category}
-                      </label>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </>
@@ -719,13 +673,6 @@ const VendorProfilePage = () => {
             </div>
           </div>
         </form>
-      )}
-      
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-4 rounded-lg mt-8 overflow-auto max-h-96">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Current Profile Data</h3>
-          <pre className="text-xs text-gray-600">{JSON.stringify(formData, null, 2)}</pre>
-        </div>
       )}
     </div>
   );
