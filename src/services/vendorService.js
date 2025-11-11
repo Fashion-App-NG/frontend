@@ -414,7 +414,8 @@ class VendorService {
     if (!Array.isArray(productsArray)) {
       throw new Error('Bulk products must be provided as an array');
     }
-    return this.createProduct(productsArray);
+    // ✅ FIX: Use JSON method for arrays (supports bulk)
+    return this.createProductJSON(productsArray);
   }
 
   async testConnection() {

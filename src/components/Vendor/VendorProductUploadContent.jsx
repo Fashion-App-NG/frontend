@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react'; // ✅ Add useCallback
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
@@ -147,116 +147,75 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, status: !prev.status }));
   };
 
-  const handlePublishProduct = useCallback(async () => {
-    // Validate required fields
+  // ✅ Wrap handleSubmit in useCallback
+  const handleSubmit = useCallback(async () => {
+    // Validation
     if (!formData.productName.trim()) {
       alert('Please enter a product name');
       return;
     }
-    if (!formData.pricePerYard.trim()) {
-      alert('Please enter a price');
-      return;
-    }
-    if (formData.images.length === 0) {
-      alert('Please upload at least one image');
+
+    if (!formData.pricePerYard || parseFloat(formData.pricePerYard) <= 0) {
+      alert('Please enter a valid price');
       return;
     }
 
-    setIsUploading(true);
+    if (!formData.materialType) {
+      alert('Please select a material type');
+      return;
+    }
 
     try {
-      // ✅ Prepare data for unified API (unchanged)
-      const productData = {
+      setIsUploading(true);
+
+      const productData = [{
         name: formData.productName.trim(),
         pricePerYard: parseFloat(formData.pricePerYard),
         quantity: parseInt(formData.quantity) || 1,
         materialType: formData.materialType,
+        vendorId: user?.id,
+        idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}-${Math.floor(Math.random()).toString(36).substr(2, 9)}`,
+        description: formData.description?.trim() || 'Product description',
         pattern: formData.pattern || 'Solid',
-        idNumber: formData.idNumber.trim() || `PRD-${Date.now()}`,
-        description: formData.description.trim() || 'Custom fabric',
-        status: formData.status,
-        images: formData.images, // Keep original File objects
-        vendorId: user?.id
-      };
+        status: formData.status ? 'Available' : 'Unavailable',
+        images: formData.images || []
+      }];
 
-      console.log('🚀 Sending single product with automatic fallback:', {
-        name: productData.name,
-        imageCount: productData.images.length,
-        vendorId: productData.vendorId
+      const result = await vendorService.createBulkProducts(productData);
+
+      // Reset form
+      setFormData({
+        productName: '',
+        status: true,
+        pricePerYard: '',
+        quantity: '1',
+        materialType: '',
+        pattern: '',
+        idNumber: '',
+        description: '',
+        images: []
       });
 
-      // ✅ Use enhanced unified API with automatic fallback
-      const result = await vendorService.createSingleProduct(productData);
-      
-      console.log('✅ Product created successfully:', result);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
-      // Navigate to product listing
       navigate('/vendor/products', {
         state: {
-          message: 'Product uploaded successfully with images!',
-          type: 'success',
-          productAdded: true
+          message: result.createdCount === 1 
+            ? 'Product uploaded successfully!' 
+            : `${result.createdCount} products uploaded successfully!`,
+          type: 'success'
         }
       });
 
     } catch (error) {
-      console.error('❌ Upload failed after all attempts:', error);
-      
-      // ✅ Enhanced error messaging
-      let errorMessage = error.message;
-      if (error.message.includes('PayloadTooLarge')) {
-        errorMessage = 'Images are too large even for multipart upload. Please reduce image file sizes and try again.';
-      }
-      
-      // ✅ Fallback to localStorage for demo if all API attempts fail
-      const fallbackProduct = {
-        id: `#${Math.floor(Math.random() * 100000)}`,
-        name: formData.productName,
-        description: formData.description || 'Custom fabric',
-        image: formData.images[0]?.preview || '/api/placeholder/86/66',
-        images: formData.images.map(img => ({
-          id: img.id,
-          preview: img.preview,
-          name: img.name,
-          size: img.size
-        })),
-        imageCount: formData.images.length,
-        quantity: parseInt(formData.quantity) || 1,
-        date: new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        }),
-        uploadDate: new Date().toISOString(),
-        price: parseFloat(formData.pricePerYard) || 0,
-        status: formData.status ? 'In Stock' : 'Out Of Stock',
-        statusColor: formData.status ? '#28b446' : '#cd0000',
-        materialType: formData.materialType,
-        pattern: formData.pattern,
-        idNumber: formData.idNumber,
-        isLocalProduct: true,
-        backendError: true
-      };
-
-      try {
-        const existingProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-        existingProducts.unshift(fallbackProduct);
-        localStorage.setItem('vendorProducts', JSON.stringify(existingProducts));
-        
-        navigate('/vendor/products', {
-          state: {
-            message: `API upload failed: ${errorMessage}. Product saved locally as demo.`,
-            type: 'warning',
-            productAdded: true
-          }
-        });
-      } catch (storageError) {
-        alert(`Upload failed: ${errorMessage}\nLocal storage also failed: ${storageError.message}`);
-      }
+      console.error('❌ Upload failed:', error);
+      alert(`Upload failed: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
-  }, [formData, navigate, user?.id]);
+  }, [formData, navigate, user?.id]);  // ✅ Add dependencies
 
   const handleCancel = () => {
     // Confirm before leaving if form has data
@@ -332,7 +291,7 @@ export const VendorProductUploadContent = () => {
               Cancel
             </button>
             <button
-              onClick={handlePublishProduct}
+              onClick={handleSubmit}
               disabled={isUploading}
               className="px-4 py-3 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors disabled:opacity-50 flex items-center gap-2"
             >

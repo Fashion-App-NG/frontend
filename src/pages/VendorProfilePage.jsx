@@ -36,7 +36,6 @@ const VendorProfilePage = () => {
         email: ''
       }
     },
-    categories: [],
     description: '',
     socialMedia: {
       website: '',
@@ -50,12 +49,6 @@ const VendorProfilePage = () => {
     { value: 'INDIVIDUAL', label: 'Individual/Sole Proprietor' },
     { value: 'CORPORATE', label: 'Corporate/Limited Company' },
     { value: 'PARTNERSHIP', label: 'Partnership' }
-  ];
-
-  const categoryOptions = [
-    'Fashion', 'Clothing', 'Accessories', 'Shoes', 'Fabrics', 
-    'Traditional Wear', 'Formal Wear', 'Casual Wear', 'Children Clothing',
-    'Jewelry', 'Bags', 'Hats'
   ];
 
   // Load vendor profile data
@@ -96,7 +89,6 @@ const VendorProfilePage = () => {
                 email: profileData.businessInfo?.contactPerson?.email || user?.email || ''
               }
             },
-            categories: profileData.categories || [],
             description: profileData.description || '',
             socialMedia: {
               website: profileData.socialMedia?.website || '',
@@ -166,26 +158,9 @@ const VendorProfilePage = () => {
     }
   };
 
-  const handleCategoryChange = (category) => {
-    setFormData(prev => {
-      if (prev.categories.includes(category)) {
-        return {
-          ...prev,
-          categories: prev.categories.filter(c => c !== category)
-        };
-      } else {
-        return {
-          ...prev,
-          categories: [...prev.categories, category]
-        };
-      }
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Use the shared validation function
     if (!validateVendorProfileCompleteness(formData)) {
       toast.warning('Please fill in all required fields');
       return;
@@ -193,16 +168,71 @@ const VendorProfilePage = () => {
     
     setSaving(true);
     
+    // ✅ FIX: Show loading toast with close button and timeout
+    const loadingToastId = toast.loading('Saving your profile...', {
+      position: 'top-center',
+      autoClose: false,
+      closeOnClick: true,  // ✅ Allow users to dismiss
+      draggable: false
+    });
+    
+    // ✅ ADD: Auto-timeout after 45 seconds
+    const timeoutId = setTimeout(() => {
+      try {
+        toast.update(loadingToastId, {
+          render: '⏱️ Request is taking longer than expected. Please check your connection.',
+          type: 'warning',
+          isLoading: false,
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: true
+        });
+      } catch (error) {
+        // Toast might already be closed by user
+        console.log('Toast already dismissed');
+      }
+    }, 45000);
+    
     try {
       const response = await userService.updateVendorProfile(formData);
       
+      clearTimeout(timeoutId);  // ✅ Clear timeout on success
+      
       if (response.success) {
-        toast.success('Profile updated successfully');
+        // ✅ FIX: Wrap in try-catch in case toast was dismissed
+        try {
+          toast.update(loadingToastId, {
+            render: '✅ Profile updated successfully!',
+            type: 'success',
+            isLoading: false,
+            autoClose: 3000,
+            closeOnClick: true,
+            draggable: true
+          });
+        } catch (error) {
+          // Toast was already closed, show new one
+          toast.success('✅ Profile updated successfully!');
+        }
       } else {
         throw new Error(response.message || 'Failed to update profile');
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to update profile');
+      clearTimeout(timeoutId);  // ✅ Clear timeout on error
+      
+      // ✅ FIX: Wrap in try-catch
+      try {
+        toast.update(loadingToastId, {
+          render: `❌ ${error.message || 'Failed to update profile'}`,
+          type: 'error',
+          isLoading: false,
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: true
+        });
+      } catch (updateError) {
+        // Toast was already closed, show new one
+        toast.error(`❌ ${error.message || 'Failed to update profile'}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -251,28 +281,6 @@ const VendorProfilePage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Tell customers about your store"
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Categories
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {categoryOptions.map(category => (
-                    <div key={category} className="flex items-center">
-                      <input
-                        id={`category-${category}`}
-                        type="checkbox"
-                        checked={formData.categories.includes(category)}
-                        onChange={() => handleCategoryChange(category)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
-                        {category}
-                      </label>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </>
@@ -712,20 +720,20 @@ const VendorProfilePage = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {/* ✅ ADD: Spinner icon when saving */}
+                {saving && (
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {saving ? 'Saving Profile...' : 'Save Changes'}
               </button>
             </div>
           </div>
         </form>
-      )}
-      
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-4 rounded-lg mt-8 overflow-auto max-h-96">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Debug: Current Profile Data</h3>
-          <pre className="text-xs text-gray-600">{JSON.stringify(formData, null, 2)}</pre>
-        </div>
       )}
     </div>
   );

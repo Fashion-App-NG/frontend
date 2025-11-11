@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify'; // ✅ ADD: Import toast
 import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
 import { RestockModal } from '../components/Vendor/RestockModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useVendorProducts } from '../hooks/useVendorProducts';
 import productService from '../services/productService';
-import { getProductImageUrl } from '../utils/productUtils'; // ✅ Import shared utility
 
 const VendorProductDetailPage = () => {
   const { id } = useParams();
@@ -16,61 +16,43 @@ const VendorProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
   const [productLoading, setProductLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(0);
 
-  // ✅ ENHANCED: Better product finding with multiple ID matching strategies
+  // ✅ ADD: Reset selectedImage when product changes
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [product?.id]);
+
   useEffect(() => {
     const findProduct = async () => {
-      console.log('🔍 Looking for product with ID:', id);
-      console.log('📦 Available products:', products.length);
-      
       // Strategy 1: Try to find in loaded products first
       let foundProduct = products.find(p => {
         const productId = p.id || p._id;
-        const matches = productId === id || 
-                       productId?.toString() === id || 
-                       productId?.toString().includes(id) ||
-                       id?.toString().includes(productId?.toString());
-        
-        if (matches) {
-          console.log('✅ Found product in loaded products:', p.name);
-        }
-        return matches;
+        return productId === id || 
+               productId?.toString() === id || 
+               productId?.toString().includes(id) ||
+               id?.toString().includes(productId?.toString());
       });
       
       // Strategy 2: If not found in loaded products, try direct API call
       if (!foundProduct && user?.id) {
-        console.log('🌐 Product not found in loaded products, trying direct API call...');
         try {
           setProductLoading(true);
-          
-          // Try to get the specific product directly
           const response = await productService.getVendorProducts(user.id);
           
           if (response.products) {
-            console.log('📊 API returned products:', response.products.length);
-            
             foundProduct = response.products.find(p => {
               const productId = p.id || p._id;
-              const matches = productId === id || 
-                             productId?.toString() === id ||
-                             productId?.toString().includes(id) ||
-                             id?.toString().includes(productId?.toString());
-              
-              if (matches) {
-                console.log('✅ Found product via API:', p.name);
-              }
-              return matches;
+              return productId === id || 
+                     productId?.toString() === id ||
+                     productId?.toString().includes(id) ||
+                     id?.toString().includes(productId?.toString());
             });
-            
-            if (!foundProduct) {
-              console.log('❌ Product not found in API response');
-              console.log('Available product IDs:', response.products.map(p => p.id || p._id));
-            }
           }
         } catch (error) {
-          console.error('❌ Error fetching product from API:', error);
+          console.error('Error fetching product:', error);
         } finally {
           setProductLoading(false);
         }
@@ -78,13 +60,7 @@ const VendorProductDetailPage = () => {
         setProductLoading(false);
       }
       
-      if (foundProduct) {
-        console.log('🎉 Setting product:', foundProduct.name);
-        setProduct(foundProduct);
-      } else {
-        console.log('💥 No product found with ID:', id);
-        setProduct(null);
-      }
+      setProduct(foundProduct || null);
     };
 
     if (id) {
@@ -93,92 +69,115 @@ const VendorProductDetailPage = () => {
   }, [id, products, user?.id]);
 
   const handleProductAction = (product, action) => {
-    console.log('🎯 Product action triggered:', action, 'for product:', product.name);
     const productId = product.id || product._id;
     
     if (!productId) {
-      console.error('❌ No product ID found for action:', action);
+      console.error('No product ID found');
       return;
     }
-    
-    console.log('📍 Using product ID:', productId);
-    setSelectedProduct(product);
-    
+
     switch (action) {
       case 'edit':
-        console.log('✏️ Navigating to edit page:', `/vendor/products/${productId}/edit`);
         navigate(`/vendor/products/${productId}/edit`);
         break;
       case 'restock':
-        console.log('📦 Opening restock modal');
+        setSelectedProduct(product);
         setShowRestockModal(true);
         break;
       case 'hide':
-        console.log('🙈 Hide product action');
-        handleHideProduct(product);
+        handleHideProduct(productId);
         break;
       default:
-        console.log('❓ Unknown action:', action);
         break;
     }
   };
 
-  const handleHideProduct = async (product) => {
-    if (!window.confirm(`Are you sure you want to hide "${product.name}"?`)) {
-      return;
-    }
-
+  const handleHideProduct = async (productId) => {
     try {
-      const productId = product.id || product._id;
-      await updateProduct(productId, { display: false, status: 'INACTIVE' });
+      await updateProduct(productId, {
+        display: false,
+        status: 'Unavailable'
+      });
       
-      // Navigate back to products list
-      navigate('/vendor/products');
+      navigate('/vendor/products', {
+        state: { message: 'Product hidden successfully', type: 'success' }
+      });
     } catch (error) {
       console.error('Failed to hide product:', error);
+      alert('Failed to hide product. Please try again.');
     }
   };
 
   const handleRestock = async (stockData) => {
     try {
-      const productId = selectedProduct.id || selectedProduct._id;
-      console.log('📈 Updating stock for product:', productId);
+      // ✅ FIX: Remove unused variables
+      const { productId, change, newQuantity } = stockData;
       
-      await updateProduct(productId, {
-        quantity: stockData.newQuantity,
-        stockHistory: [
-          ...(selectedProduct.stockHistory || []),
-          {
-            date: new Date().toISOString(),
-            previousQuantity: selectedProduct.quantity || 0,
-            newQuantity: stockData.newQuantity,
-            change: stockData.change,
-            reason: stockData.reason,
-            notes: stockData.notes
-          }
-        ]
-      });
-      
+      const product = products.find(p => (p.id || p._id) === productId);
+      if (!product) return;
+
+      const currentQuantity = parseInt(product.quantity) || 0;
+      const additionalQuantity = parseInt(change) || 0;
+      const finalQuantity = newQuantity !== undefined ? newQuantity : currentQuantity + additionalQuantity;
+
+      const updates = {
+        quantity: finalQuantity,
+        status: finalQuantity > 0 ? 'Available' : 'Unavailable',
+        display: true
+      };
+
+      await updateProduct(productId, updates);
+
+      const updatedProduct = {
+        ...product,
+        ...updates
+      };
+      setProduct(updatedProduct);
       setShowRestockModal(false);
       setSelectedProduct(null);
-      
-      // Refresh the current product data
-      setProduct(prev => ({
-        ...prev,
-        quantity: stockData.newQuantity
-      }));
-      
-      console.log('✅ Stock updated successfully');
+
+      toast.success(`Successfully restocked! New quantity: ${finalQuantity} yards`);
     } catch (error) {
-      console.error('❌ Failed to update stock:', error);
+      console.error('Failed to update stock:', error);
+      toast.error('Failed to update stock. Please try again.');
     }
+  };
+
+  // ✅ ADD: Get all images from product
+  const getProductImages = (product) => {
+    if (!product) return ['/assets/img/placeholder.png'];
+    
+    // Handle images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.map(img => {
+        if (typeof img === 'object' && img.url) {
+          return img.url;
+        }
+        if (typeof img === 'string') {
+          return img;
+        }
+        return '/assets/img/placeholder.png';
+      });
+    }
+    
+    // Single image fallback
+    if (product.image) {
+      if (typeof product.image === 'object' && product.image.url) {
+        return [product.image.url];
+      }
+      if (typeof product.image === 'string') {
+        return [product.image];
+      }
+    }
+    
+    return ['/assets/img/placeholder.png'];
   };
 
   // Show loading state
   if (loading || productLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -194,16 +193,7 @@ const VendorProductDetailPage = () => {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
-          <p className="text-gray-600 mb-2">The product you're looking for doesn't exist or may have been removed.</p>
-          <p className="text-sm text-gray-500 mb-6">Product ID: {id}</p>
-          
-          {/* Debug Info */}
-          <div className="bg-gray-100 p-4 rounded-lg mb-6 text-left max-w-md mx-auto">
-            <h3 className="font-medium text-gray-800 mb-2">Debug Info:</h3>
-            <p className="text-xs text-gray-600">Searched ID: {id}</p>
-            <p className="text-xs text-gray-600">Available products: {products.length}</p>
-            <p className="text-xs text-gray-600">User ID: {user?.id}</p>
-          </div>
+          <p className="text-gray-600 mb-6">The product you're looking for doesn't exist or may have been removed.</p>
           
           <Link
             to="/vendor/products"
@@ -216,8 +206,7 @@ const VendorProductDetailPage = () => {
     );
   }
 
-  // ✅ Use shared utility directly
-  const productImage = getProductImageUrl(product);
+  const productImages = getProductImages(product);
 
   return (
     <>
@@ -238,17 +227,18 @@ const VendorProductDetailPage = () => {
         {/* Product Details */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="md:flex">
-            {/* Product Image */}
-            <div className="md:w-1/2">
-              <div className="aspect-square bg-gray-200">
-                {!imageError && productImage ? (
+            {/* Product Image Gallery */}
+            <div className="md:w-1/2 p-4">
+              {/* Main Image */}
+              <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
+                {!imageErrors[selectedImage] && productImages[selectedImage] ? (
                   <img 
-                    src={productImage}
+                    src={productImages[selectedImage]}
                     alt={product.name}
                     className="w-full h-full object-cover"
                     onError={() => {
-                      console.error('❌ Image failed to load:', productImage);
-                      setImageError(true);
+                      // ✅ FIX: Per-image error handling
+                      setImageErrors(prev => ({ ...prev, [selectedImage]: true }));
                     }}
                   />
                 ) : (
@@ -259,6 +249,48 @@ const VendorProductDetailPage = () => {
                   </div>
                 )}
               </div>
+
+              {/* Thumbnail Grid */}
+              {productImages.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {productImages.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={`aspect-square bg-gray-200 rounded-lg overflow-hidden transition-all ${
+                        selectedImage === index 
+                          ? 'ring-2 ring-blue-500 ring-offset-2' 
+                          : 'hover:ring-2 hover:ring-gray-300'
+                      }`}
+                    >
+                      {!imageErrors[`thumb-${index}`] ? (
+                        <img
+                          src={image}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={() => {
+                            // ✅ FIX: Per-thumbnail error handling
+                            setImageErrors(prev => ({ ...prev, [`thumb-${index}`]: true }));
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Image counter */}
+              {productImages.length > 1 && (
+                <p className="text-center text-sm text-gray-500 mt-2">
+                  Image {selectedImage + 1} of {productImages.length}
+                </p>
+              )}
             </div>
 
             {/* Product Info */}
