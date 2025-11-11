@@ -169,16 +169,40 @@ const VendorProfilePage = () => {
     
     setSaving(true);
     
+    // ✅ ADD: Show loading toast that persists
+    const loadingToastId = toast.loading('Saving your profile...', {
+      position: 'top-center',
+      autoClose: false,
+      closeOnClick: false,
+      draggable: false
+    });
+    
     try {
       const response = await userService.updateVendorProfile(formData);
       
+      // ✅ MODIFIED: Update the loading toast to success
       if (response.success) {
-        toast.success('Profile updated successfully');
+        toast.update(loadingToastId, {
+          render: '✅ Profile updated successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+          closeOnClick: true,
+          draggable: true
+        });
       } else {
         throw new Error(response.message || 'Failed to update profile');
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to update profile');
+      // ✅ MODIFIED: Update the loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ ${error.message || 'Failed to update profile'}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeOnClick: true,
+        draggable: true
+      });
     } finally {
       setSaving(false);
     }
@@ -666,9 +690,16 @@ const VendorProfilePage = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {/* ✅ ADD: Spinner icon when saving */}
+                {saving && (
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {saving ? 'Saving Profile...' : 'Save Changes'}
               </button>
             </div>
           </div>
