@@ -329,6 +329,7 @@ export default function VendorOrdersPage() {
     axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         const receivedOrders = res.data.orders || [];
+        const paginationData = res.data.pagination || {};  // ✅ ADD: Get pagination data
         
         // Initialize expanded state for all orders
         const newExpandedState = {};
@@ -352,8 +353,8 @@ export default function VendorOrdersPage() {
         setExpandedOrders(newExpandedState);
         setOrders(processedOrders);
         setPagination({
-          totalPages: res.data.pagination?.totalPages || 1,
-          totalOrders: receivedOrders.length || 0
+          totalPages: paginationData.totalPages || 1,
+          totalOrders: paginationData.totalOrders || 0  // ✅ FIXED: Use API value
         });
         setLoading(false);
       })
@@ -597,38 +598,35 @@ export default function VendorOrdersPage() {
       const apiUrl = `${process.env.REACT_APP_API_BASE_URL}/api/vendor-orders/${user.id}/orders?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
       
       const response = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
-      const receivedOrders = response.data.orders || [];
       
-      // Initialize expanded state for all orders
-      const newExpandedState = {};
-      
-      // Process each order to derive the status from its items
-      const processedOrders = receivedOrders.map(order => {
-        // Preserve expansion state
-        newExpandedState[order.id] = expandedOrders[order.id] !== undefined 
-          ? expandedOrders[order.id] 
-          : true;
-        
-        // Derive the order status from its items
-        const derivedStatus = deriveOrderStatus(order.items);
-        
-        return {
-          ...order,
-          status: derivedStatus,
-          originalStatus: order.status
-        };
-      });
-      
-      setExpandedOrders(prev => ({...prev, ...newExpandedState}));
-      setOrders(processedOrders);
-      setPagination({
-        totalPages: response.data.pagination?.totalPages || 1,
-        totalOrders: receivedOrders.length || 0
-      });
-    } catch (err) {
-      console.error("Failed to refresh order data:", err);
-    } finally {
+      // ✅ FIXED
+      if (response.data.success) {
+        const receivedOrders = response.data.orders || [];
+        const paginationData = response.data.pagination || {};
+
+        setOrders(receivedOrders);
+        setPagination({
+          currentPage: paginationData.currentPage || page,  // ✅ Use 'page' not 'currentPage'
+          totalPages: paginationData.totalPages || 1,
+          totalOrders: paginationData.totalOrders || 0,
+          hasNextPage: paginationData.hasNextPage || false,
+          hasPrevPage: paginationData.hasPrevPage || false
+        });
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
       setLoading(false);
+      
+      // ✅ FIXED
+      setPagination(prev => ({
+        ...prev,
+        currentPage: page,  // ✅ Use 'page' not 'currentPage'
+        totalPages: 1,
+        totalOrders: prev.totalOrders || 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      }));
     }
   };
 
