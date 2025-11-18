@@ -124,6 +124,12 @@ const VendorProductListPage = () => {
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [paginationData, setPaginationData] = useState(null);
+  const [limit] = useState(20); // Items per page
+  
   // ✅ Filter tab state
   const [activeFilterTab, setActiveFilterTab] = useState(FILTER_TABS.ALL);
   
@@ -161,11 +167,16 @@ const VendorProductListPage = () => {
     setError(null);
 
     try {
-      const response = await productService.getVendorProducts(user.id);
+      // ✅ Pass pagination params to API
+      const response = await productService.getVendorProducts(user.id, currentPage, limit);
       
       if (response.error) {
         throw new Error(response.error);
       }
+
+      // ✅ Store pagination data from API response
+      setTotalCount(response.totalCount || 0);
+      setPaginationData(response.pagination || null);
 
       let vendorProducts = response.products || [];
       
@@ -248,11 +259,14 @@ const VendorProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, activeFilterTab]); // ✅ Fixed dependencies
+  }, [user?.id, activeFilterTab, currentPage, limit]); // ✅ Fixed dependencies
 
-  // ✅ Filter tab counts
+  // ✅ Filter tab counts - now using totalCount and current page products
   const getFilterCounts = () => {
-    const all = products.length;
+    // Use totalCount from API for "All Products"
+    const all = totalCount;
+    
+    // Count available/disabled from current page products only
     const available = products.filter(p => getProductStatus(p)).length;
     const disabled = products.filter(p => !getProductStatus(p)).length;
     
@@ -484,8 +498,8 @@ const VendorProductListPage = () => {
               <div className="flex space-x-8">
                 {Object.entries({
                   [FILTER_TABS.ALL]: { label: 'All Products', count: filterCounts.all },
-                  [FILTER_TABS.AVAILABLE]: { label: 'Available', count: filterCounts.available },
-                  [FILTER_TABS.DISABLED]: { label: 'Disabled', count: filterCounts.disabled }
+                  [FILTER_TABS.AVAILABLE]: { label: 'Available (this page)', count: filterCounts.available },
+                  [FILTER_TABS.DISABLED]: { label: 'Disabled (this page)', count: filterCounts.disabled }
                 }).map(([key, { label, count }]) => (
                   <button
                     key={key}
@@ -620,8 +634,9 @@ const VendorProductListPage = () => {
           {!isLoading && !error && (
             <>
               {viewMode === VIEW_MODES.LIST ? (
-                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
+                <div className="bg-white shadow-sm rounded-lg overflow-visible">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -661,6 +676,7 @@ const VendorProductListPage = () => {
                       ))}
                     </tbody>
                   </table>
+                  </div>
 
                   {/* Empty State */}
                   {products.length === 0 && (
@@ -712,6 +728,114 @@ const VendorProductListPage = () => {
                 </div>
               )}
             </>
+          )}
+
+          {/* Pagination Controls */}
+          {!isLoading && !error && paginationData && paginationData.totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between bg-white px-6 py-4 rounded-lg shadow-sm border border-gray-200">
+              {/* Left: Page info */}
+              <div className="text-sm text-gray-700">
+                Showing page {paginationData.currentPage} of {paginationData.totalPages}
+                <span className="ml-2 text-gray-500">
+                  ({totalCount} total products)
+                </span>
+              </div>
+
+              {/* Right: Pagination buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Previous button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={!paginationData.hasPrevPage}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    paginationData.hasPrevPage
+                      ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </div>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {(() => {
+                    const pages = [];
+                    const totalPages = paginationData.totalPages;
+                    const current = paginationData.currentPage;
+                    
+                    // Always show first page
+                    pages.push(1);
+                    
+                    // Show ellipsis if needed
+                    if (current > 3) {
+                      pages.push('...');
+                    }
+                    
+                    // Show pages around current
+                    for (let i = Math.max(2, current - 1); i <= Math.min(totalPages - 1, current + 1); i++) {
+                      pages.push(i);
+                    }
+                    
+                    // Show ellipsis if needed
+                    if (current < totalPages - 2) {
+                      pages.push('...');
+                    }
+                    
+                    // Always show last page if more than 1 page
+                    if (totalPages > 1) {
+                      pages.push(totalPages);
+                    }
+                    
+                    return pages.map((page, index) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400">
+                            ...
+                          </span>
+                        );
+                      }
+                      
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                            page === current
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Next button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(paginationData.totalPages, prev + 1))}
+                  disabled={!paginationData.hasNextPage}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    paginationData.hasNextPage
+                      ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    Next
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

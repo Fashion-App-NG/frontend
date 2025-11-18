@@ -138,20 +138,21 @@ class AuthService {
       }
 
       // ✅ FIXED: Extract storeName from the correct location - user.profile.storeName
-      const storeName = user?.profile?.storeName ||  // ← The actual location!
+      const storeName = user?.profile?.storeName ||
                        data.storeName || 
                        data.data?.storeName || 
                        user?.storeName || 
                        user?.vendorProfile?.storeName ||
                        data.data?.vendorProfile?.storeName;
 
-      // ✅ Normalize user object and preserve role AND storeName
+      // ✅ Normalize user object and preserve role AND storeName AND profileCompleted
       const normalizedUser = user
         ? { 
             ...user, 
             role: user.role || requestBody.role,
-            storeName: storeName,  // ← Set at root level for easy access
-            profile: user.profile, // ← Keep original profile
+            storeName: storeName,
+            profileCompleted: user.profileCompleted || false,  // ✅ ADD THIS LINE
+            profile: user.profile,
             vendorProfile: user.vendorProfile || user.profile // ← Alias for compatibility
           }
         : null;
