@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'; // ✅ Add useCallback
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
+import VendorProfileCheck from '../VendorProfileCheck';
 
 export const VendorProductUploadContent = () => {
   const { user } = useAuth();
@@ -278,6 +279,7 @@ export const VendorProductUploadContent = () => {
 
       {/* Main Content */}
       <div className="p-6">
+        <VendorProfileCheck />  {/* ✅ ADD THIS */}
         {/* Page Title and Actions */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[24px] font-bold text-black leading-[150%]">

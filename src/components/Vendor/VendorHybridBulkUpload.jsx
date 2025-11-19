@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
+import VendorProfileCheck from '../VendorProfileCheck';
 
 export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
@@ -737,6 +738,7 @@ export const VendorHybridBulkUpload = () => {
       </header>
 
       <div className="p-6">
+        <VendorProfileCheck />  {/* ✅ ADD THIS */}
         {step === 'method' && (
           <MethodSelectionStep 
             onMethodSelect={handleMethodSelect}
