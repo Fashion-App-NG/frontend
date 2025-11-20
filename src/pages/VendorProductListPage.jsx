@@ -786,8 +786,8 @@ const VendorProductListPage = () => {
                       pages.push('...');
                     }
                     
-                    // Always show last page if more than 1 page
-                    if (totalPages > 1) {
+                    // ✅ FIXED: Only show last page if more than 1 page AND not already added
+                    if (totalPages > 1 && !pages.includes(totalPages)) {
                       pages.push(totalPages);
                     }
                     

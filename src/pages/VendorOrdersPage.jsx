@@ -599,14 +599,33 @@ export default function VendorOrdersPage() {
       
       const response = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
       
-      // ✅ FIXED
       if (response.data.success) {
         const receivedOrders = response.data.orders || [];
         const paginationData = response.data.pagination || {};
 
-        setOrders(receivedOrders);
+        // ✅ RESTORED: Initialize expanded state for all orders
+        const newExpandedState = {};
+        
+        // ✅ RESTORED: Process each order to derive the status from its items
+        const processedOrders = receivedOrders.map(order => {
+          newExpandedState[order.id] = true; // All orders expanded by default
+          
+          // Derive the order status from its items
+          const derivedStatus = deriveOrderStatus(order.items);
+          
+          return {
+            ...order,
+            // Override backend status with derived status
+            status: derivedStatus,
+            // Store original status for reference if needed
+            originalStatus: order.status
+          };
+        });
+        
+        setExpandedOrders(prev => ({ ...prev, ...newExpandedState }));
+        setOrders(processedOrders);
         setPagination({
-          currentPage: paginationData.currentPage || page,  // ✅ Use 'page' not 'currentPage'
+          currentPage: paginationData.currentPage || page,
           totalPages: paginationData.totalPages || 1,
           totalOrders: paginationData.totalOrders || 0,
           hasNextPage: paginationData.hasNextPage || false,
@@ -618,10 +637,9 @@ export default function VendorOrdersPage() {
       console.error("Error fetching orders:", error);
       setLoading(false);
       
-      // ✅ FIXED
       setPagination(prev => ({
         ...prev,
-        currentPage: page,  // ✅ Use 'page' not 'currentPage'
+        currentPage: page,
         totalPages: 1,
         totalOrders: prev.totalOrders || 0,
         hasNextPage: false,

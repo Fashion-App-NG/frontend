@@ -230,10 +230,15 @@ class AuthService {
 
   async resendOTP(requestData) {
     try {
-      // ✅ Extract identifier (email or phone)
+      // ✅ FIXED: Extract identifier with validation
       const identifier = typeof requestData === 'string' 
         ? requestData 
         : (requestData.email || requestData.phone);
+      
+      // ✅ ADD: Validate identifier exists
+      if (!identifier) {
+        throw new Error('No valid identifier (email or phone) provided for OTP resend.');
+      }
       
       console.log('🔄 Resending OTP to:', identifier);
       
@@ -241,7 +246,7 @@ class AuthService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: identifier,  // ✅ Send as 'identifier'
+          identifier: identifier,
         }),
       });
 

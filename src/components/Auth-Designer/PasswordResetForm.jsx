@@ -215,10 +215,9 @@ export const PasswordResetForm = () => {
     setLastResendTime(Date.now());
     
     try {
-      // ✅ FIXED: Pass as object with identifier field
+      // ✅ FIXED: Only pass identifier (email) - userId comes from backend session
       const response = await authService.forgotPassword({ 
-        identifier: email,
-        userId: userId  // ✅ ADD: Include userId for context
+        identifier: email
       });
       
       setOtp(['', '', '', '', '', '']);
