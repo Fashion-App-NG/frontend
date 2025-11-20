@@ -237,8 +237,12 @@ src/
 - `/shopping/favourites` - Saved items
 
 ### System Routes
+- `/terms` or `/terms-of-service` - Terms of Service
+- `/privacy-policy` - Privacy Policy
+- `/refunds` - Returns & Refunds Policy
+- `/vendor-terms` - Vendor Terms of Service
+- `/acceptable-use` - Acceptable Use Policy
 - `/admin/login` - Admin authentication
-- `/admin/create-admin` - Admin creation (SuperAdmin only)
 - `/forgot-password` - Password reset request
 - `/reset-password` - Password reset form
 - `/terms-of-service` - Legal terms

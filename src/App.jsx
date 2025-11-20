@@ -7,6 +7,7 @@ import FavoritesProvider from './contexts/FavoritesContext';
 import { TaxProvider } from './contexts/TaxContext';
 
 // Import header component
+import Footer from './components/Common/Footer';
 import Header from './components/Common/Header';
 import RoleConflictWarning from './components/Common/RoleConflictWarning';
 
@@ -42,8 +43,11 @@ import AdminVendorManagementPage from './pages/AdminVendorManagementPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
+import AcceptableUsePolicyPage from './pages/AcceptableUsePolicyPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ReturnRefundPolicyPage from './pages/ReturnRefundPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
+import VendorTermsPage from './pages/VendorTermsPage';
 
 // Import vendor pages
 import VendorDashboardPage from './pages/VendorDashboardPage';
@@ -215,8 +219,12 @@ function App() {
                 <Route path="/admin/vendor-management" element={<AdminVendorManagementPage />} />
 
                   {/* Legal routes */}
-                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms" element={<TermsOfServicePage />} />
                   <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/refunds" element={<ReturnRefundPolicyPage />} />
+                  <Route path="/vendor-terms" element={<VendorTermsPage />} />
+                  <Route path="/acceptable-use" element={<AcceptableUsePolicyPage />} />
 
 
                   {/* 404 route */}
@@ -238,6 +246,7 @@ function App() {
                   limit={5}  // ✅ Increased from 3 to 5 to accommodate loading toasts
                   transition={Slide}
                 />
+                <Footer />
               </div>
             </div>
           </Router>
