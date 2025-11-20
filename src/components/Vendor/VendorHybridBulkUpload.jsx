@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import VendorService from '../../services/vendorService';
+import VendorProfileCheck from '../VendorProfileCheck';
 
 export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
@@ -737,10 +738,12 @@ export const VendorHybridBulkUpload = () => {
       </header>
 
       <div className="p-6">
+        <VendorProfileCheck />  {/* ✅ ADD THIS */}
         {step === 'method' && (
           <MethodSelectionStep 
             onMethodSelect={handleMethodSelect}
             onDownloadTemplate={downloadCSVTemplate}
+            profileCompleted={user?.profileCompleted}  // ✅ ADD THIS
           />
         )}
         
@@ -802,7 +805,7 @@ export const VendorHybridBulkUpload = () => {
 };
 
 // Method Selection Step Component
-const MethodSelectionStep = ({ onMethodSelect, onDownloadTemplate }) => (
+const MethodSelectionStep = ({ onMethodSelect, onDownloadTemplate, profileCompleted }) => (
   <div className="max-w-4xl mx-auto">
     <div className="grid md:grid-cols-2 gap-8">
       {/* CSV Upload Option */}
@@ -827,7 +830,13 @@ const MethodSelectionStep = ({ onMethodSelect, onDownloadTemplate }) => (
             </button>
             <button
               onClick={() => onMethodSelect('csv')}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={!profileCompleted}  // ✅ ADD THIS
+              className={`w-full px-4 py-3 rounded-lg transition-colors ${
+                profileCompleted
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+              title={!profileCompleted ? 'Complete your profile to upload products' : ''}  // ✅ ADD THIS
             >
               Upload CSV File
             </button>
@@ -850,7 +859,13 @@ const MethodSelectionStep = ({ onMethodSelect, onDownloadTemplate }) => (
           
           <button
             onClick={() => onMethodSelect('manual')}
-            className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            disabled={!profileCompleted}  // ✅ ADD THIS
+            className={`w-full px-4 py-3 rounded-lg transition-colors ${
+              profileCompleted
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={!profileCompleted ? 'Complete your profile to add products' : ''}  // ✅ ADD THIS
           >
             Start Manual Entry
           </button>

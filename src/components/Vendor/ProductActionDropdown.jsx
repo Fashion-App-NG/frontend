@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export const ProductActionDropdown = ({ product, onAction }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState('right');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -16,6 +17,21 @@ export const ProductActionDropdown = ({ product, onAction }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    // Calculate dropdown position when opening
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const spaceOnRight = window.innerWidth - rect.right;
+      
+      // If less than 200px space on right, position to the left
+      if (spaceOnRight < 200) {
+        setDropdownPosition('left');
+      } else {
+        setDropdownPosition('right');
+      }
+    }
+  }, [isOpen]);
 
   const handleAction = (action) => {
     console.log('🎯 ProductActionDropdown: Action triggered:', action, 'for product:', product?.name);
@@ -36,7 +52,7 @@ export const ProductActionDropdown = ({ product, onAction }) => {
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative inline-block" ref={dropdownRef}>
       <button 
         className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
         onClick={(e) => {
@@ -52,7 +68,7 @@ export const ProductActionDropdown = ({ product, onAction }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+        <div className={`absolute ${dropdownPosition === 'left' ? 'right-full mr-2' : 'right-0'} mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50`}>
           <div className="py-1">
             <button
               onClick={() => handleAction('edit')}

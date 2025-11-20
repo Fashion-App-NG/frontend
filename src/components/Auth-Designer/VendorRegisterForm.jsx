@@ -184,7 +184,7 @@ export const VendorRegisterForm = () => {
           I agree to the{' '}
           <button
             type="button"
-            onClick={() => window.open('/terms-of-service', '_blank')}
+            onClick={() => window.open('/terms', '_blank')}
             className="underline text-blue-600 hover:text-blue-800"
           >
             Terms of Service

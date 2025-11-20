@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'; // ✅ Add useCallback
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
+import VendorProfileCheck from '../VendorProfileCheck';
 
 export const VendorProductUploadContent = () => {
   const { user } = useAuth();
@@ -236,6 +237,8 @@ export const VendorProductUploadContent = () => {
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
+  const profileCompleted = user?.profileCompleted;
+
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
       {/* Header */}
@@ -276,6 +279,7 @@ export const VendorProductUploadContent = () => {
 
       {/* Main Content */}
       <div className="p-6">
+        <VendorProfileCheck />  {/* ✅ ADD THIS */}
         {/* Page Title and Actions */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[24px] font-bold text-black leading-[150%]">
@@ -292,17 +296,15 @@ export const VendorProductUploadContent = () => {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isUploading}
-              className="px-4 py-3 bg-[#2e2e2e] text-[#edff8c] rounded-[5px] font-semibold hover:bg-[#1a1a1a] transition-colors disabled:opacity-50 flex items-center gap-2"
+              disabled={!profileCompleted || isUploading}
+              className={`px-6 py-2.5 text-base font-medium rounded-lg transition-colors ${
+                !profileCompleted || isUploading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'text-[#edff8c] bg-[#2e2e2e] hover:bg-gray-800'
+              }`}
+              title={!profileCompleted ? 'Complete your profile to publish products' : ''}
             >
-              {isUploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#edff8c]"></div>
-                  Publishing...
-                </>
-              ) : (
-                'Publish Product'
-              )}
+              {isUploading ? 'Publishing...' : 'Publish Product'}
             </button>
           </div>
         </div>

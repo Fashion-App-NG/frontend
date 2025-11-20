@@ -178,35 +178,29 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      const processedUser = {
-        id: userData.id || userData._id,
-        email: userData.email,
-        role: userData.role || (userData.storeName ? 'vendor' : 'user'),
-        storeName: userData.storeName || userData.vendorProfile?.storeName,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        vendorProfile: userData.vendorProfile,
-        ...userData
+      const user = {
+        ...userData,
+        profileCompleted: userData.profileCompleted || false
       };
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 AuthContext processed user with storeName:', processedUser.storeName);
+        console.log('🔐 AuthContext processed user with storeName:', user.storeName);
       }
       
-      if (!processedUser.id || !processedUser.email) {
-        console.error('❌ AuthContext login: Invalid user data after processing', processedUser);
+      if (!user.id || !user.email) {
+        console.error('❌ AuthContext login: Invalid user data after processing', user);
         return false;
       }
       
       // ✅ UPDATE STATE FIRST, then persist
-      setUser(processedUser);
+      setUser(user);
       
       // Then save to localStorage as backup
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(processedUser));
+      localStorage.setItem('user', JSON.stringify(user));
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ AuthContext login successful with storeName:', processedUser.storeName);
+        console.log('✅ AuthContext login successful with storeName:', user.storeName);
       }
       return true;
       

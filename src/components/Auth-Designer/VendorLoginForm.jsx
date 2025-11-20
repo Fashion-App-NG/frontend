@@ -87,6 +87,7 @@ export const VendorLoginForm = () => {
         firstName: response.user?.firstName || response.firstName,
         lastName: response.user?.lastName || response.lastName,
         storeName: storeName,
+        profileCompleted: response.user?.profileCompleted || false,  // ✅ ADD THIS LINE
         profile: response.user?.profile,
         vendorProfile: response.user?.vendorProfile || response.vendorProfile || response.user?.profile
       };

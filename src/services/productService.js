@@ -156,13 +156,15 @@ class ProductService {
     }
   }
 
-  // ✅ Enhanced getVendorProducts with response logging
-  async getVendorProducts(vendorId) {
+  // ✅ Enhanced getVendorProducts with response logging and pagination support
+  async getVendorProducts(vendorId, page = 1, limit = 20) {
     try {
       // ✅ FIX: Wrap in development guard
       if (process.env.NODE_ENV === 'development') {
         console.log('📊 ProductService getVendorProducts starting:', {
           vendorId,
+          page,
+          limit,
           timestamp: new Date().toISOString()
         });
       }
@@ -178,7 +180,12 @@ class ProductService {
 
       console.log('🌐 ProductService Making fetch request...');
 
-      const response = await fetch(`${this.baseURL}/product/vendor/${vendorId}`, {
+      // ✅ Add pagination query params
+      const url = new URL(`${this.baseURL}/product/vendor/${vendorId}`);
+      url.searchParams.set('page', page.toString());
+      url.searchParams.set('limit', limit.toString());
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers,
         signal: AbortSignal.timeout(30000)

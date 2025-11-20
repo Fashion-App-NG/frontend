@@ -15,7 +15,7 @@ const VendorProfileCheck = () => {
           const response = await userService.getVendorProfile();
           
           if (response.success) {
-            const profileData = response.data || {};
+            const profileData = response.data?.vendorProfile || response.data || {};
             setIsComplete(validateVendorProfileCompleteness(profileData));
           } else {
             setIsComplete(false);
