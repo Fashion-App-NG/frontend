@@ -49,17 +49,21 @@ export const ForgotPasswordForm = () => {
     }
 
     try {
-      // ✅ Pass as object with identifier field (more explicit)
       const response = await authService.forgotPassword({ identifier: email });
       
       console.log('✅ Forgot password request successful:', response);
       
-      // ✅ Store email AND user type for password reset flow
+      // ✅ FIXED: Store both email AND userId from response
       const userType = getUserType();
       sessionStorage.setItem('passwordResetEmail', email);
+      sessionStorage.setItem('passwordResetUserId', response.userId || response.data?.userId); // ✅ ADD THIS
       sessionStorage.setItem('passwordResetUserType', userType);
       
-      console.log('🔍 Stored user type for password reset:', userType);
+      console.log('🔍 Stored password reset data:', {
+        email,
+        userId: response.userId || response.data?.userId,
+        userType
+      });
       
       setSuccess(response.message || 'An OTP has been sent to your email. Please check your email.');
       

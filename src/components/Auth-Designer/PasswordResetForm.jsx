@@ -7,6 +7,7 @@ export const PasswordResetForm = () => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState(''); // ✅ ADD THIS
   const [userType, setUserType] = useState('shopper'); // ✅ Track user type
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,16 +17,17 @@ export const PasswordResetForm = () => {
   const inputRefs = useRef([]);
 
   useEffect(() => {
-    // Get email and user type from session storage
     const resetEmail = sessionStorage.getItem('passwordResetEmail');
+    const resetUserId = sessionStorage.getItem('passwordResetUserId'); // ✅ ADD THIS
     const resetUserType = sessionStorage.getItem('passwordResetUserType') || 'shopper';
     
-    if (resetEmail) {
+    if (resetEmail && resetUserId) {  // ✅ FIXED: Check for both
       setEmail(resetEmail);
+      setUserId(resetUserId);  // ✅ ADD THIS
       setUserType(resetUserType);
-      console.log('🔍 Retrieved user type for password reset:', resetUserType);
+      console.log('🔍 Retrieved password reset data:', { email: resetEmail, userId: resetUserId, userType: resetUserType });
     } else {
-      // Redirect to forgot password if no email found
+      console.warn('❌ Missing password reset data, redirecting to forgot password');
       navigate('/forgot-password');
     }
   }, [navigate]);
@@ -152,7 +154,7 @@ export const PasswordResetForm = () => {
 
     try {
       const response = await authService.resetPassword({
-        email: email,
+        userId: userId,      // ✅ FIXED: Send userId instead of email
         code: otp.join(''),
         password: password
       });
@@ -161,6 +163,7 @@ export const PasswordResetForm = () => {
       
       // Clear session data
       sessionStorage.removeItem('passwordResetEmail');
+      sessionStorage.removeItem('passwordResetUserId');  // ✅ ADD THIS
       sessionStorage.removeItem('passwordResetUserType');
       
       setSuccess(response.message || 'Password reset successfully.');
@@ -212,8 +215,12 @@ export const PasswordResetForm = () => {
     setLastResendTime(Date.now());
     
     try {
-      // ✅ Pass as object with identifier field
-      const response = await authService.forgotPassword({ identifier: email });
+      // ✅ FIXED: Pass as object with identifier field
+      const response = await authService.forgotPassword({ 
+        identifier: email,
+        userId: userId  // ✅ ADD: Include userId for context
+      });
+      
       setOtp(['', '', '', '', '', '']);
       
       if (inputRefs.current[0]) {

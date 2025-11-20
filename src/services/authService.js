@@ -230,13 +230,18 @@ class AuthService {
 
   async resendOTP(requestData) {
     try {
-      console.log('🔄 Resending OTP to:', requestData.email || requestData.phone);
+      // ✅ Extract identifier (email or phone)
+      const identifier = typeof requestData === 'string' 
+        ? requestData 
+        : (requestData.email || requestData.phone);
+      
+      console.log('🔄 Resending OTP to:', identifier);
       
       const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: requestData.email,
+          identifier: identifier,  // ✅ Send as 'identifier'
         }),
       });
 
