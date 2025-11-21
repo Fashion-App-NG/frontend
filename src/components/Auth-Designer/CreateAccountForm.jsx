@@ -1,4 +1,3 @@
-import React from 'react';
 import { Logo } from '../Common/Logo';
 import { RegisterForm } from './RegisterForm';
 
@@ -16,7 +15,7 @@ export const CreateAccountForm = () => {
         <div className="w-6/12 ml-5 max-md:w-full max-md:ml-0">
           <img
             src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/8ddb18ee46cde82717a1ec60ec08e85f3fe7c213?placeholderIfAbsent=true"
-            alt="Fashion Culture Banner"
+            alt="Fáàrí Fashion Banner"
             className="aspect-[0.58] object-contain w-full grow rounded-[0px_0px_0px_0px] max-md:max-w-full max-md:mt-10"
           />
         </div>

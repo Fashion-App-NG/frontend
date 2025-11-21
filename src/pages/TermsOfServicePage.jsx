@@ -1,4 +1,3 @@
-
 export const TermsOfServicePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -9,7 +8,7 @@ export const TermsOfServicePage = () => {
           <div className="prose prose-lg max-w-none">
             <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-4">1. Acceptance of Terms</h2>
             <p className="text-gray-700 mb-4">
-              By accessing and using Fashion Culture platform, you accept and agree to be bound by the terms and provision of this agreement.
+              By accessing and using the Fáàrí platform, you accept and agree to be bound by the terms and provision of this agreement.
             </p>
 
             <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-4">2. User Accounts</h2>
@@ -29,7 +28,7 @@ export const TermsOfServicePage = () => {
 
             <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-4">5. Contact Information</h2>
             <p className="text-gray-700 mb-4">
-              For questions about these Terms of Service, please contact us at legal@fashionculture.com
+              For questions about these Terms of Service, please contact us at legal@faari.app
             </p>
           </div>
         </div>

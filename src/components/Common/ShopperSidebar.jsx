@@ -62,16 +62,17 @@ const ShopperSidebar = () => {
     <div className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">FC</span>
+        <Link to="/" className="flex items-center space-x-3">
+          <img 
+            src="/assets/logos/faari-icon-lg.png" 
+            alt="Fáàrí" 
+            className="h-16 w-16 object-contain"
+          />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Fáàrí</h1>
+            <p className="text-sm text-gray-500">Fashion Marketplace</p>
           </div>
-          <div className="ml-3">
-            <h1 className="text-lg font-semibold text-gray-900">FASHION</h1>
-            <p className="text-xs text-gray-500">CULTURE</p>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 mt-2">Shopper Dashboard</p>
+        </Link>
       </div>
 
       {/* Navigation */}

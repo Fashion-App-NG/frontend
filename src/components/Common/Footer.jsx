@@ -7,7 +7,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Fashion Culture</h3>
+            <h3 className="text-lg font-semibold mb-4">Fáàrí</h3>
             <p className="text-gray-400 text-sm">
               Your premier destination for fashion discovery and shopping.
             </p>

@@ -65,23 +65,22 @@ export const SidebarSection = ({ isGuest = false }) => {
 
   return (
     <div className="w-full h-full bg-white shadow-lg border-r border-gray-200 flex flex-col">
-      {/* Logo Section */}
+      {/* Logo Section - Updated to Fáàrí */}
       <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+        >
           <img
-            src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
-            alt="Fashion App Logo"
-            className="w-[38px] h-[31px] object-contain cursor-pointer"
-            onClick={() => navigate('/')}
+            src="/favicon.svg"
+            alt="Fáàrí Logo"
+            className="h-10 w-10 object-contain"
           />
-          <div 
-            className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px] cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-            <div className="whitespace-pre-wrap">FASHION  </div>
-            <div>CULTURE</div>
+          <div className="flex flex-col">
+            <div className="text-lg font-bold text-gray-900">Fáàrí</div>
+            <div className="text-xs text-gray-500">Dashboard</div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Navigation Items */}

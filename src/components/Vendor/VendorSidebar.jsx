@@ -56,31 +56,50 @@ export const VendorSidebar = () => {
         {/* Header - shows icon only when collapsed */}
         <div className="flex-shrink-0 p-4 border-b border-gray-200">
           {isCollapsed ? (
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-white font-semibold">V</span>
-            </div>
+            <Link to="/vendor/dashboard" className="flex justify-center">
+              <img 
+                src="/assets/logos/faari-icon-sm.png" 
+                alt="Fáàrí" 
+                className="h-10 w-10 object-contain"
+              />
+            </Link>
           ) : (
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold">
-                  {(user?.vendorProfile?.storeName || user?.storeName)?.charAt(0)?.toUpperCase() ||
-                   user?.firstName?.charAt(0)?.toUpperCase() ||
-                   'V'}
-                </span>
+            <Link to="/vendor/dashboard" className="block">
+              <div className="flex items-center space-x-3 mb-3">
+                <img 
+                  src="/assets/logos/faari-icon-md.png" 
+                  alt="Fáàrí" 
+                  className="h-14 w-14 object-contain"
+                />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Fáàrí</h1>
+                  <p className="text-xs text-gray-500">Vendor Portal</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.vendorProfile?.storeName || user?.storeName || 'Vendor'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user?.email || 'vendor@example.com'}
-                </p>
+              
+              {/* Vendor Info */}
+              <div className="flex items-center space-x-2 mt-3 p-2 bg-gray-50 rounded-lg">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-semibold">
+                    {(user?.vendorProfile?.storeName || user?.storeName)?.charAt(0)?.toUpperCase() ||
+                     user?.firstName?.charAt(0)?.toUpperCase() ||
+                     'V'}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {user?.vendorProfile?.storeName || user?.storeName || 'Vendor'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user?.email || 'vendor@example.com'}
+                  </p>
+                </div>
               </div>
-            </div>
+            </Link>
           )}
 
           {/* Debug Info in Development */}
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === 'development' && !isCollapsed && (
             <div className="mt-3 p-2 bg-yellow-50 rounded text-xs">
               <p><strong>ID:</strong> {user?.id || 'N/A'}</p>
               <p><strong>Role:</strong> {user?.role || 'N/A'}</p>
