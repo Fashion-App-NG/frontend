@@ -123,7 +123,7 @@ const ShopperDashboard = ({ isGuest = false }) => {
           {/* Hero Section - Fixed layout with correct components */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="grid grid-cols-12 gap-6 min-h-[300px]">
-              {/* ✅ FIXED: DiscoverSection now shows "Discover Your Fashion Culture" */}
+              {/* ✅ FIXED: DiscoverSection now shows "Discover Your Fáàrí" */}
               <div className="col-span-5">
                 <DiscoverSection />
               </div>

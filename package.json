@@ -1,7 +1,8 @@
 {
-  "name": "fashion-app-frontend",
+  "name": "faari-frontend",
   "version": "0.1.0",
   "private": true,
+  "description": "Fáàrí - Fashion Marketplace Platform",
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "axios": "^1.11.0",

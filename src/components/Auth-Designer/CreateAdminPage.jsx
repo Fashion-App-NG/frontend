@@ -1,23 +1,28 @@
-import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CreateAdminForm } from './CreateAdminForm';
 
 export const CreateAdminPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center px-4">
       <div className="w-full max-w-2xl">
-        {/* Logo Section */}
+        {/* Logo Section - Updated to Fáàrí */}
         <div className="flex justify-center mb-12">
-          <div className="flex items-center gap-1">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+          >
             <img
-              src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
-              alt="Fashion App Logo"
-              className="w-[38px] h-[31px] object-contain"
+              src="/favicon.svg"
+              alt="Fáàrí Logo"
+              className="h-12 w-12 object-contain"
             />
-            <div className="font-['Urbanist',Helvetica] font-bold text-black text-base leading-[19.2px]">
-              <div className="whitespace-pre-wrap">FASHION  </div>
-              <div>CULTURE</div>
+            <div className="flex flex-col">
+              <div className="text-2xl font-bold text-gray-900">Fáàrí</div>
+              <div className="text-sm text-gray-600">Admin Portal</div>
             </div>
-          </div>
+          </button>
         </div>
 
         <CreateAdminForm />

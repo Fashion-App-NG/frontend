@@ -53,15 +53,15 @@ export const UserTypeSelection = () => {
   return (
     <div className="relative flex h-screen w-full bg-[#f9f9f9] overflow-hidden">
       <div className="flex flex-col w-full max-w-[1000px] px-[60px] py-[80px]">
-        {/* Logo Section */}
-        <div className="flex items-center gap-1 h-[38px] mb-16">
+        {/* Logo Section - Updated to Fáàrí */}
+        <div className="flex items-center justify-center gap-3 mb-16">
           <img
-            src="https://cdn.builder.io/api/v1/image/assets/ea356ae0f1da43fbbc02727416114024/eee8f71bfde6a3b1e04aa9edd9c252a82b00ff2c?placeholderIfAbsent=true"
-            alt="Fashion App Logo"
-            className="aspect-[1.89] object-contain w-[38px] self-stretch shrink-0 my-auto"
+            src="/assets/logos/faari-icon-md@2x.png"
+            alt="Fáàrí Logo"
+            className="h-12 w-12 object-contain"
           />
-          <div className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-lg leading-normal flex-1">
-            Fashion App
+          <div className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-2xl leading-normal">
+            Fáàrí
           </div>
         </div>
 
@@ -81,11 +81,14 @@ export const UserTypeSelection = () => {
         )}
 
         {/* Welcome Section */}
-        <div className="mb-12">
-          <h1 className="font-['Urbanist',Helvetica] font-bold text-[#2d2d2d] text-4xl md:text-5xl lg:text-[56px] leading-tight mb-4">
-            Welcome to Fashion App
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome to Fáàrí
           </h1>
-          <p className="font-['Urbanist',Helvetica] font-normal text-[#666] text-lg md:text-xl leading-relaxed max-w-2xl">
+          <p className="text-gray-600 mb-4">
+            Your Fashion Marketplace
+          </p>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">
             Discover the latest trends, connect with fashion vendors, or browse as a guest. Choose your experience below.
           </p>
         </div>
@@ -144,56 +147,50 @@ export const UserTypeSelection = () => {
 
           {/* Vendor Card */}
           <div
-            className="group relative overflow-hidden bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] hover:from-[#dcfce7] hover:to-[#bbf7d0] border-2 border-[#22c55e] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            className="group relative overflow-hidden bg-gradient-to-br from-[#fef3c7] to-[#fde68a] hover:from-[#fde68a] hover:to-[#fcd34d] border-2 border-[#f59e0b] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
             onClick={handleVendorClick}
           >
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="bg-[#22c55e] p-3 rounded-full">
-                  <img
-                    className="w-6 h-6 filter brightness-0 invert"
-                    alt="Vendor icon"
-                    src="https://c.animaapp.com/mbormqrhVzbcgH/img/vector-55.svg"
-                  />
+                <div className="bg-[#f59e0b] p-3 rounded-full">
+                  <ShoppingBagIcon className="w-6 h-6 text-white" />
                 </div>
-                <span className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  Sign In
+                <span className="bg-[#f59e0b] text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  Sell
                 </span>
               </div>
               <div>
-                <p className="font-['Urbanist',Helvetica] font-bold text-[#22c55e] text-xl mb-2">
-                  Vendor Portal
+                <p className="font-['Urbanist',Helvetica] font-bold text-[#f59e0b] text-xl mb-2">
+                  Vendor Account
                 </p>
-                <p className="font-['Urbanist',Helvetica] font-normal text-[#15803d] text-sm">
-                  Access your store dashboard and manage inventory
+                <p className="font-['Urbanist',Helvetica] font-normal text-[#d97706] text-sm">
+                  Manage your store, products, and orders
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Admin Card - Development Only */}
+          {/* Admin Card - Only in Development */}
           {showAdminCard && (
             <div
-              className="group relative overflow-hidden bg-gradient-to-br from-[#fef2f2] to-[#fee2e2] hover:from-[#fee2e2] hover:to-[#fecaca] border-2 border-[#dc2626] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+              className="group relative overflow-hidden bg-gradient-to-br from-[#fce7f3] to-[#fbcfe8] hover:from-[#fbcfe8] hover:to-[#f9a8d4] border-2 border-[#ec4899] rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               onClick={handleAdminClick}
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-[#dc2626] p-3 rounded-full">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
+                  <div className="bg-[#ec4899] p-3 rounded-full">
+                    <UserIcon className="w-6 h-6 text-white" />
                   </div>
-                  <span className="bg-[#dc2626] text-white px-2 py-1 rounded-full text-xs font-semibold">
-                    DEV ONLY
+                  <span className="bg-[#ec4899] text-white px-3 py-1 rounded-full text-xs font-semibold">
+                    Admin
                   </span>
                 </div>
                 <div>
-                  <p className="font-['Urbanist',Helvetica] font-bold text-[#dc2626] text-xl mb-2">
+                  <p className="font-['Urbanist',Helvetica] font-bold text-[#ec4899] text-xl mb-2">
                     Admin Portal
                   </p>
-                  <p className="font-['Urbanist',Helvetica] font-normal text-[#991b1b] text-sm">
-                    Administrative dashboard and user management
+                  <p className="font-['Urbanist',Helvetica] font-normal text-[#db2777] text-sm">
+                    System administration and management
                   </p>
                 </div>
               </div>
@@ -201,59 +198,31 @@ export const UserTypeSelection = () => {
           )}
         </div>
 
-        {/* Information Section */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <h3 className="font-['Urbanist',Helvetica] font-semibold text-[#2d2d2d] text-lg mb-3">
-                For Shoppers
-              </h3>
-              <ul className="space-y-2 text-sm text-[#666]">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#0ea5e9] rounded-full"></div>
-                  Personalized recommendations
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#0ea5e9] rounded-full"></div>
-                  Wishlist and favorites
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#0ea5e9] rounded-full"></div>
-                  Order tracking
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-['Urbanist',Helvetica] font-semibold text-[#2d2d2d] text-lg mb-3">
-                For Vendors
-              </h3>
-              <ul className="space-y-2 text-sm text-[#666]">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22c55e] rounded-full"></div>
-                  Inventory management
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22c55e] rounded-full"></div>
-                  Sales analytics
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#22c55e] rounded-full"></div>
-                  Customer insights
-                </li>
-              </ul>
-            </div>
-          </div>
+        {/* Footer */}
+        <div className="mt-auto text-center">
+          <p className="font-['Urbanist',Helvetica] font-normal text-[#636363] text-sm">
+            © 2025 Fáàrí. All rights reserved.
+          </p>
         </div>
       </div>
 
-      {/* Right side image */}
-      <div className="hidden lg:block flex-1 relative">
-        <img
-          src="https://c.animaapp.com/mbgdqa1w85bFXv/img/mask-group.png"
-          alt="Fashion showcase"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent to-[#f9f9f9] opacity-30"></div>
+      {/* Right Side Image */}
+      <div 
+        className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden"
+        style={{
+          backgroundImage: 'url(/assets/faari-hero-bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundColor: '#7DD3C0' // Fallback color matching your logo
+        }}
+      >
+        {/* Optional overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#7DD3C0]/90 to-[#5DBFAC]/90"></div>
+        
+        <div className="text-white text-center p-12 relative z-10">
+          <h2 className="text-4xl font-bold mb-4">Join Fáàrí Today</h2>
+          <p className="text-xl">Your Fashion Journey Starts Here</p>
+        </div>
       </div>
     </div>
   );

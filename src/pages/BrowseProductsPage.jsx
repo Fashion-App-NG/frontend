@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/Product/ProductCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import productService from '../services/productService';
 import useDebounce from '../hooks/useDebounce';
+import productService from '../services/productService';
 
 const BrowseProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -86,7 +86,7 @@ const BrowseProductsPage = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link to="/" className="text-2xl font-bold text-blue-600">
-                FASHION CULTURE
+                Fáàrí
               </Link>
             </div>
             <div className="flex items-center space-x-6">
@@ -137,8 +137,21 @@ const BrowseProductsPage = () => {
       <div className="flex">
         {/* Sidebar */}
         <aside className="w-64 bg-white shadow-sm min-h-screen">
+          <div className="p-6 border-b border-gray-200">
+          <Link to="/" className="flex items-center space-x-3">
+            <img 
+              src="/assets/logos/faari-icon-md.png" 
+              alt="Fáàrí" 
+              className="h-14 w-14 object-contain"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Fáàrí</h1>
+              <p className="text-xs text-gray-500">Fashion Marketplace</p>
+            </div>
+          </Link>
+        </div>
           <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">CULTURE</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">CATEGORIES</h2>
             <p className="text-sm text-gray-600 mb-6">Shopper Dashboard</p>
             
             <nav className="space-y-2">

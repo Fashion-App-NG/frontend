@@ -1,4 +1,3 @@
-
 export const PrivacyPolicyPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -29,7 +28,7 @@ export const PrivacyPolicyPage = () => {
 
             <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-4">Contact Us</h2>
             <p className="text-gray-700 mb-4">
-              If you have questions about this Privacy Policy, please contact us at privacy@fashionculture.com
+              If you have questions about this Privacy Policy, please contact us at privacy@faari.app
             </p>
           </div>
         </div>

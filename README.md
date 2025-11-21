@@ -1,4 +1,4 @@
-# Fashion Culture - Frontend v2.2.0
+# Fáàrí - Frontend v2.2.0
 
 A comprehensive React-based fashion marketplace platform with complete vendor product management, role-based authentication, and real-time API integration.
 

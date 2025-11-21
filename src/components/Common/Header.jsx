@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Logo } from './Logo';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -18,15 +19,8 @@ const Header = () => {
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">FC</span>
-            </div>
-            <div className="ml-3">
-              <h1 className="text-lg font-semibold text-gray-900">FASHION CULTURE</h1>
-            </div>
-          </Link>
+          {/* ✅ Updated Logo */}
+          <Logo variant="full" size="md" />
 
           {/* Main Navigation */}
           <nav className="flex items-center space-x-6">
