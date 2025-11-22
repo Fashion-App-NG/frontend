@@ -2,8 +2,14 @@ import Papa from 'papaparse';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import VendorService from '../../services/vendorService';
+import vendorService from '../../services/vendorService';
 import VendorProfileCheck from '../VendorProfileCheck';
+
+// ✅ Add file size constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB total upload size
+const MAX_PRODUCTS = 100; // Maximum products per bulk upload
+const MAX_IMAGES_PER_PRODUCT = 4;
 
 export const VendorHybridBulkUpload = () => {
   const { user } = useAuth();
@@ -17,9 +23,31 @@ export const VendorHybridBulkUpload = () => {
   const [validationErrors, setValidationErrors] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, message: '' });
   const [imageMatchingResults, setImageMatchingResults] = useState([]);
-  
+  // ❌ REMOVE: Unused state
+  // const [bulkMatchResult, setBulkMatchResult] = useState(null);
+
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+
+
+  // ✅ Add helper functions
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const calculateTotalSize = (productsList = products) => {
+    return productsList.reduce((total, product) => {
+      const productImageSize = (product.images || []).reduce(
+        (imgTotal, img) => imgTotal + (img.size || 0),
+        0
+      );
+      return total + productImageSize;
+    }, 0);
+  };
 
   // ✅ Enhanced price validation function
   const validateAndCleanPrice = (priceStr) => {
@@ -393,6 +421,43 @@ export const VendorHybridBulkUpload = () => {
       if (isDev) {
         console.warn('⚠️ STAGE 1 - No valid image files found');
       }
+      alert('Please select valid image files (JPEG, PNG, GIF, WebP)');
+      return;
+    }
+
+    // Find current product
+    const product = products.find(p => p.tempId === productId);
+    const currentImages = product?.images || [];
+
+    // ✅ Check image count limit
+    if (currentImages.length + imageFiles.length > MAX_IMAGES_PER_PRODUCT) {
+      alert(`Maximum ${MAX_IMAGES_PER_PRODUCT} images allowed per product. This product already has ${currentImages.length} image(s).`);
+      return;
+    }
+
+    // ✅ Validate individual file sizes
+    const oversizedFiles = imageFiles.filter(file => file.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      alert(
+        `The following file(s) exceed the ${formatFileSize(MAX_FILE_SIZE)} limit:\n` +
+        oversizedFiles.map(f => `- ${f.name} (${formatFileSize(f.size)})`).join('\n')
+      );
+      return;
+    }
+
+    // ✅ Check total size limit
+    const currentTotalSize = calculateTotalSize();
+    const newFilesSize = imageFiles.reduce((sum, file) => sum + file.size, 0);
+    const totalSizeAfterUpload = currentTotalSize + newFilesSize;
+
+    if (totalSizeAfterUpload > MAX_TOTAL_SIZE) {
+      alert(
+        `Total upload size would exceed the ${formatFileSize(MAX_TOTAL_SIZE)} limit.\n\n` +
+        `Current total: ${formatFileSize(currentTotalSize)}\n` +
+        `New files: ${formatFileSize(newFilesSize)}\n` +
+        `Total would be: ${formatFileSize(totalSizeAfterUpload)}\n\n` +
+        `Please remove some images or select smaller files.`
+      );
       return;
     }
 
@@ -486,6 +551,11 @@ export const VendorHybridBulkUpload = () => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
+    if (imageFiles.length === 0) {
+      alert('Please select valid image files (JPEG, PNG, GIF, WebP)');
+      return;
+    }
+    
     if (isDev) {
       console.log('📷 BULK STAGE 1 - handleBulkImageUpload called:', {
         totalFiles: fileArray.length,
@@ -496,6 +566,38 @@ export const VendorHybridBulkUpload = () => {
     
     // Log BEFORE processing
     logImageState('BEFORE Bulk Image Upload', products);
+
+
+
+    // ✅ Validate individual file sizes
+    const oversizedFiles = imageFiles.filter(file => file.size > MAX_FILE_SIZE);
+    if (oversizedFiles.length > 0) {
+      alert(
+        `The following file(s) exceed the ${formatFileSize(MAX_FILE_SIZE)} limit:\n` +
+        oversizedFiles.map(f => `- ${f.name} (${formatFileSize(f.size)})`).join('\n') +
+        '\n\nPlease compress these images and try again.'
+      );
+      return;
+    }
+
+    // ✅ Check total size before processing
+    const currentTotalSize = calculateTotalSize();
+    const newFilesSize = imageFiles.reduce((sum, file) => sum + file.size, 0);
+    const totalSizeAfterUpload = currentTotalSize + newFilesSize;
+
+    if (totalSizeAfterUpload > MAX_TOTAL_SIZE) {
+      alert(
+        `Total upload size would exceed the ${formatFileSize(MAX_TOTAL_SIZE)} limit.\n\n` +
+        `Current bulk upload: ${formatFileSize(currentTotalSize)}\n` +
+        `New files: ${formatFileSize(newFilesSize)}\n` +
+        `Total would be: ${formatFileSize(totalSizeAfterUpload)}\n\n` +
+        `Recommended actions:\n` +
+        `• Remove some products from your CSV\n` +
+        `• Compress images before uploading\n` +
+        `• Split into multiple smaller uploads`
+      );
+      return;
+    }    
     
     // Create image mapping by filename (with and without extensions)
     const imageMap = {};
@@ -591,99 +693,68 @@ export const VendorHybridBulkUpload = () => {
     setStep('image-verification');
   };
 
-  // ✅ Enhanced final validation before upload
-  const validateAllProducts = () => {
-    if (isDev) {
-      console.log('🔍 FINAL VALIDATION - validateAllProducts called');
-    }
-    
-    // Log BEFORE validation
-    logImageState('BEFORE Final Validation', products);
-    
-    const errors = [];
-    const validatedProducts = [];
-    
-    products.forEach((product, index) => {
-      const validation = validateProduct(product);
-      
-      if (!validation.isValid) {
-        errors.push(`Product ${index + 1}: ${validation.errors.join(', ')}`);
-      } else {
-        validatedProducts.push(validation.cleanedProduct);
-      }
-    });
-    
-    // Log AFTER validation
-    logImageState('AFTER Final Validation', validatedProducts);
-    
-    if (isDev) {
-      console.log('🔍 FINAL VALIDATION - validateAllProducts result:', {
-        totalProducts: products.length,
-        validProducts: validatedProducts.length,
-        errors: errors.length,
-        imageComparison: {
-          beforeValidation: products.reduce((sum, p) => sum + (p.images?.length || 0), 0),
-          afterValidation: validatedProducts.reduce((sum, p) => sum + (p.images?.length || 0), 0)
-        }
-      });
-    }
-    
-    return { isValid: errors.length === 0, errors, validatedProducts };
-  };
-
-  // ✅ Enhanced bulk upload method
+  // ✅ Enhanced final upload with size check
   const handleFinalUpload = async () => {
-    const validation = validateAllProducts();
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
+    const totalSize = calculateTotalSize();
+    
+    // Final size validation
+    if (totalSize > MAX_TOTAL_SIZE) {
+      alert(
+        `Total upload size (${formatFileSize(totalSize)}) exceeds the ` +
+        `${formatFileSize(MAX_TOTAL_SIZE)} limit.\n\n` +
+        `Please remove some images or products before uploading.`
+      );
       return;
     }
 
-    const productsWithoutImages = validation.validatedProducts.filter(p => !p.images || p.images.length === 0);
-    
-    if (productsWithoutImages.length > 0) {
-      const productNames = productsWithoutImages.map(p => p.name).join(', ');
-      const proceedWithoutImages = window.confirm(
-        `⚠️ Image Warning\n\n${productsWithoutImages.length} product(s) have no images:\n${productNames}\n\nDo you want to proceed without images for these products?\n\nClick "OK" to proceed or "Cancel" to go back and add images.`
-      );
-      
-      if (!proceedWithoutImages) {
-        return;
+    // Validation
+    const validationErrors = [];
+
+    products.forEach((product, index) => {
+      if (!product.name?.trim()) {
+        validationErrors.push(`Product ${index + 1}: Name is required`);
       }
+      if (!product.pricePerYard || product.pricePerYard <= 0) {
+        validationErrors.push(`Product ${index + 1}: Valid price is required`);
+      }
+      if (!product.materialType?.trim()) {
+        validationErrors.push(`Product ${index + 1}: Material type is required`);
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      alert('Please fix the following errors:\n\n' + validationErrors.join('\n'));
+      return;
     }
 
     try {
       setStep('uploading');
       setUploadProgress({ current: 0, total: 1, message: 'Preparing unified upload...' });
 
-      const bulkProductsData = validation.validatedProducts.map((product, index) => ({
-        name: product.name.trim(),
+      const bulkProductsData = products.map(product => ({
+        name: product.name?.trim(),
         pricePerYard: parseFloat(product.pricePerYard),
-        quantity: parseInt(product.quantity),
-        materialType: product.materialType,
+        quantity: parseInt(product.quantity) || 1,
+        materialType: product.materialType?.trim(),
         vendorId: user?.id,
-        idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${index}`,
+        idNumber: product.idNumber?.trim() || `PRD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         description: product.description?.trim() || 'Bulk uploaded product',
-        pattern: product.pattern || 'Solid',
-        status: product.status,
+        pattern: product.pattern?.trim() || 'Solid',
+        status: product.status || 'Available',
         images: product.images || []
       }));
 
-      console.log('🚀 Sending bulk data to unified API:', {
-        productCount: bulkProductsData.length,
-        totalImages: bulkProductsData.reduce((sum, p) => sum + (p.images?.length || 0), 0),
-        productsWithImages: bulkProductsData.filter(p => p.images?.length > 0).length
-      });
-
       setUploadProgress({ current: 0, total: 1, message: 'Uploading all products...' });
 
-      const result = await VendorService.createBulkProducts(bulkProductsData);
-      
+      console.log(`📤 Uploading ${bulkProductsData.length} products with total size: ${formatFileSize(totalSize)}`);
+
+      const result = await vendorService.createBulkProducts(bulkProductsData);
+
       setUploadProgress({ current: 1, total: 1, message: 'Upload complete!' });
 
-      if (result.errorCount && result.errorCount > 0) {
-        navigate('/vendor/products', { 
-          state: { 
+      if (result.errors && result.errors.length > 0) {
+        navigate('/vendor/products', {
+          state: {
             message: `Bulk upload completed: ${result.createdCount} successful, ${result.errorCount} failed.`,
             type: 'warning',
             bulkUpload: true,
@@ -691,8 +762,8 @@ export const VendorHybridBulkUpload = () => {
           }
         });
       } else {
-        navigate('/vendor/products', { 
-          state: { 
+        navigate('/vendor/products', {
+          state: {
             message: `Successfully uploaded ${result.count || bulkProductsData.length} products via bulk upload!`,
             type: 'success',
             bulkUpload: true,
@@ -700,17 +771,71 @@ export const VendorHybridBulkUpload = () => {
           }
         });
       }
-
     } catch (error) {
       console.error('❌ Bulk upload failed:', error);
       
-      setValidationErrors([
+      alert(
         'Upload failed with error:',
-        error.message || 'Unknown error occurred',
-        'Please check the console for details and try again.'
-      ]);
+        error.response?.data?.message || error.message || 'Unknown error occurred'
+      );
       setStep('review');
     }
+  };
+
+  // ✅ Add size indicator component
+  const SizeIndicator = () => {
+    const totalSize = calculateTotalSize();
+    const percentage = (totalSize / MAX_TOTAL_SIZE) * 100;
+    const isNearLimit = percentage > 80;
+    const isOverLimit = percentage > 100;
+
+    const totalImages = products.reduce((sum, p) => sum + (p.images?.length || 0), 0);
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">Products:</span> {products.length} / {MAX_PRODUCTS}
+          </div>
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">Total Images:</span> {totalImages}
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center text-sm mb-2">
+          <span className={`font-medium ${isOverLimit ? 'text-red-600' : isNearLimit ? 'text-yellow-600' : 'text-gray-700'}`}>
+            Total Size: {formatFileSize(totalSize)} / {formatFileSize(MAX_TOTAL_SIZE)}
+          </span>
+          <span className={`text-xs ${isOverLimit ? 'text-red-600' : isNearLimit ? 'text-yellow-600' : 'text-gray-500'}`}>
+            {percentage.toFixed(1)}%
+          </span>
+        </div>
+        
+        <div className="w-full bg-gray-200 rounded-full h-3">
+          <div 
+            className={`h-3 rounded-full transition-all ${
+              isOverLimit ? 'bg-red-600' : 
+              isNearLimit ? 'bg-yellow-500' : 
+              'bg-green-600'
+            }`}
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        
+        {isNearLimit && !isOverLimit && (
+          <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+            <span>⚠️</span>
+            <span>Approaching upload size limit</span>
+          </p>
+        )}
+        {isOverLimit && (
+          <p className="text-xs text-red-600 mt-2 flex items-center gap-1">
+            <span>❌</span>
+            <span>Upload size limit exceeded. Please remove some images or products.</span>
+          </p>
+        )}
+      </div>
+    );
   };
 
   // ✅ Main component render
@@ -720,12 +845,8 @@ export const VendorHybridBulkUpload = () => {
       <header className="bg-white border-b border-black/8 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-[32px] font-bold text-[#3e3e3e] leading-[150%]">
-              Bulk Product Upload
-            </h1>
-            <p className="text-[16px] text-[#2e2e2e] leading-[120%]">
-              Upload multiple products using CSV or manual entry
-            </p>
+            <h1>Bulk Product Upload</h1>
+            <p>Upload multiple products using CSV or manual entry</p>
           </div>
           
           <button
@@ -737,7 +858,10 @@ export const VendorHybridBulkUpload = () => {
         </div>
       </header>
 
+      {/* ✅ CORRECT: Size indicator after header, before main content */}
       <div className="p-6">
+        {products.length > 0 && <SizeIndicator />}
+        
         <VendorProfileCheck />  {/* ✅ ADD THIS */}
         {step === 'method' && (
           <MethodSelectionStep 
@@ -1318,8 +1442,8 @@ const ReviewStep = ({ products, onUpload, onBack }) => {
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <h4 className="text-sm font-medium text-yellow-800">Image Warning</h4>
-                  <p className="text-sm text-yellow-700 mt-1">
+                  <h4 className="text-sm font-medium text-yellow-800 mb-2">Image Warning</h4>
+                  <p className="text-sm text-yellow-700">
                     {productsWithoutImages.length} product(s) have no images. Products without images may have lower visibility to customers.
                   </p>
                   <details className="mt-2">
@@ -1448,6 +1572,8 @@ const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
   );
   const hasMissingImages = totalMissing > 0;
 
+  
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="bg-white rounded-lg p-8 shadow-sm border">
@@ -1535,7 +1661,7 @@ const ImageVerificationStep = ({ matchingResults, onConfirm, onBack }) => {
                               </span>
                             </>
                           )}
-                                               </div>
+                        </div>
                         <div className="text-gray-500 text-xs">
                           {(match.fileSize / 1024 / 1024).toFixed(2)}MB
                         </div>

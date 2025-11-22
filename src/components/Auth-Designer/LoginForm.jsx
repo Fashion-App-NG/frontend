@@ -8,7 +8,7 @@ export const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -34,7 +34,6 @@ export const LoginForm = () => {
       password: formData.get('password')
     };
 
-    // Client-side validation
     if (!data.email || !data.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
@@ -43,10 +42,9 @@ export const LoginForm = () => {
 
     try {
       console.log('🔐 Shopper login attempt:', { email: data.email, password: '***' });
-      
-      // ✅ Import authService dynamically
+
       const authService = (await import('../../services/authService')).default;
-      
+
       const response = await authService.login({
         identifier: data.email,
         password: data.password,
@@ -55,7 +53,6 @@ export const LoginForm = () => {
 
       console.log('✅ Shopper login successful:', response);
 
-      // After successful login response
       const userData = {
         id: response.user?.id || response.user?._id,
         email: response.user?.email,
@@ -65,26 +62,166 @@ export const LoginForm = () => {
         ...response.user
       };
 
-      // ✅ authService already imported above
       authService.setAuthToken(response.token, 'shopper');
       authService.setUser(userData);
 
-      // ✅ Use the new login function from AuthContext
       if (response.user && response.token) {
-        await login(response.user, response.token);
-        
-        // Navigate to product browsing page
-        navigate('/shopper/browse', { 
-          state: { from: location }
-        });
-      } else {
-        setError('Invalid response from server. Please try again.');
-      }
+        // ✅ SAVE THE GUEST TOKEN **BEFORE** CALLING login()
+        const guestSessionToken = localStorage.getItem('guestSessionToken');
+        // const cartBeforeAuth = sessionStorage.getItem('cartBeforeAuth'); // ✅ Remove this line if not used
 
+        // Or keep it for debugging:
+        const cartBeforeAuth = sessionStorage.getItem('cartBeforeAuth');
+        console.log('🔍 Cart before auth:', cartBeforeAuth ? JSON.parse(cartBeforeAuth) : null);
+
+        // Store in a safe place that won't be cleared
+        if (guestSessionToken) {
+          sessionStorage.setItem('pendingMergeToken', guestSessionToken);
+        }
+
+        // NOW call login (which might clear guestSessionToken)
+        await login(response.user, response.token);
+
+        // Retrieve the saved token
+        const tokenToMerge = sessionStorage.getItem('pendingMergeToken');
+
+        if (tokenToMerge) {
+          console.log('🔄 Attempting merge with saved token:', tokenToMerge.substring(0, 50) + '...');
+
+          // ✅ DECLARE actualSessionId in outer scope
+          let actualSessionId = null;
+
+          try {
+            // ⚠️ CLIENT-SIDE JWT DECODING - SECURITY NOTE:
+            // This decoding is ONLY for extracting the sessionId to pass to the backend.
+            // The backend will re-validate the JWT and verify the sessionId exists.
+            // No sensitive operations are performed based on this decoded data alone.
+            
+            const tokenParts = tokenToMerge.split('.');
+            if (tokenParts.length !== 3) {
+              throw new Error('Invalid JWT format');
+            }
+
+            const payload = JSON.parse(atob(tokenParts[1]));
+            actualSessionId = payload.sessionId;
+
+            console.log('🔍 Decoded sessionId from JWT:', actualSessionId);
+            
+            // ✅ ALTERNATIVE: Backend could decode this instead
+            // Consider adding a /cart/prepare-merge endpoint that:
+            // 1. Accepts the JWT token
+            // 2. Decodes and validates it server-side
+            // 3. Returns the sessionId if valid
+            // This would be more secure but adds an extra API call
+
+            console.log('🔍 MERGE REQUEST DETAILS:', {
+              jwtToken: tokenToMerge.substring(0, 30) + '...',
+              extractedSessionId: actualSessionId,
+              userToken: response.token.substring(0, 30) + '...'
+            });
+
+            // ✅ Pre-check with decoded sessionId
+            const preCheckResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/cart`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${tokenToMerge}`
+              }
+            });
+
+            const preCheckData = await preCheckResponse.json();
+            console.log('🔍 Guest cart BEFORE merge:', preCheckData);
+            console.log('🔍 Guest cart items:', preCheckData.cart?.items);
+            console.log('🔍 Guest cart item count:', preCheckData.cart?.itemCount);
+
+            if (!preCheckData.cart || preCheckData.cart.items?.length === 0) {
+              console.error('❌ PROBLEM: Guest cart is empty or doesn\'t exist!');
+            } else {
+              console.log('✅ Guest cart has items BEFORE merge:', preCheckData.cart.items.length);
+            }
+          } catch (preCheckError) {
+            console.error('❌ Failed to check guest cart:', preCheckError);
+            // ✅ ADD: Prevent merge attempt if pre-check fails
+            return; // Don't proceed to merge if we can't verify cart exists
+          }
+
+          // ✅ Only attempt merge if we successfully decoded the sessionId
+          if (actualSessionId) {
+            try {
+              console.log('🌐 Making merge request to:', `${process.env.REACT_APP_API_BASE_URL}/api/cart/merge-guest`);
+
+              const mergeResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/cart/merge-guest`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${response.token}`
+                },
+                body: JSON.stringify({
+                  guestSessionId: actualSessionId  // ✅ Now accessible
+                })
+              });
+
+              console.log('🔍 Merge response status:', mergeResponse.status);
+              console.log('🔍 Merge response ok:', mergeResponse.ok);
+
+              const mergeText = await mergeResponse.text();
+              console.log('🔍 Merge raw response:', mergeText);
+
+              let mergeData;
+              try {
+                mergeData = JSON.parse(mergeText);
+                console.log('🔍 Merge parsed data:', mergeData);
+              } catch (parseError) {
+                console.error('❌ Failed to parse merge response:', parseError);
+                throw new Error('Invalid JSON response from merge endpoint');
+              }
+
+              if (!mergeResponse.ok) {
+                console.error('❌ Merge failed with status:', mergeResponse.status, mergeData);
+              } else {
+                console.log('✅ Merge response:', mergeData);
+
+                if (mergeData.cart && mergeData.cart.items && mergeData.cart.items.length > 0) {
+                  console.log('✅ Cart has items after merge:', mergeData.cart.items.length);
+                  sessionStorage.setItem('mergedCartData', JSON.stringify(mergeData.cart));
+                } else {
+                  console.warn('⚠️ Merge succeeded but cart is empty:', mergeData);
+                }
+
+                // ✅ Clear tokens
+                localStorage.removeItem('guestSessionId');
+                localStorage.removeItem('guestSessionToken');
+                sessionStorage.removeItem('cartBeforeAuth');
+                sessionStorage.removeItem('pendingMergeToken');
+              }
+
+            } catch (mergeError) {
+              console.error('❌ Cart merge exception:', mergeError);
+              console.error('❌ Error stack:', mergeError.stack);
+            }
+          } else {
+            console.error('❌ Could not decode sessionId from guest token');
+          }
+        } else {
+          console.log('ℹ️ No guest session token found - nothing to merge');
+        }
+
+        // ✅ Navigate
+        const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+        sessionStorage.removeItem('redirectAfterLogin');
+
+        console.log('🔀 Navigating to:', redirectPath || '/shopper/cart');
+
+        // ✅ Small delay
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        navigate(redirectPath || '/shopper/cart', {
+          state: { from: location, cartMerged: !!guestSessionToken, timestamp: Date.now() }
+        });
+      }
     } catch (error) {
       console.error('❌ Shopper login failed:', error);
 
-      // Handle error codes
       if (error.status === 401) {
         setError('Invalid email or password. Please try again.');
       } else if (error.status === 403) {
@@ -153,16 +290,16 @@ export const LoginForm = () => {
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
         Password
       </label>
-      <PasswordInput 
+      <PasswordInput
         name="password"
-        placeholder="Enter Password" 
+        placeholder="Enter Password"
         disabled={isLoading}
       />
 
       {/* Forgot Password Link */}
       <div className="flex justify-end mt-2">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => navigate('/forgot-password')}
           disabled={isLoading}
           className="text-[rgba(46,46,46,1)] text-sm font-normal underline hover:no-underline disabled:opacity-50"
@@ -183,7 +320,7 @@ export const LoginForm = () => {
       {/* Navigation Link */}
       <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
         <span className="self-stretch my-auto">New here?</span>
-        <button 
+        <button
           type="button"
           onClick={() => navigate('/register')}
           disabled={isLoading}

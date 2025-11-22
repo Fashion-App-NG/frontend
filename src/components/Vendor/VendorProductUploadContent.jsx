@@ -216,18 +216,19 @@ export const VendorProductUploadContent = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [formData, navigate, user?.id]);  // ✅ Add dependencies
+  }, [formData, user, navigate]);  // ✅ Add dependencies
 
+  // ✅ Add handleCancel function
   const handleCancel = () => {
-    // Confirm before leaving if form has data
-    const hasData = Object.values(formData).some(value => {
-      if (Array.isArray(value)) return value.length > 0;
-      if (typeof value === 'boolean') return false; // Don't consider status toggle
-      return value !== '';
-    });
+    const hasData = formData.productName.trim() !== '' || 
+                    formData.pricePerYard !== '' || 
+                    formData.images.length > 0 ||
+                    formData.description.trim() !== '';
 
     if (hasData) {
-      const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+      const confirmLeave = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave?'
+      );
       if (!confirmLeave) return;
     }
 

@@ -359,6 +359,7 @@ class CartService {
     try {
       const token = this.getAuthToken();
       if (!token) throw new Error('User must be authenticated to merge guest cart');
+      
       const response = await fetch(`${this.baseURL}/cart/merge-guest`, {
         method: 'POST',
         headers: {
@@ -367,16 +368,25 @@ class CartService {
         },
         body: JSON.stringify({ guestSessionId })
       });
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         throw new Error(errorData.message || `Failed to merge guest cart: ${response.status}`);
       }
+      
       const data = await response.json();
+      
+      // ✅ Clear guest tokens
       localStorage.removeItem('guestSessionId');
+      localStorage.removeItem('guestSessionToken');
+      
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Guest cart merged successfully:', data.cart);
       }
+      
+      // ✅ RETURN the merged cart data
       return data;
+      
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to merge guest cart:', error);

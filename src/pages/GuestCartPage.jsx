@@ -1,16 +1,21 @@
-import { Link, useNavigate } from 'react-router-dom'; // ✅ Remove unused useEffect
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
 
+// ✅ EXTRACT: Move to constants file
+const DEFAULT_TAX_RATE = 0.075; // 7.5% VAT
+
 const GuestCartPage = () => {
   const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
   const { 
     cartItems, 
     cartCount, 
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal,
     error,
     isLoading
   } = useCart();
@@ -24,6 +29,55 @@ const GuestCartPage = () => {
       maximumFractionDigits: 0
     }).format(price || 0);
   };
+
+  // ✅ ADD: Calculate tax total (reusing ShopperCart logic)
+  const calculateTaxTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const taxAmount = item.taxAmount || 0;
+      return total + taxAmount;
+    }, 0);
+  };
+
+  // ✅ ADD: Calculate platform fee total (reusing ShopperCart logic)
+  const calculatePlatformFeeTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const platformFee = item.platformFeeAmount || 0;
+      return total + platformFee;
+    }, 0);
+  };
+
+  // ✅ ADD: Calculate base subtotal (products only, no fees)
+  const calculateBaseSubtotal = () => {
+    return cartItems.reduce((total, item) => {
+      const basePrice = item.pricePerYard || item.price || 0;
+      const quantity = item.quantity || 1;
+      return total + (basePrice * quantity);
+    }, 0);
+  };
+
+  // ✅ ADD: Get all-inclusive price per yard (reusing ShopperCart logic)
+  const getAllInclusivePricePerYard = (item) => {
+    const basePrice = item.pricePerYard || 0;
+    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);
+    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+    return basePrice + taxPerYard + platformFeePerYard;
+  };
+
+  // ✅ ADD: Get line item total (reusing ShopperCart logic)
+  const getAllInclusiveLineItemTotal = (item) => {
+    const quantity = item.quantity || 1;
+    return getAllInclusivePricePerYard(item) * quantity;
+  };
+
+  // ✅ ADD: Calculate grand total
+  const calculateGrandTotal = () => {
+    return calculateBaseSubtotal() + calculateTaxTotal() + calculatePlatformFeeTotal();
+  };
+
+  // ✅ Get tax rate from first item
+  const taxRate = (cartItems && cartItems.length > 0) 
+    ? (cartItems[0]?.taxRate || DEFAULT_TAX_RATE) 
+    : DEFAULT_TAX_RATE;
 
   // Handle quantity updates
   const handleQuantityUpdate = (itemId, newQuantity) => {
@@ -43,6 +97,54 @@ const GuestCartPage = () => {
     if (window.confirm('Are you sure you want to clear your entire cart?')) {
       clearCart();
     }
+  };
+
+  // ✅ NEW: Handle checkout click with auth gate
+  const handleCheckoutClick = () => {
+    setShowAuthModal(true);
+  };
+
+  // ✅ NEW: Handle auth modal actions
+  const handleLogin = () => {
+    const guestToken = localStorage.getItem('guestSessionToken');
+    const guestId = localStorage.getItem('guestSessionId');
+    
+    // ✅ Wrap debug logging in development check
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 PRE-LOGIN STATE:', {
+        hasGuestToken: !!guestToken,
+        guestToken: guestToken?.substring(0, 50) + '...',
+        hasGuestId: !!guestId,
+        guestId: guestId,
+        cartItemsCount: cartItems.length,
+        cartItems: cartItems.map(item => ({
+          id: item.productId || item.id,
+          name: item.name,
+          quantity: item.quantity
+        }))
+      });
+    }
+    
+    if (!guestToken) {
+      console.warn('⚠️ No guest session token found - cart may not merge');
+    }
+    
+    sessionStorage.setItem('redirectAfterLogin', '/shopper/cart');
+    sessionStorage.setItem('cartBeforeAuth', JSON.stringify(cartItems));
+    navigate('/login/shopper');
+  };
+
+  const handleRegister = () => {
+    const guestToken = localStorage.getItem('guestSessionToken');
+    
+    if (guestToken) {
+      console.log('💾 Guest session token saved for merge:', guestToken);
+    }
+    
+    // ✅ CHANGE: Redirect to cart, not checkout
+    sessionStorage.setItem('redirectAfterLogin', '/shopper/cart'); // Changed from '/shopper/checkout'
+    sessionStorage.setItem('cartBeforeAuth', JSON.stringify(cartItems));
+    navigate('/register/shopper');
   };
 
   // Show loading state
@@ -121,7 +223,6 @@ const GuestCartPage = () => {
               </div>
             </div>
             
-            {/* Cart actions */}
             <div className="flex items-center gap-4">
               <button
                 onClick={handleClearCart}
@@ -130,7 +231,7 @@ const GuestCartPage = () => {
                 Clear Cart
               </button>
               <button
-                onClick={() => navigate('/guest/checkout')}
+                onClick={handleCheckoutClick}
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold"
               >
                 Checkout
@@ -172,11 +273,12 @@ const GuestCartPage = () => {
                       <div key={itemId} className="flex items-center py-6 border-b border-gray-200 last:border-b-0">
                         {/* Product image */}
                         <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-lg overflow-hidden">
-                          {item.images && item.images.length > 0 ? (
+                          {item.image ? (
                             <img
-                              src={getProductImageUrl(item.images[0])}
+                              src={getProductImageUrl(item)}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              onError={e => { e.target.src = '/images/default-product.jpg'; }}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -195,8 +297,24 @@ const GuestCartPage = () => {
                               {item.vendorName && (
                                 <p className="text-sm text-gray-600">by {item.vendorName}</p>
                               )}
-                              <p className="text-lg font-semibold text-gray-900 mt-1">
-                                {formatPrice(itemPrice)} per yard
+                              
+                              {/* ✅ UPDATED: Show detailed price breakdown */}
+                              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                                <p>Base: {formatPrice(itemPrice)} per yard</p>
+                                {item.taxAmount > 0 && (
+                                  <p>
+                                    Tax: {formatPrice((item.taxAmount || 0) / itemQuantity)} per yard
+                                  </p>
+                                )}
+                                {item.platformFeeAmount > 0 && (
+                                  <p>
+                                    Fee: {formatPrice((item.platformFeeAmount || 0) / itemQuantity)} per yard
+                                  </p>
+                                )}
+                              </div>
+
+                              <p className="text-lg font-semibold text-gray-900 mt-2">
+                                {formatPrice(getAllInclusivePricePerYard(item))} per yard (incl. fees & tax)
                               </p>
                             </div>
                             
@@ -241,10 +359,10 @@ const GuestCartPage = () => {
                             </div>
                           </div>
 
-                          {/* Item total */}
-                          <div className="mt-2">
-                            <p className="text-sm text-gray-600">
-                              Subtotal: {formatPrice(itemPrice * itemQuantity)}
+                          {/* ✅ Item total with breakdown */}
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-sm font-medium text-gray-900">
+                              Item Subtotal: {formatPrice(getAllInclusiveLineItemTotal(item))}
                             </p>
                           </div>
                         </div>
@@ -256,33 +374,57 @@ const GuestCartPage = () => {
             </div>
           </div>
 
-          {/* Order summary */}
+          {/* ✅ UPDATED: Order summary with detailed breakdown */}
           <div className="lg:col-span-4 mt-8 lg:mt-0">
             <div className="bg-white rounded-lg shadow-sm sticky top-4">
               <div className="p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
                 
                 <div className="space-y-3">
+                  {/* Subtotal (base prices only) */}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Items ({cartCount})</span>
-                    <span className="text-gray-900">{formatPrice(getCartTotal())}</span>
+                    <span className="text-gray-600">Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
+                    <span className="text-gray-900">{formatPrice(calculateBaseSubtotal())}</span>
                   </div>
                   
+                  {/* VAT */}
+                  {calculateTaxTotal() > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">VAT ({(taxRate * 100).toFixed(1)}%)</span>
+                      <span className="text-gray-900">{formatPrice(calculateTaxTotal())}</span>
+                    </div>
+                  )}
+                  
+                  {/* Platform Fees */}
+                  {calculatePlatformFeeTotal() > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Platform Fees</span>
+                      <span className="text-gray-900">{formatPrice(calculatePlatformFeeTotal())}</span>
+                    </div>
+                  )}
+                  
+                  {/* Shipping */}
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="text-gray-900">Calculated at checkout</span>
+                    <span className="text-gray-600">Calculated at checkout</span>
                   </div>
                   
+                  {/* Total */}
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total</span>
-                      <span>{formatPrice(getCartTotal())}</span>
+                      <span>{formatPrice(calculateGrandTotal())}</span>
                     </div>
                   </div>
+
+                  {/* ✅ Tax note */}
+                  <p className="text-xs text-gray-500 pt-2 border-t border-gray-100">
+                    * VAT is calculated on product price only. Platform fees are not taxed.
+                  </p>
                 </div>
 
                 <button
-                  onClick={() => navigate('/guest/checkout')}
+                  onClick={handleCheckoutClick}
                   className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold transition-colors"
                 >
                   Proceed to Checkout
@@ -299,6 +441,100 @@ const GuestCartPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ FIXED: Elegant Auth Modal */}
+      {showAuthModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowAuthModal(false);
+          }}
+        >
+          {/* ✅ ADD THIS WRAPPER DIV */}
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close authentication modal"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Icon */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 id="auth-modal-title" className="text-2xl font-bold text-gray-900 mb-2">
+                Ready to checkout?
+              </h3>
+              <p className="text-gray-600">
+                Sign in to complete your purchase securely
+              </p>
+            </div>
+
+            {/* Benefits */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Secure payment processing</span>
+                </div>
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Track your order in real-time</span>
+                </div>
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Save addresses for faster checkout</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleLogin}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In to Continue
+              </button>
+              
+              <button
+                onClick={handleRegister}
+                className="w-full bg-white text-blue-600 py-3 rounded-lg border-2 border-blue-600 hover:bg-blue-50 font-semibold transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Create Account
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 text-center mt-6">
+              Your cart will be saved and ready after you sign in
+            </p>
+          </div>
+          {/* ✅ END OF WRAPPER DIV */}
+        </div>
+      )}
     </div>
   );
 };
