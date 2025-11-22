@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'; // ✅ Remove unused useEffect
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
 
@@ -24,6 +24,53 @@ const GuestCartPage = () => {
       maximumFractionDigits: 0
     }).format(price || 0);
   };
+
+  // ✅ ADD: Calculate tax total (reusing ShopperCart logic)
+  const calculateTaxTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const taxAmount = item.taxAmount || 0;
+      return total + taxAmount;
+    }, 0);
+  };
+
+  // ✅ ADD: Calculate platform fee total (reusing ShopperCart logic)
+  const calculatePlatformFeeTotal = () => {
+    return cartItems.reduce((total, item) => {
+      const platformFee = item.platformFeeAmount || 0;
+      return total + platformFee;
+    }, 0);
+  };
+
+  // ✅ ADD: Calculate base subtotal (products only, no fees)
+  const calculateBaseSubtotal = () => {
+    return cartItems.reduce((total, item) => {
+      const basePrice = item.pricePerYard || item.price || 0;
+      const quantity = item.quantity || 1;
+      return total + (basePrice * quantity);
+    }, 0);
+  };
+
+  // ✅ ADD: Get all-inclusive price per yard (reusing ShopperCart logic)
+  const getAllInclusivePricePerYard = (item) => {
+    const basePrice = item.pricePerYard || 0;
+    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);
+    const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
+    return basePrice + taxPerYard + platformFeePerYard;
+  };
+
+  // ✅ ADD: Get line item total (reusing ShopperCart logic)
+  const getAllInclusiveLineItemTotal = (item) => {
+    const quantity = item.quantity || 1;
+    return getAllInclusivePricePerYard(item) * quantity;
+  };
+
+  // ✅ ADD: Calculate grand total
+  const calculateGrandTotal = () => {
+    return calculateBaseSubtotal() + calculateTaxTotal() + calculatePlatformFeeTotal();
+  };
+
+  // ✅ Get tax rate from first item
+  const taxRate = cartItems[0]?.taxRate || 0.075; // Default 7.5% VAT
 
   // Handle quantity updates
   const handleQuantityUpdate = (itemId, newQuantity) => {
@@ -195,8 +242,24 @@ const GuestCartPage = () => {
                               {item.vendorName && (
                                 <p className="text-sm text-gray-600">by {item.vendorName}</p>
                               )}
-                              <p className="text-lg font-semibold text-gray-900 mt-1">
-                                {formatPrice(itemPrice)} per yard
+                              
+                              {/* ✅ UPDATED: Show detailed price breakdown */}
+                              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                                <p>Base: {formatPrice(itemPrice)} per yard</p>
+                                {item.taxAmount > 0 && (
+                                  <p>
+                                    Tax: {formatPrice((item.taxAmount || 0) / itemQuantity)} per yard
+                                  </p>
+                                )}
+                                {item.platformFeeAmount > 0 && (
+                                  <p>
+                                    Fee: {formatPrice((item.platformFeeAmount || 0) / itemQuantity)} per yard
+                                  </p>
+                                )}
+                              </div>
+
+                              <p className="text-lg font-semibold text-gray-900 mt-2">
+                                {formatPrice(getAllInclusivePricePerYard(item))} per yard (incl. fees & tax)
                               </p>
                             </div>
                             
@@ -241,10 +304,10 @@ const GuestCartPage = () => {
                             </div>
                           </div>
 
-                          {/* Item total */}
-                          <div className="mt-2">
-                            <p className="text-sm text-gray-600">
-                              Subtotal: {formatPrice(itemPrice * itemQuantity)}
+                          {/* ✅ Item total with breakdown */}
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-sm font-medium text-gray-900">
+                              Item Subtotal: {formatPrice(getAllInclusiveLineItemTotal(item))}
                             </p>
                           </div>
                         </div>
@@ -256,29 +319,53 @@ const GuestCartPage = () => {
             </div>
           </div>
 
-          {/* Order summary */}
+          {/* ✅ UPDATED: Order summary with detailed breakdown */}
           <div className="lg:col-span-4 mt-8 lg:mt-0">
             <div className="bg-white rounded-lg shadow-sm sticky top-4">
               <div className="p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
                 
                 <div className="space-y-3">
+                  {/* Subtotal (base prices only) */}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Items ({cartCount})</span>
-                    <span className="text-gray-900">{formatPrice(getCartTotal())}</span>
+                    <span className="text-gray-600">Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
+                    <span className="text-gray-900">{formatPrice(calculateBaseSubtotal())}</span>
                   </div>
                   
+                  {/* VAT */}
+                  {calculateTaxTotal() > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">VAT ({(taxRate * 100).toFixed(1)}%)</span>
+                      <span className="text-gray-900">{formatPrice(calculateTaxTotal())}</span>
+                    </div>
+                  )}
+                  
+                  {/* Platform Fees */}
+                  {calculatePlatformFeeTotal() > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Platform Fees</span>
+                      <span className="text-gray-900">{formatPrice(calculatePlatformFeeTotal())}</span>
+                    </div>
+                  )}
+                  
+                  {/* Shipping */}
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="text-gray-900">Calculated at checkout</span>
+                    <span className="text-gray-600">Calculated at checkout</span>
                   </div>
                   
+                  {/* Total */}
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total</span>
-                      <span>{formatPrice(getCartTotal())}</span>
+                      <span>{formatPrice(calculateGrandTotal())}</span>
                     </div>
                   </div>
+
+                  {/* ✅ Tax note */}
+                  <p className="text-xs text-gray-500 pt-2 border-t border-gray-100">
+                    * VAT is calculated on product price only. Platform fees are not taxed.
+                  </p>
                 </div>
 
                 <button
