@@ -219,11 +219,12 @@ const GuestCartPage = () => {
                       <div key={itemId} className="flex items-center py-6 border-b border-gray-200 last:border-b-0">
                         {/* Product image */}
                         <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-lg overflow-hidden">
-                          {item.images && item.images.length > 0 ? (
+                          {item.image ? (
                             <img
-                              src={getProductImageUrl(item.images[0])}
+                              src={getProductImageUrl(item)}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              onError={e => { e.target.src = '/images/default-product.jpg'; }}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-200 flex items-center justify-center">
