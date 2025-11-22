@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const GuestCartPage = () => {
   const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
   const { 
     cartItems, 
     cartCount, 
@@ -92,6 +95,54 @@ const GuestCartPage = () => {
     }
   };
 
+  // ✅ NEW: Handle checkout click with auth gate
+  const handleCheckoutClick = () => {
+    setShowAuthModal(true);
+  };
+
+  // ✅ NEW: Handle auth modal actions
+  const handleLogin = () => {
+    const guestToken = localStorage.getItem('guestSessionToken');
+    const guestId = localStorage.getItem('guestSessionId');
+    
+    // ✅ DEBUG: Show all relevant state
+    console.log('🔍 PRE-LOGIN STATE:', {
+      hasGuestToken: !!guestToken,
+      guestToken: guestToken?.substring(0, 50) + '...',
+      hasGuestId: !!guestId,
+      guestId: guestId,
+      cartItemsCount: cartItems.length,
+      cartItems: cartItems.map(item => ({
+        id: item.productId || item.id,
+        name: item.name,
+        quantity: item.quantity
+      }))
+    });
+    
+    if (guestToken) {
+      console.log('💾 Guest session token saved for merge:', guestToken);
+    } else {
+      console.warn('⚠️ No guest session token found - cart may not merge');
+    }
+    
+    sessionStorage.setItem('redirectAfterLogin', '/shopper/cart');
+    sessionStorage.setItem('cartBeforeAuth', JSON.stringify(cartItems));
+    navigate('/login/shopper');
+  };
+
+  const handleRegister = () => {
+    const guestToken = localStorage.getItem('guestSessionToken');
+    
+    if (guestToken) {
+      console.log('💾 Guest session token saved for merge:', guestToken);
+    }
+    
+    // ✅ CHANGE: Redirect to cart, not checkout
+    sessionStorage.setItem('redirectAfterLogin', '/shopper/cart'); // Changed from '/shopper/checkout'
+    sessionStorage.setItem('cartBeforeAuth', JSON.stringify(cartItems));
+    navigate('/register/shopper');
+  };
+
   // Show loading state
   if (isLoading) {
     return (
@@ -168,7 +219,6 @@ const GuestCartPage = () => {
               </div>
             </div>
             
-            {/* Cart actions */}
             <div className="flex items-center gap-4">
               <button
                 onClick={handleClearCart}
@@ -177,7 +227,7 @@ const GuestCartPage = () => {
                 Clear Cart
               </button>
               <button
-                onClick={() => navigate('/guest/checkout')}
+                onClick={handleCheckoutClick}
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold"
               >
                 Checkout
@@ -370,7 +420,7 @@ const GuestCartPage = () => {
                 </div>
 
                 <button
-                  onClick={() => navigate('/guest/checkout')}
+                  onClick={handleCheckoutClick}
                   className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold transition-colors"
                 >
                   Proceed to Checkout
@@ -387,6 +437,91 @@ const GuestCartPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ NEW: Elegant Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Icon */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Ready to checkout?
+              </h3>
+              <p className="text-gray-600">
+                Sign in to complete your purchase securely
+              </p>
+            </div>
+
+            {/* Benefits */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                  <span>Secure payment processing</span>
+                </div>
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                  <span>Track your order in real-time</span>
+                </div>
+                <div className="flex items-center text-gray-700">
+                  <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                  <span>Save addresses for faster checkout</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleLogin}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In to Continue
+              </button>
+              
+              <button
+                onClick={handleRegister}
+                className="w-full bg-white text-blue-600 py-3 rounded-lg border-2 border-blue-600 hover:bg-blue-50 font-semibold transition-colors flex items-center justify-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Create Account
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 text-center mt-6">
+              Your cart will be saved and ready after you sign in
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ...rest of existing code... */}
     </div>
   );
 };
