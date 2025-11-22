@@ -25,6 +25,20 @@ export const VendorProductUploadContent = () => {
   const [showPatternDropdown, setShowPatternDropdown] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // ✅ Add helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // ✅ Add function to calculate current total size
+  const getCurrentTotalSize = useCallback(() => {
+    return formData.images.reduce((total, img) => total + (img.size || 0), 0);
+  }, [formData.images]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -216,18 +230,19 @@ export const VendorProductUploadContent = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [formData, navigate, user?.id]);  // ✅ Add dependencies
+  }, [formData, user, navigate, getCurrentTotalSize]);  // ✅ Add dependencies
 
+  // ✅ Add handleCancel function
   const handleCancel = () => {
-    // Confirm before leaving if form has data
-    const hasData = Object.values(formData).some(value => {
-      if (Array.isArray(value)) return value.length > 0;
-      if (typeof value === 'boolean') return false; // Don't consider status toggle
-      return value !== '';
-    });
+    const hasData = formData.productName.trim() !== '' || 
+                    formData.pricePerYard !== '' || 
+                    formData.images.length > 0 ||
+                    formData.description.trim() !== '';
 
     if (hasData) {
-      const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+      const confirmLeave = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave?'
+      );
       if (!confirmLeave) return;
     }
 
