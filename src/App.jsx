@@ -105,8 +105,9 @@ function App() {
                 <Header />
                 <Routes>
                   {/* Home and public routes */}
-                  <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
+                  <Route path="/" element={<Navigate to="/browse" replace />} />  {/* ✅ CHANGED: Default to browse */}
                   <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
+                  <Route path="/get-started" element={<UserTypeSelectionPage />} />  {/* ✅ ADD: Friendly alias */}
                   <Route path="/product/:id" element={<ProductDetailPage />} />
                   <Route path="/products" element={<Navigate to="/browse" replace />} />
                   <Route path="/explore" element={<GuestBrowsePage />} />
