@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
 
+// ✅ EXTRACT: Move to constants file
+const DEFAULT_TAX_RATE = 0.075; // 7.5% VAT
+
 const GuestCartPage = () => {
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -13,7 +16,6 @@ const GuestCartPage = () => {
     removeFromCart, 
     updateCartItemQuantity, 
     clearCart, 
-    getCartTotal,
     error,
     isLoading
   } = useCart();
@@ -73,7 +75,9 @@ const GuestCartPage = () => {
   };
 
   // ✅ Get tax rate from first item
-  const taxRate = cartItems[0]?.taxRate || 0.075; // Default 7.5% VAT
+  const taxRate = (cartItems && cartItems.length > 0) 
+    ? (cartItems[0]?.taxRate || DEFAULT_TAX_RATE) 
+    : DEFAULT_TAX_RATE;
 
   // Handle quantity updates
   const handleQuantityUpdate = (itemId, newQuantity) => {
@@ -105,23 +109,23 @@ const GuestCartPage = () => {
     const guestToken = localStorage.getItem('guestSessionToken');
     const guestId = localStorage.getItem('guestSessionId');
     
-    // ✅ DEBUG: Show all relevant state
-    console.log('🔍 PRE-LOGIN STATE:', {
-      hasGuestToken: !!guestToken,
-      guestToken: guestToken?.substring(0, 50) + '...',
-      hasGuestId: !!guestId,
-      guestId: guestId,
-      cartItemsCount: cartItems.length,
-      cartItems: cartItems.map(item => ({
-        id: item.productId || item.id,
-        name: item.name,
-        quantity: item.quantity
-      }))
-    });
+    // ✅ Wrap debug logging in development check
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 PRE-LOGIN STATE:', {
+        hasGuestToken: !!guestToken,
+        guestToken: guestToken?.substring(0, 50) + '...',
+        hasGuestId: !!guestId,
+        guestId: guestId,
+        cartItemsCount: cartItems.length,
+        cartItems: cartItems.map(item => ({
+          id: item.productId || item.id,
+          name: item.name,
+          quantity: item.quantity
+        }))
+      });
+    }
     
-    if (guestToken) {
-      console.log('💾 Guest session token saved for merge:', guestToken);
-    } else {
+    if (!guestToken) {
       console.warn('⚠️ No guest session token found - cart may not merge');
     }
     
@@ -438,14 +442,24 @@ const GuestCartPage = () => {
         </div>
       </div>
 
-      {/* ✅ NEW: Elegant Auth Modal */}
+      {/* ✅ FIXED: Elegant Auth Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowAuthModal(false);
+          }}
+        >
+          {/* ✅ ADD THIS WRAPPER DIV */}
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
             {/* Close button */}
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close authentication modal"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -459,7 +473,7 @@ const GuestCartPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <h3 id="auth-modal-title" className="text-2xl font-bold text-gray-900 mb-2">
                 Ready to checkout?
               </h3>
               <p className="text-gray-600">
@@ -473,19 +487,19 @@ const GuestCartPage = () => {
                 <div className="flex items-center text-gray-700">
                   <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                  </svg>
                   <span>Secure payment processing</span>
                 </div>
                 <div className="flex items-center text-gray-700">
                   <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                  </svg>
                   <span>Track your order in real-time</span>
                 </div>
                 <div className="flex items-center text-gray-700">
                   <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                  </svg>
                   <span>Save addresses for faster checkout</span>
                 </div>
               </div>
@@ -518,10 +532,9 @@ const GuestCartPage = () => {
               Your cart will be saved and ready after you sign in
             </p>
           </div>
+          {/* ✅ END OF WRAPPER DIV */}
         </div>
       )}
-
-      {/* ...rest of existing code... */}
     </div>
   );
 };

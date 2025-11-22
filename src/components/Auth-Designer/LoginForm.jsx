@@ -92,16 +92,28 @@ export const LoginForm = () => {
           let actualSessionId = null;
 
           try {
-            // ✅ DECODE JWT to extract sessionId
+            // ⚠️ CLIENT-SIDE JWT DECODING - SECURITY NOTE:
+            // This decoding is ONLY for extracting the sessionId to pass to the backend.
+            // The backend will re-validate the JWT and verify the sessionId exists.
+            // No sensitive operations are performed based on this decoded data alone.
+            
             const tokenParts = tokenToMerge.split('.');
             if (tokenParts.length !== 3) {
               throw new Error('Invalid JWT format');
             }
 
             const payload = JSON.parse(atob(tokenParts[1]));
-            actualSessionId = payload.sessionId; // ✅ Assign to outer variable
+            actualSessionId = payload.sessionId;
 
             console.log('🔍 Decoded sessionId from JWT:', actualSessionId);
+            
+            // ✅ ALTERNATIVE: Backend could decode this instead
+            // Consider adding a /cart/prepare-merge endpoint that:
+            // 1. Accepts the JWT token
+            // 2. Decodes and validates it server-side
+            // 3. Returns the sessionId if valid
+            // This would be more secure but adds an extra API call
+
             console.log('🔍 MERGE REQUEST DETAILS:', {
               jwtToken: tokenToMerge.substring(0, 30) + '...',
               extractedSessionId: actualSessionId,
@@ -129,6 +141,8 @@ export const LoginForm = () => {
             }
           } catch (preCheckError) {
             console.error('❌ Failed to check guest cart:', preCheckError);
+            // ✅ ADD: Prevent merge attempt if pre-check fails
+            return; // Don't proceed to merge if we can't verify cart exists
           }
 
           // ✅ Only attempt merge if we successfully decoded the sessionId
