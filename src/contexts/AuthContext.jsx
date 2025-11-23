@@ -10,7 +10,7 @@ export const useAuth = () => {
   return context;
 };
 
-// ✅ Add token validation helper
+// ✅ Token expiration checker (already exists, enhance it)
 const isTokenExpired = (token) => {
   if (!token) return true;
   
@@ -21,7 +21,7 @@ const isTokenExpired = (token) => {
     const payload = JSON.parse(atob(parts[1]));
     const now = Math.floor(Date.now() / 1000);
     
-    // Check if token expires in less than 5 minutes
+    // ✅ Token expires in less than 5 minutes
     return payload.exp <= now + 300;
   } catch (error) {
     console.error('Failed to validate token:', error);
@@ -29,128 +29,66 @@ const isTokenExpired = (token) => {
   }
 };
 
-const TOKEN_CHECK_INTERVAL_MS = 60 * 1000; // Every 1 minute
+//const TOKEN_CHECK_INTERVAL_MS = 60 * 1000; // Every 1 minute
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(true);//, setLoading
 
-  // ✅ Add token validation on mount and periodically
+  // ✅ Check token expiration on mount AND periodically
   useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        // ✅ Try to detect which role is logged in by checking role-specific keys
-        const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
-        let foundToken = null;
-        let foundUser = null;
-        let foundRole = null;
+    const checkTokenExpiration = () => {
+      const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+      let foundToken = null;
+      //let foundRole = null;
 
-        for (const role of roles) {
-          const roleToken = localStorage.getItem(`${role}_token`);
-          const roleUser = localStorage.getItem(`${role}_user`);
-          
-          if (roleToken && roleUser) {
-            foundToken = roleToken;
-            foundUser = roleUser;
-            foundRole = role;
-            break;
-          }
+      for (const role of roles) {
+        const roleToken = localStorage.getItem(`${role}_token`);
+        if (roleToken) {
+          foundToken = roleToken;
+          //foundRole = role;
+          break;
         }
+      }
 
-        // Fallback to default keys if no role-specific found
-        const token = foundToken || localStorage.getItem('token');
-        const userData = foundUser || localStorage.getItem('user');
+      const token = foundToken || localStorage.getItem('token');
+
+      if (token && isTokenExpired(token)) {
+        console.log('⏰ Token expired, clearing session');
         
-        // ✅ Check if token is expired
-        if (token && isTokenExpired(token)) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⏰ Token expired on init, redirecting immediately');
-          }
-          
-          // Clear all storage
-          roles.forEach(role => {
-            localStorage.removeItem(`${role}_token`);
-            localStorage.removeItem(`${role}_user`);
-          });
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('guestSessionToken');
-          
-          window.location.href = '/user-type-selection';
-          return;
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔐 AuthContext initialization:', {
-            hasToken: !!token,
-            hasUserData: !!userData,
-            tokenLength: token?.length || 0,
-            foundRole: foundRole || 'default'
-          });
-        }
-
-        if (token && userData) {
-          const parsedUser = JSON.parse(userData);
-          
-          if (parsedUser && parsedUser.id && parsedUser.email) {
-            setUser(parsedUser);
-            
-            if (process.env.NODE_ENV === 'development') {
-              console.log('✅ User restored from localStorage:', {
-                id: parsedUser.id,
-                email: parsedUser.email,
-                role: parsedUser.role || 'unknown',
-                storeName: parsedUser.storeName,
-                source: foundRole ? `${foundRole}_user` : 'user'
-              });
-            }
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('⚠️ Invalid user data found, clearing storage');
-            }
-            roles.forEach(role => {
-              localStorage.removeItem(`${role}_token`);
-              localStorage.removeItem(`${role}_user`);
-            });
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setUser(null);
-          }
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('ℹ️ No valid auth data found in localStorage');
-          }
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('❌ Failed to restore auth state:', error);
-        const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+        // ✅ Clear ALL auth tokens
         roles.forEach(role => {
           localStorage.removeItem(`${role}_token`);
           localStorage.removeItem(`${role}_user`);
         });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        
+        // ✅ Keep guest session if it exists
+        const guestToken = localStorage.getItem('guestSessionToken');
+        if (!guestToken) {
+          console.log('No guest session, redirecting to browse');
+        }
+        
         setUser(null);
-      } finally {
-        setLoading(false);
+        window.location.href = '/browse';
+        return true;
       }
+      
+      return false;
     };
 
-    initializeAuth();
+    // Initial check
+    checkTokenExpiration();
 
-    // ✅ Check token expiry every 1 minute (not 5) for faster detection
-    const intervalId = setInterval(() => {
-      const token = localStorage.getItem('token');
-      if (token && isTokenExpired(token)) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('⏰ Token expired during session, logging out');
-        }
-        logout();
+    // ✅ Check every 60 seconds
+    const interval = setInterval(() => {
+      if (checkTokenExpiration()) {
+        clearInterval(interval);
       }
-    }, TOKEN_CHECK_INTERVAL_MS); // Every 1 minute
+    }, 60000);
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(interval);
   }, []);
 
   const login = (userData, token) => {
@@ -217,29 +155,34 @@ export const AuthProvider = ({ children }) => {
     return login(userData, token);
   };
 
-  const logout = () => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔐 AuthContext logout - clearing all auth data');
+  // ✅ Enhanced logout
+  const logout = async () => {
+    try {
+      const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+      
+      // Clear all role-specific tokens
+      roles.forEach(role => {
+        localStorage.removeItem(`${role}_token`);
+        localStorage.removeItem(`${role}_user`);
+      });
+      
+      // Clear default tokens
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // ✅ IMPORTANT: Keep guest session for cart persistence
+      const guestToken = localStorage.getItem('guestSessionToken');
+      console.log(guestToken ? '✅ Guest session preserved' : 'ℹ️ No guest session to preserve');
+      
+      setUser(null);
+      
+      // ✅ FIX: Use navigate instead of window.location for proper React Router handling
+      // This allows the App.jsx route to handle the redirect
+      return true; // Signal successful logout
+    } catch (error) {
+      console.error('Logout error:', error);
+      return false;
     }
-    
-    // ✅ Clear all role-specific keys
-    const roles = ['shopper', 'vendor', 'admin', 'superadmin'];
-    roles.forEach(role => {
-      localStorage.removeItem(`${role}_token`);
-      localStorage.removeItem(`${role}_user`);
-    });
-    
-    // Clear legacy keys
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('vendorToken');
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('guestSessionToken');
-    
-    setUser(null);
-    
-    window.location.href = '/user-type-selection';
   };
 
   const value = {

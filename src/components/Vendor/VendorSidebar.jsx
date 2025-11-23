@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 // React Component: Vendor navigation sidebar matching design specs
 export const VendorSidebar = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth(); // ✅ ADD: Import logout
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -27,6 +28,20 @@ export const VendorSidebar = () => {
       return location.pathname === '/vendor/dashboard' || location.pathname === '/vendor';
     }
     return location.pathname === path;
+  };
+
+  // ✅ ADD: Logout handler
+  const handleSignOut = async () => {
+    try {
+      console.log('🔐 Vendor signing out...');
+      const success = await logout();
+      if (success) {
+        navigate('/browse', { replace: true });
+      }
+    } catch (error) {
+      console.error('❌ Vendor sign out error:', error);
+      navigate('/browse', { replace: true }); // Still navigate on error
+    }
   };
 
   const menuItems = [
@@ -129,18 +144,18 @@ export const VendorSidebar = () => {
           ))}
         </nav>
 
-        {/* Footer - icon only when collapsed */}
+        {/* Footer - FIXED: Use button with logout handler */}
         <div className="flex-shrink-0 p-4 border-t border-gray-200">
-          <Link
-            to="/login"
-            className={`flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg ${
+          <button
+            onClick={handleSignOut}
+            className={`flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg w-full ${
               isCollapsed ? 'justify-center' : ''
             }`}
             title={isCollapsed ? "Sign out" : ''}
           >
             <span className={`${isCollapsed ? 'text-xl' : 'mr-3'}`}>🚪</span>
             {!isCollapsed && "Sign out"}
-          </Link>
+          </button>
         </div>
       </div>
     </>

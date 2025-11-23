@@ -104,8 +104,10 @@ function App() {
               <div className="App">
                 <Header />
                 <Routes>
+                  {/* Home route - redirect to browse by default */}
+                  <Route path="/" element={<Navigate to="/browse" replace />} />
+                  
                   {/* Home and public routes */}
-                  <Route path="/" element={<Navigate to="/browse" replace />} />  {/* ✅ CHANGED: Default to browse */}
                   <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
                   <Route path="/get-started" element={<UserTypeSelectionPage />} />  {/* ✅ ADD: Friendly alias */}
                   <Route path="/product/:id" element={<ProductDetailPage />} />

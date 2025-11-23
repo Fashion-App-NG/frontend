@@ -62,13 +62,14 @@ const ShopperLayout = () => {
 
   const handleSignOut = async () => {
     try {
-      console.log('🔄 Shopper signing out from:', location.pathname);
-      await logout();
-      // Navigation handled by AuthContext
+      console.log('🔐 Shopper signing out...');
+      const success = await logout();
+      if (success) {
+        navigate('/browse', { replace: true }); // ✅ Navigate to browse
+      }
     } catch (error) {
       console.error('❌ Sign out error:', error);
-      // Force navigation even on error
-      navigate('/login', { replace: true });
+      navigate('/browse', { replace: true }); // ✅ Still navigate even on error
     }
   };
 

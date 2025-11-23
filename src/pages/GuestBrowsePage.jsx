@@ -1,11 +1,38 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GuestSidebar from '../components/Common/GuestSidebar';
+import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import ProductBrowsePage from './ProductBrowsePage';
 
 const GuestBrowsePage = () => {
   const navigate = useNavigate();
   const { cartCount } = useCart();
+  const { user, isAuthenticated } = useAuth();
+
+  // ✅ ROLE-BASED REDIRECT
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'vendor') {
+        // Redirect vendor to dashboard with message
+        navigate('/vendor/dashboard', { 
+          replace: true,
+          state: { 
+            message: 'Vendors cannot browse products. Please sign out to browse as a guest.',
+            type: 'info'
+          }
+        });
+      } else if (user.role === 'shopper') {
+        // Redirect shopper to authenticated browse
+        navigate('/shopper/browse', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // ✅ Only render for true guests (not authenticated)
+  if (isAuthenticated) {
+    return null; // Redirect in progress
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -18,7 +45,7 @@ const GuestBrowsePage = () => {
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-semibold text-gray-900">Browse Fabrics</h1>
                 
-                {/* ✅ ADD: Get Started badge/link */}
+                {/* ✅ Get Started badge/link */}
                 <button
                   onClick={() => navigate('/get-started')}
                   className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-lg hover:from-teal-600 hover:to-teal-700 transition-all shadow-sm text-sm font-medium"
@@ -31,17 +58,6 @@ const GuestBrowsePage = () => {
               </div>
               
               <div className="flex items-center gap-3">
-                {/* ✅ Mobile Get Started button */}
-                <button
-                  onClick={() => navigate('/get-started')}
-                  className="sm:hidden flex items-center gap-1 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Join
-                </button>
-
                 {/* Cart button */}
                 <button
                   onClick={() => navigate('/guest/cart')}
@@ -66,7 +82,7 @@ const GuestBrowsePage = () => {
           <ProductBrowsePage />
         </main>
 
-        {/* ✅ OPTIONAL: Floating "Get Started" button */}
+        {/* Floating "Get Started" button */}
         <button
           onClick={() => navigate('/get-started')}
           className="fixed bottom-6 right-6 bg-gradient-to-r from-teal-500 to-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl hover:from-teal-600 hover:to-teal-700 transition-all flex items-center gap-2 font-semibold z-50 group"
