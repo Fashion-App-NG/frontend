@@ -1,33 +1,49 @@
-import React from 'react';
-import { ShopperDashboard } from '../components/Auth/Dashboard/ShopperDashboard';
+import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // If user is not authenticated, redirect to login
-  if (!isAuthenticated) {
+  useEffect(() => {
+    // ✅ FIX: Wait for loading to complete
+    if (loading) return;
+
+    // ✅ FIX: Check if user exists before accessing properties
+    if (!user) return;
+
+    if (isAuthenticated && user) {
+      // Redirect based on role
+      if (user.role === 'vendor') {
+        navigate('/vendor/dashboard', { replace: true });
+      } else if (user.role === 'shopper') {
+        navigate('/shopper/browse', { replace: true });
+      } else if (user.role === 'admin' || user.role === 'superadmin') {
+        navigate('/admin/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, loading, navigate]);
+
+  // ✅ FIX: Show loading spinner while auth initializes
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Please log in to access your dashboard
-          </h1>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors"
-          >
-            Go to Login
-          </button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Show dashboard for authenticated users
-  return <ShopperDashboard />;
+  // ✅ FIX: Redirect unauthenticated users to browse immediately
+  if (!isAuthenticated) {
+    return <Navigate to="/browse" replace />;
+  }
+
+  // ✅ Redirect in progress for authenticated users
+  return null;
 };
 
 export default HomePage;
