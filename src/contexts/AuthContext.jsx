@@ -88,6 +88,9 @@ export const AuthProvider = ({ children }) => {
   // ✅ Check token expiration periodically
   useEffect(() => {
     const checkTokenExpiration = () => {
+      // ✅ FIX: Early return if no user logged in
+      if (!user) return false;
+
       const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
       let foundToken = null;
 
@@ -126,7 +129,10 @@ export const AuthProvider = ({ children }) => {
       return false;
     };
 
-    // ✅ Check every 60 seconds
+    // ✅ FIX: Only set interval if user is logged in
+    if (!user) return;
+
+    // Check every 60 seconds
     const interval = setInterval(() => {
       if (checkTokenExpiration()) {
         clearInterval(interval);
@@ -134,7 +140,7 @@ export const AuthProvider = ({ children }) => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user]); // ✅ FIX: Add user as dependency
 
   const login = (userData, token) => {
     try {

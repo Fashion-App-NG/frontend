@@ -1,12 +1,32 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import VendorDashboardContent from '../components/Vendor/VendorDashboardContent';
 
 const VendorDashboardPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, loading } = useAuth();
   const [showMessage, setShowMessage] = useState(false);
   const message = location.state?.message;
   const messageType = location.state?.type;
+
+  // ✅ FIX: Re-add authentication and role-based access control
+  useEffect(() => {
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated, redirecting to login');
+      navigate('/login/vendor', { replace: true });
+      return;
+    }
+
+    if (user && user.role !== 'vendor') {
+      console.log('❌ User is not a vendor, redirecting');
+      navigate('/', { replace: true });
+      return;
+    }
+  }, [isAuthenticated, user, loading, navigate]);
 
   useEffect(() => {
     if (message) {
@@ -23,6 +43,23 @@ const VendorDashboardPage = () => {
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+  // ✅ Show loading while auth checks complete
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Don't render until auth is verified
+  if (!isAuthenticated || !user || user.role !== 'vendor') {
+    return null;
+  }
 
   return (
     <>

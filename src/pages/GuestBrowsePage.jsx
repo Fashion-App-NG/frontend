@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GuestSidebar from '../components/Common/GuestSidebar';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,10 +8,17 @@ import ProductBrowsePage from './ProductBrowsePage';
 const GuestBrowsePage = () => {
   const navigate = useNavigate();
   const { cartCount } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ✅ ROLE-BASED REDIRECT
   useEffect(() => {
+    // ✅ FIX: Wait for auth to load
+    if (loading) return;
+
+    // ✅ FIX: Check user exists before accessing role
+    if (!user) return;
+
     if (isAuthenticated && user) {
       if (user.role === 'vendor') {
         // Redirect vendor to dashboard with message
@@ -27,7 +34,31 @@ const GuestBrowsePage = () => {
         navigate('/shopper/browse', { replace: true });
       }
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, loading, navigate]);
+
+  // ✅ Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // ✅ FIX: Show loading state while auth initializes
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ Only render for true guests (not authenticated)
   if (isAuthenticated) {
@@ -36,7 +67,20 @@ const GuestBrowsePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <GuestSidebar />
+      {/* ✅ Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* ✅ Responsive Sidebar */}
+      <GuestSidebar 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+
       <div className="flex-1 relative">
         {/* ✅ Enhanced cart header with Get Started button */}
         <div className="bg-white shadow-sm border-b">
