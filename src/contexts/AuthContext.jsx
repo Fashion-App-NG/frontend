@@ -10,7 +10,7 @@ export const useAuth = () => {
   return context;
 };
 
-// ✅ Token expiration checker (already exists, enhance it)
+// ✅ Token expiration checker
 const isTokenExpired = (token) => {
   if (!token) return true;
   
@@ -21,7 +21,7 @@ const isTokenExpired = (token) => {
     const payload = JSON.parse(atob(parts[1]));
     const now = Math.floor(Date.now() / 1000);
     
-    // ✅ Token expires in less than 5 minutes
+    // Token expires in less than 5 minutes
     return payload.exp <= now + 300;
   } catch (error) {
     console.error('Failed to validate token:', error);
@@ -29,24 +29,72 @@ const isTokenExpired = (token) => {
   }
 };
 
-//const TOKEN_CHECK_INTERVAL_MS = 60 * 1000; // Every 1 minute
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading] = useState(true);//, setLoading
+  const [loading, setLoading] = useState(true); // ✅ FIXED: Now we use setLoading
 
-  // ✅ Check token expiration on mount AND periodically
+  // ✅ FIXED: Initialize user from localStorage on mount
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
+        let foundToken = null;
+        let foundUser = null;
+
+        // Check for role-specific tokens
+        for (const role of roles) {
+          const roleToken = localStorage.getItem(`${role}_token`);
+          if (roleToken) {
+            foundToken = roleToken;
+            foundUser = localStorage.getItem(`${role}_user`);
+            break;
+          }
+        }
+
+        // Fallback to default keys
+        if (!foundToken) {
+          foundToken = localStorage.getItem('token');
+          foundUser = localStorage.getItem('user');
+        }
+
+        // ✅ Validate token and restore user
+        if (foundToken && !isTokenExpired(foundToken)) {
+          if (foundUser) {
+            const userData = JSON.parse(foundUser);
+            console.log('✅ User restored from localStorage:', userData);
+            setUser(userData);
+          }
+        } else if (foundToken) {
+          // Token expired, clear it
+          console.log('⏰ Token expired on mount, clearing storage');
+          roles.forEach(role => {
+            localStorage.removeItem(`${role}_token`);
+            localStorage.removeItem(`${role}_user`);
+          });
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize auth:', error);
+      } finally {
+        // ✅ FIXED: Always set loading to false after initialization
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // ✅ Check token expiration periodically
   useEffect(() => {
     const checkTokenExpiration = () => {
       const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
       let foundToken = null;
-      //let foundRole = null;
 
       for (const role of roles) {
         const roleToken = localStorage.getItem(`${role}_token`);
         if (roleToken) {
           foundToken = roleToken;
-          //foundRole = role;
           break;
         }
       }
@@ -56,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       if (token && isTokenExpired(token)) {
         console.log('⏰ Token expired, clearing session');
         
-        // ✅ Clear ALL auth tokens
+        // Clear ALL auth tokens
         roles.forEach(role => {
           localStorage.removeItem(`${role}_token`);
           localStorage.removeItem(`${role}_user`);
@@ -64,7 +112,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         
-        // ✅ Keep guest session if it exists
+        // Keep guest session if it exists
         const guestToken = localStorage.getItem('guestSessionToken');
         if (!guestToken) {
           console.log('No guest session, redirecting to browse');
@@ -77,9 +125,6 @@ export const AuthProvider = ({ children }) => {
       
       return false;
     };
-
-    // Initial check
-    checkTokenExpiration();
 
     // ✅ Check every 60 seconds
     const interval = setInterval(() => {
@@ -110,7 +155,7 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      // ✅ Check if token is already expired
+      // Check if token is already expired
       if (isTokenExpired(token)) {
         console.error('❌ Cannot login with expired token');
         return false;
@@ -130,12 +175,18 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
       
-      // ✅ UPDATE STATE FIRST, then persist
+      // Update state first
       setUser(user);
       
       // Then save to localStorage as backup
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      
+      // Also save role-specific if role exists
+      if (user.role) {
+        localStorage.setItem(`${user.role}_token`, token);
+        localStorage.setItem(`${user.role}_user`, JSON.stringify(user));
+      }
       
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ AuthContext login successful with storeName:', user.storeName);
@@ -148,14 +199,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ ADD: Register function (placeholder for now)
   const register = async (userData, token) => {
     // For now, register works the same as login
-    // You can enhance this later with specific registration logic
     return login(userData, token);
   };
 
-  // ✅ Enhanced logout
   const logout = async () => {
     try {
       const roles = ['vendor', 'admin', 'superadmin', 'shopper'];
@@ -170,14 +218,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // ✅ IMPORTANT: Keep guest session for cart persistence
+      // Keep guest session for cart persistence
       const guestToken = localStorage.getItem('guestSessionToken');
       console.log(guestToken ? '✅ Guest session preserved' : 'ℹ️ No guest session to preserve');
       
       setUser(null);
       
-      // ✅ FIX: Use navigate instead of window.location for proper React Router handling
-      // This allows the App.jsx route to handle the redirect
       return true; // Signal successful logout
     } catch (error) {
       console.error('Logout error:', error);
