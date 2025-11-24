@@ -8,8 +8,8 @@ const VendorDashboardPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading } = useAuth();
   const [showMessage, setShowMessage] = useState(false);
-  const message = location.state?.message;
-  const messageType = location.state?.type;
+  const [displayMessage, setDisplayMessage] = useState(null); // ✅ Store message locally
+  const [displayMessageType, setDisplayMessageType] = useState(null); // ✅ Store type locally
 
   // ✅ FIX: Re-add authentication and role-based access control
   useEffect(() => {
@@ -28,21 +28,33 @@ const VendorDashboardPage = () => {
     }
   }, [isAuthenticated, user, loading, navigate]);
 
+  // ✅ FIX: Handle message display with proper state management
   useEffect(() => {
+    const message = location.state?.message;
+    const messageType = location.state?.type;
+
     if (message) {
+      // Store message in local state first
+      setDisplayMessage(message);
+      setDisplayMessageType(messageType);
       setShowMessage(true);
-      
-      // Clear message from location state
-      window.history.replaceState({}, document.title);
+
+      // Clear location state using navigate (safer than window.history)
+      navigate(location.pathname, { replace: true, state: {} });
       
       // Auto-hide after 5 seconds
       const timer = setTimeout(() => {
         setShowMessage(false);
+        // Clear local state after animation completes
+        setTimeout(() => {
+          setDisplayMessage(null);
+          setDisplayMessageType(null);
+        }, 300); // Wait for fade-out animation
       }, 5000);
       
       return () => clearTimeout(timer);
     }
-  }, [message]);
+  }, [location.state?.message, location.state?.type, location.pathname, navigate]); // ✅ Added location.state?.type
 
   // ✅ Show loading while auth checks complete
   if (loading) {
@@ -63,21 +75,27 @@ const VendorDashboardPage = () => {
 
   return (
     <>
-      {/* ✅ Toast message */}
-      {showMessage && (
+      {/* ✅ Toast message - now uses local state */}
+      {showMessage && displayMessage && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-          <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 max-w-md ${
-            messageType === 'info' ? 'bg-blue-50 border-l-4 border-blue-500' :
-            messageType === 'success' ? 'bg-green-50 border-l-4 border-green-500' :
+          <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 max-w-md transition-opacity duration-300 ${
+            displayMessageType === 'info' ? 'bg-blue-50 border-l-4 border-blue-500' :
+            displayMessageType === 'success' ? 'bg-green-50 border-l-4 border-green-500' :
             'bg-yellow-50 border-l-4 border-yellow-500'
           }`}>
             <svg className="w-5 h-5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm text-gray-800">{message}</p>
+            <p className="text-sm text-gray-800">{displayMessage}</p>
             <button
-              onClick={() => setShowMessage(false)}
-              className="ml-auto text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setShowMessage(false);
+                setTimeout(() => {
+                  setDisplayMessage(null);
+                  setDisplayMessageType(null);
+                }, 300);
+              }}
+              className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
