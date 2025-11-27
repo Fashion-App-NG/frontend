@@ -31,14 +31,14 @@ export const Logo = ({
     );
   }
 
+  // ✅ ONLY CHANGE: Removed the text span, just show the logo
   return (
-    <Link to={linkTo} className={`inline-flex items-center space-x-3 ${className}`}>
+    <Link to={linkTo} className={`inline-flex ${className}`}>
       <img
         src="/favicon.svg"
         alt="Fáàrí"
         className={`${sizes.icon[size]} object-contain`}
       />
-      <span className="text-xl font-bold text-gray-900">Fáàrí</span>
     </Link>
   );
 };

@@ -19,8 +19,10 @@ const Header = () => {
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* ✅ Updated Logo */}
-          <Logo variant="full" size="md" />
+          {/* ✅ Logo with right margin */}
+          <div className="mr-8 sm:mr-12">
+            <Logo variant="full" size="md" />
+          </div>
 
           {/* Main Navigation */}
           <nav className="flex items-center space-x-6">
