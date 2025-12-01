@@ -129,8 +129,8 @@ const ProductCard = ({
       className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${className}`}
       onClick={handleCardClick}
     >
-      {/* Product Image */}
-      <div className="relative aspect-square bg-gray-200">
+      {/* ✅ Product Image - Responsive Aspect Ratio */}
+      <div className="relative aspect-[4/3] sm:aspect-square bg-gray-200">
         <img
           src={getImageSrc()}
           alt={product.name}
@@ -143,14 +143,15 @@ const ProductCard = ({
         {showFavoriteButton && isAuthenticated && (
           <button
             onClick={handleFavoriteClick}
-            className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${isProductFavorited
-              ? 'bg-red-100 text-red-600'
-              : 'bg-white/80 text-gray-600 hover:text-red-600'
-              }`}
+            className={`absolute top-2 right-2 p-1.5 sm:p-2 rounded-full transition-colors ${
+              isProductFavorited
+                ? 'bg-red-100 text-red-600'
+                : 'bg-white/80 text-gray-600 hover:text-red-600'
+            }`}
             aria-label={isProductFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4 sm:w-5 sm:h-5"
               fill={isProductFavorited ? 'currentColor' : 'none'}
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -167,32 +168,33 @@ const ProductCard = ({
 
         {/* Stock Status Badge */}
         <div className="absolute top-2 left-2">
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.quantity > 10
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          product.quantity > 10
             ? 'bg-green-100 text-green-800'
             : product.quantity > 0
               ? 'bg-yellow-100 text-yellow-800'
               : 'bg-red-100 text-red-800'
-            }`}>
-            {product.quantity > 10 ? 'In Stock' : product.quantity > 0 ? 'Low Stock' : 'Out of Stock'}
-          </span>
+        }`}>
+          {product.quantity > 10 ? 'In Stock' : product.quantity > 0 ? 'Low Stock' : 'Out of Stock'}
+        </span>
         </div>
       </div>
 
-      {/* Product Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+      {/* ✅ Product Info - Responsive Padding & Text */}
+      <div className="p-3 sm:p-4">
+        <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 line-clamp-2">
           {product.name}
         </h3>
 
-        <p className="text-lg font-bold text-blue-600 mb-2">
+        <p className="text-base sm:text-lg font-bold text-blue-600 mb-2">
           {formatPrice(displayPrice)}
           <span className="text-xs text-gray-500 font-normal">
             {' '}per yard (incl. {vatRate > 0 ? `${(vatRate * 100).toFixed(1)}% VAT &` : ''} fees)
           </span>
         </p>
 
-        {/* Price breakdown with proper decimal handling */}
-        <div className="text-xs text-gray-500 mb-2">
+        {/* ✅ Price breakdown - Hide on mobile to save space */}
+        <div className="hidden sm:block text-xs text-gray-500 mb-2">
           <div>Base: {formatPrice(basePrice)}</div>
           {taxAmount > 0 && (
             <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(taxAmount)}</div>
@@ -211,11 +213,11 @@ const ProductCard = ({
 
         {/* Vendor Info */}
         {showVendorInfo && (
-          <div className="flex items-center text-xs text-gray-600">
+          <div className="flex items-center text-xs text-gray-600 mb-3">
             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m11 0a2 2 0 01-2 2H7a2 2 0 01-2-2m2-2h2m2 2h4" />
             </svg>
-            <span>By: {product.vendorName || 'Fashion Store'}</span>
+            <span className="truncate">By: {product.vendorName || 'Fashion Store'}</span>
           </div>
         )}
 
@@ -230,7 +232,7 @@ const ProductCard = ({
             <button
               onClick={handleAddToCart}
               disabled={isAddingToCart || isInCart(product._id || product.id)}
-              className={`mt-4 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-full py-2 sm:py-2.5 px-4 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 isInCart?.(product._id || product.id)
                   ? 'bg-green-600 hover:bg-green-700'
                   : ''

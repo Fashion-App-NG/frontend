@@ -119,7 +119,7 @@ const ProductBrowsePage = () => {
             </div>
 
             {/* ✅ View Toggle (Desktop Only) */}
-            <div className="hidden sm:block">
+            <div className="flex items-center justify-end">
               <ProductViewToggle 
                 currentView={view}
                 onViewChange={handleViewChange}

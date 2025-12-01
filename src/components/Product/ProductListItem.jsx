@@ -27,44 +27,47 @@ const ProductListItem = ({ product }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4">
-      <div className="flex gap-4">
+    <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 sm:p-4">
+      <div className="flex gap-3 sm:gap-4">
         {/* Image section */}
         <div className="relative flex-shrink-0">
           <img 
             src={getDisplayImage()}
             alt={product.name || 'Product'}
-            className="w-20 h-20 rounded-lg object-cover bg-gray-100"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover bg-gray-100"
             onError={() => setImageError(true)}
             onLoad={() => setImageError(false)}
           />
           
           {/* Image Count Badge */}
           {product.images && product.images.length > 1 && (
-            <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+            <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-semibold text-[10px] sm:text-xs">
               {product.images.length}
             </div>
           )}
         </div>
 
         {/* Product Details */}
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2">
+            {product.name}
+          </h3>
           
-          <div className="mb-3">
-            <p className="text-xl font-bold text-blue-600">
+          <div className="mb-2">
+            <p className="text-base sm:text-xl font-bold text-blue-600">
               {formatPrice(displayPrice)}
-              <span className="text-sm text-gray-500 font-normal ml-1">
+              <span className="text-xs sm:text-sm text-gray-500 font-normal ml-1">
                 per yard
               </span>
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            {/* Hide detailed breakdown on mobile */}
+            <p className="hidden sm:block text-xs text-gray-500 mt-1">
               Includes {vatRate > 0 ? `${(vatRate * 100).toFixed(1)}% VAT and` : ''} platform fees
             </p>
           </div>
 
-          {/* Price breakdown - show on list view */}
-          <div className="text-sm text-gray-600 mb-3 space-y-1">
+          {/* Price breakdown - Desktop only */}
+          <div className="hidden lg:block text-sm text-gray-600 mb-3 space-y-1">
             <div className="flex justify-between">
               <span>Base Price:</span>
               <span>{formatPrice(product.pricePerYard)}</span>
@@ -80,6 +83,14 @@ const ProductListItem = ({ product }) => {
                 <span>Platform Fee:</span>
                 <span>{formatPrice(product.platformFee.amount)}</span>
               </div>
+            )}
+          </div>
+
+          {/* Compact info for mobile */}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span className="truncate">{product.materialType || 'Material'}</span>
+            {product.quantity && (
+              <span className="ml-2 flex-shrink-0">{product.quantity} yds</span>
             )}
           </div>
         </div>
