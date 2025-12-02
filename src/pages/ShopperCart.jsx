@@ -1,7 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/formatPrice';
-import { calculateSubtotal } from '../utils/priceCalculations';
 import { getProductImageUrl } from '../utils/productUtils';
 
 const ShopperCart = () => {
@@ -310,19 +309,13 @@ const ShopperCart = () => {
                   {/* Subtotal */}
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-gray-600">Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
-                    <span className="text-gray-900 font-medium">{formatPrice(calculateSubtotal(cartItems))}</span>
+                    <span className="text-gray-900 font-medium">{formatPrice(getAllInclusiveSubtotal())}</span>
                   </div>
                   
-                  {/* VAT */}
-                  <div className="flex justify-between text-sm sm:text-base">
-                    <span className="text-gray-600">VAT ({(taxRate * 100).toFixed(1)}%)</span>
-                    <span className="text-gray-900 font-medium">{formatPrice(calculateTaxTotal())}</span>
-                  </div>
-
-                  {/* Platform Fees */}
+                  {/* Shipping */}
                   <div className="flex justify-between text-sm sm:text-base pb-3 border-b border-gray-200">
-                    <span className="text-gray-600">Platform Fees</span>
-                    <span className="text-gray-900 font-medium">{formatPrice(calculatePlatformFeeTotal())}</span>
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="text-gray-600">Calculated at checkout</span>
                   </div>
                   
                   {/* Total */}
@@ -330,10 +323,6 @@ const ShopperCart = () => {
                     <span>Total</span>
                     <span>{formatPrice(getAllInclusiveSubtotal())}</span>
                   </div>
-
-                  <p className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-                    * VAT is calculated on product price only. Platform fees are not taxed.
-                  </p>
                 </div>
 
                 <Link
