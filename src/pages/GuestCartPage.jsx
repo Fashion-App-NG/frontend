@@ -204,36 +204,36 @@ const GuestCartPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Made Sticky */}
+      {/* Header - Sticky on Mobile */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-3 sm:py-4">
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0">
               <button
                 onClick={() => navigate('/browse')}
-                className="text-gray-600 hover:text-gray-800 mr-3 sm:mr-4 flex items-center"
+                className="text-gray-600 hover:text-gray-800 mr-2 sm:mr-4 flex-shrink-0"
               >
-                <span className="text-xl sm:hidden">←</span>
+                <span className="sm:hidden">←</span>
                 <span className="hidden sm:inline">← Back to Shopping</span>
               </button>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-semibold text-gray-900">Shopping Cart</h1>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">Shopping Cart</h1>
                 <span className="text-xs sm:text-sm text-gray-600">
                   {cartCount} item{cartCount !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <button
                 onClick={handleClearCart}
                 className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium"
               >
-                Clear <span className="hidden sm:inline">Cart</span>
+                Clear
               </button>
               <button
                 onClick={handleCheckoutClick}
-                className="hidden sm:block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold"
+                className="bg-green-600 text-white px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 font-semibold text-sm sm:text-base"
               >
                 Checkout
               </button>
@@ -245,148 +245,127 @@ const GuestCartPage = () => {
       {/* Error display */}
       {error && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <span className="text-red-800 text-sm">{error}</span>
+              <span className="text-red-800 text-xs sm:text-sm">{error}</span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           {/* Cart items */}
           <div className="lg:col-span-8">
             <div className="bg-white rounded-lg shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-6">Items in your cart</h2>
+              <div className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-4 sm:mb-6">Items in your cart</h2>
                 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {cartItems.map((item) => {
                     const itemId = item.productId || item.id;
-                    const itemPrice = item.pricePerYard || item.price || 0;
                     const itemQuantity = item.quantity || 1;
 
                     return (
-                      <div key={itemId} className="flex flex-col sm:flex-row sm:items-center py-4 sm:py-6 border-b border-gray-200 last:border-b-0 bg-white">
-                        <div className="flex items-start w-full">
-                          {/* Product image */}
-                          <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden">
-                            {item.image ? (
-                              <img
-                                src={getProductImageUrl(item)}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                                onError={e => { e.target.src = '/images/default-product.jpg'; }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Product details */}
-                          <div className="ml-4 sm:ml-6 flex-1 min-w-0">
-                            <div className="flex justify-between items-start">
-                              <div className="pr-2 sm:pr-6">
-                                <h3 className="text-base sm:text-lg font-medium text-gray-900 line-clamp-2">{item.name}</h3>
-                                {item.vendorName && (
-                                  <p className="text-xs sm:text-sm text-gray-600">by {item.vendorName}</p>
-                                )}
-                                
-                                {/* ✅ UPDATED: Compact Price Display */}
-                                <div className="mt-1">
-                                  <p className="text-base font-bold text-gray-900">
-                                    {formatPrice(getAllInclusivePricePerYard(item))}
-                                    <span className="text-xs font-normal text-gray-500 ml-1">/ yard</span>
-                                  </p>
-
-                                  {/* Collapsible Breakdown */}
-                                  <details className="group mt-1">
-                                    <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 list-none flex items-center gap-1 select-none">
-                                      <span>View breakdown</span>
-                                      <svg className="w-3 h-3 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                    </summary>
-                                    <div className="mt-1 pl-2 border-l-2 border-gray-100 space-y-0.5 text-xs text-gray-500">
-                                      <p>Base: {formatPrice(itemPrice)}</p>
-                                      {item.taxAmount > 0 && (
-                                        <p>VAT: {formatPrice((item.taxAmount || 0) / itemQuantity)}</p>
-                                      )}
-                                      {item.platformFeeAmount > 0 && (
-                                        <p>Fee: {formatPrice((item.platformFeeAmount || 0) / itemQuantity)}</p>
-                                      )}
-                                    </div>
-                                  </details>
-                                </div>
-                              </div>
-                              
-                              {/* Mobile Remove Button (Top Right) */}
-                              <button
-                                onClick={() => handleRemoveItem(itemId, item.name)}
-                                className="sm:hidden p-1.5 -mr-2 text-gray-400 hover:text-red-600"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
+                      <div key={itemId} className="flex gap-3 sm:gap-4 py-4 sm:py-6 border-b border-gray-200 last:border-b-0">
+                        {/* Product image */}
+                        <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden">
+                          {item.image ? (
+                            <img
+                              src={getProductImageUrl(item)}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={e => { e.target.src = '/images/default-product.jpg'; }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
                             </div>
-                          </div>
+                          )}
                         </div>
 
-                        {/* Quantity and Subtotal Row */}
-                        <div className="mt-4 sm:mt-0 flex items-center justify-between w-full sm:w-auto sm:ml-6">
-                           {/* Quantity controls */}
-                           <div className="flex items-center border border-gray-300 rounded-lg h-9">
+                        {/* Product details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between gap-2 mb-2">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm sm:text-base font-medium text-gray-900 line-clamp-2">{item.name}</h3>
+                              {item.vendorName && (
+                                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">by {item.vendorName}</p>
+                              )}
+                            </div>
+                            
+                            {/* Remove button - Desktop */}
+                            <button
+                              onClick={() => handleRemoveItem(itemId, item.name)}
+                              className="hidden sm:block p-2 text-red-600 hover:text-red-800 flex-shrink-0"
+                              title="Remove item"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Price per yard */}
+                          <p className="text-base sm:text-lg font-bold text-gray-900 mb-2">
+                            {formatPrice(getAllInclusivePricePerYard(item))}
+                            <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per yard</span>
+                          </p>
+
+                          {/* ✅ IMPROVED: Better layout for quantity controls and total */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            {/* Quantity controls */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center border border-gray-300 rounded-lg">
                                 <button
                                   onClick={() => handleQuantityUpdate(itemId, Math.max(1, itemQuantity - 1))}
                                   disabled={itemQuantity <= 1}
-                                  className="px-3 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed h-full flex items-center"
+                                  className="p-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                                 >
-                                  −
+                                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                  </svg>
                                 </button>
                                 
-                                <span className="px-2 text-gray-900 font-medium min-w-[2rem] text-center text-sm">
+                                <span className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base text-gray-900 font-medium min-w-[2.5rem] text-center">
                                   {itemQuantity}
                                 </span>
                                 
                                 <button
                                   onClick={() => handleQuantityUpdate(itemId, itemQuantity + 1)}
-                                  className="px-3 text-gray-600 hover:text-gray-800 h-full flex items-center"
+                                  className="p-2 text-gray-600 hover:text-gray-800"
                                 >
-                                  +
+                                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                  </svg>
                                 </button>
                               </div>
 
-                              {/* Desktop Remove Button */}
+                              {/* Mobile remove button - next to quantity */}
                               <button
                                 onClick={() => handleRemoveItem(itemId, item.name)}
-                                className="hidden sm:block ml-4 p-2 text-red-600 hover:text-red-800"
-                                title="Remove item"
+                                className="sm:hidden p-2 text-red-600 hover:text-red-800 border border-red-200 rounded-lg"
+                                title="Remove"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                               </button>
+                            </div>
 
-                              {/* Mobile Subtotal */}
-                              <div className="sm:hidden text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {formatPrice(getAllInclusiveLineItemTotal(item))}
-                                </p>
-                              </div>
-                        </div>
-
-                        {/* Desktop Subtotal */}
-                        <div className="hidden sm:block mt-3 pt-3 border-t border-gray-100 w-full">
-                            <p className="text-sm font-medium text-gray-900">
-                              Item Subtotal: {formatPrice(getAllInclusiveLineItemTotal(item))}
-                            </p>
+                            {/* Item subtotal - better positioned */}
+                            <div className="flex items-center justify-between sm:justify-end">
+                              <span className="text-xs text-gray-500 sm:hidden">Subtotal:</span>
+                              <p className="text-base sm:text-lg font-bold text-gray-900">
+                                {formatPrice(getAllInclusiveLineItemTotal(item))}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -396,58 +375,35 @@ const GuestCartPage = () => {
             </div>
           </div>
 
-          {/* ✅ UPDATED: Order summary with detailed breakdown */}
-          <div className="lg:col-span-4 mt-8 lg:mt-0">
-            <div className="bg-white rounded-lg shadow-sm sticky top-4">
-              <div className="p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
+          {/* ✅ SIMPLIFIED: Order summary */}
+          <div className="lg:col-span-4 mt-6 lg:mt-0">
+            <div className="bg-white rounded-lg shadow-sm lg:sticky lg:top-24">
+              <div className="p-4 sm:p-6">
+                <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
                 
                 <div className="space-y-3">
-                  {/* Subtotal (base prices only) */}
-                  <div className="flex justify-between text-sm">
+                  {/* Subtotal */}
+                  <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-gray-600">Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
-                    <span className="text-gray-900">{formatPrice(calculateBaseSubtotal())}</span>
+                    <span className="text-gray-900 font-medium">{formatPrice(calculateGrandTotal())}</span>
                   </div>
                   
-                  {/* VAT */}
-                  {calculateTaxTotal() > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">VAT ({(taxRate * 100).toFixed(1)}%)</span>
-                      <span className="text-gray-900">{formatPrice(calculateTaxTotal())}</span>
-                    </div>
-                  )}
-                  
-                  {/* Platform Fees */}
-                  {calculatePlatformFeeTotal() > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Platform Fees</span>
-                      <span className="text-gray-900">{formatPrice(calculatePlatformFeeTotal())}</span>
-                    </div>
-                  )}
-                  
                   {/* Shipping */}
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm sm:text-base pb-3 border-b border-gray-200">
                     <span className="text-gray-600">Shipping</span>
                     <span className="text-gray-600">Calculated at checkout</span>
                   </div>
                   
                   {/* Total */}
-                  <div className="border-t border-gray-200 pt-3">
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Total</span>
-                      <span>{formatPrice(calculateGrandTotal())}</span>
-                    </div>
+                  <div className="flex justify-between text-lg sm:text-xl font-bold pt-2">
+                    <span>Total</span>
+                    <span>{formatPrice(calculateGrandTotal())}</span>
                   </div>
-
-                  {/* ✅ Tax note */}
-                  <p className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-                    * VAT is calculated on product price only. Platform fees are not taxed.
-                  </p>
                 </div>
 
                 <button
                   onClick={handleCheckoutClick}
-                  className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold transition-colors"
+                  className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold transition-colors text-sm sm:text-base"
                 >
                   Proceed to Checkout
                 </button>

@@ -188,23 +188,10 @@ const ProductCard = ({
 
         <p className="text-base sm:text-lg font-bold text-blue-600 mb-2">
           {formatPrice(displayPrice)}
-          <span className="text-xs text-gray-500 font-normal">
-            {' '}per yard (incl. {vatRate > 0 ? `${(vatRate * 100).toFixed(1)}% VAT &` : ''} fees)
-          </span>
+          <span className="text-xs sm:text-sm text-gray-500 font-normal ml-1">per yard</span>
         </p>
 
-        {/* ✅ Price breakdown - Hide on mobile to save space */}
-        <div className="hidden sm:block text-xs text-gray-500 mb-2">
-          <div>Base: {formatPrice(basePrice)}</div>
-          {taxAmount > 0 && (
-            <div>VAT ({(vatRate * 100).toFixed(1)}%): {formatPrice(taxAmount)}</div>
-          )}
-          {parseFloat(product.platformFee?.amount) > 0 && (
-            <div>Platform Fee: {formatPrice(product.platformFee.amount)}</div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
           <span>{product.materialType || 'Material'}</span>
           {product.quantity && (
             <span>{product.quantity} yards</span>

@@ -60,30 +60,6 @@ const ProductListItem = ({ product }) => {
                 per yard
               </span>
             </p>
-            {/* Hide detailed breakdown on mobile */}
-            <p className="hidden sm:block text-xs text-gray-500 mt-1">
-              Includes {vatRate > 0 ? `${(vatRate * 100).toFixed(1)}% VAT and` : ''} platform fees
-            </p>
-          </div>
-
-          {/* Price breakdown - Desktop only */}
-          <div className="hidden lg:block text-sm text-gray-600 mb-3 space-y-1">
-            <div className="flex justify-between">
-              <span>Base Price:</span>
-              <span>{formatPrice(product.pricePerYard)}</span>
-            </div>
-            {product.taxAmount > 0 && (
-              <div className="flex justify-between">
-                <span>VAT ({(vatRate * 100).toFixed(1)}%):</span>
-                <span>{formatPrice(product.taxAmount)}</span>
-              </div>
-            )}
-            {product.platformFee?.amount > 0 && (
-              <div className="flex justify-between">
-                <span>Platform Fee:</span>
-                <span>{formatPrice(product.platformFee.amount)}</span>
-              </div>
-            )}
           </div>
 
           {/* Compact info for mobile */}
