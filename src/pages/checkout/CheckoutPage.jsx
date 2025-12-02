@@ -126,27 +126,37 @@ const CheckoutPage = () => {
   // All other steps: show step + order summary
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <CheckoutProgressBar currentStep={currentStep} />
-          {currentStep === 1 && (
-            <CartReviewStep cart={cart} onNext={() => setCurrentStep(2)} />
-          )}
-          {currentStep === 2 && (
-            <ShippingInfoStep
-              onSubmit={(shippingAddress, customerInfo) => saveShipping(shippingAddress, customerInfo)}
-              onBack={() => setCurrentStep(1)}
-            />
-          )}
-          {currentStep === 3 && (
-            <>
-              {/* Debugging log - only in development */}
-              {process.env.NODE_ENV === 'development' && (
-                <div style={{ display: 'none' }}>
-                  {console.log('[DEBUG] Rendering PaymentMethodStep with shippingInfo:', shippingInfo)}
-                  {paymentError && console.log('[DEBUG] Payment error present:', paymentError)}
-                </div>
-              )}
+      {/* Mobile Header */}
+      <div className="sm:hidden bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => navigate('/shopper/cart')}
+            className="p-2 -ml-2 text-gray-600 hover:text-gray-800"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900">Checkout</h1>
+          <div className="w-8" /> {/* Spacer */}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+          <div className="lg:col-span-8">
+            <CheckoutProgressBar currentStep={currentStep} />
+            
+            {currentStep === 1 && (
+              <CartReviewStep cart={cart} onNext={() => setCurrentStep(2)} />
+            )}
+            {currentStep === 2 && (
+              <ShippingInfoStep
+                onSubmit={(shippingAddress, customerInfo) => saveShipping(shippingAddress, customerInfo)}
+                onBack={() => setCurrentStep(1)}
+              />
+            )}
+            {currentStep === 3 && (
               <PaymentMethodStep
                 onSubmit={({ paymentDetails, reservationDuration }) =>
                   confirmOrder(paymentDetails, reservationDuration)
@@ -159,15 +169,17 @@ const CheckoutPage = () => {
                 clearPaymentError={clearPaymentError}
                 isProcessingPayment={isProcessingPayment}
               />
-            </>
-          )}
-        </div>
-        <div className="lg:col-span-1">
-          <OrderSummaryCard
-            cart={currentStep === 3 && shippingInfo?.cart ? shippingInfo.cart : cart}
-            order={order}
-            currentStep={currentStep}
-          />
+            )}
+          </div>
+          
+          {/* Order Summary - Hidden on mobile during review, shown as sticky card */}
+          <div className="hidden lg:block lg:col-span-4">
+            <OrderSummaryCard
+              cart={currentStep === 3 && shippingInfo?.cart ? shippingInfo.cart : cart}
+              order={order}
+              currentStep={currentStep}
+            />
+          </div>
         </div>
       </div>
     </div>
