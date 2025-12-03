@@ -37,39 +37,47 @@ export const FavoritesProvider = ({ children }) => {
 
     try {
       await favoriteService.addToFavorites(productId);
-      setFavorites(prev => [...prev, productId]);
+      // Refresh favorites from API to get the full object structure
+      await loadFavorites();
       return true;
     } catch (error) {
       console.error('Failed to add to favorites:', error);
       return false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadFavorites]);
 
   const removeFromFavorites = useCallback(async (productId) => {
     if (!isAuthenticated) return false;
 
     try {
       await favoriteService.removeFromFavorites(productId);
-      setFavorites(prev => prev.filter(id => id !== productId));
+      // Refresh favorites from API to get the updated list
+      await loadFavorites();
       return true;
     } catch (error) {
       console.error('Failed to remove from favorites:', error);
       return false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadFavorites]);
+
+  const isFavorite = useCallback((productId) => {
+    // Handle both cases: favorites as objects with product field, or as strings
+    return favorites.some(fav => {
+      if (typeof fav === 'string') {
+        return fav === productId;
+      }
+      return fav.product?.productId === productId || fav._id === productId;
+    });
+  }, [favorites]);
 
   const toggleFavorite = useCallback(async (productId) => {
-    const isFavorite = favorites.includes(productId);
-    if (isFavorite) {
+    const isFav = isFavorite(productId);
+    if (isFav) {
       return await removeFromFavorites(productId);
     } else {
       return await addToFavorites(productId);
     }
-  }, [favorites, addToFavorites, removeFromFavorites]);
-
-  const isFavorite = useCallback((productId) => {
-    return favorites.includes(productId);
-  }, [favorites]);
+  }, [isFavorite, addToFavorites, removeFromFavorites]);
 
   useEffect(() => {
     loadFavorites();
