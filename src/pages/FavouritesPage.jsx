@@ -12,6 +12,8 @@ const FavouritesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  console.log('my favorites', favorites);
+
   // ✅ Hooks must come BEFORE any conditional returns
   useEffect(() => {
     const loadFavoriteProducts = async () => {
@@ -30,9 +32,24 @@ const FavouritesPage = () => {
           return;
         }
         
-        const productPromises = favorites.map(productId => 
-          productService.getProductById(productId)
-        );
+        // Filter out invalid favorites and extract productIds
+        const validFavorites = favorites.filter(favorite => {
+          // Handle both cases: favorite as object with product field, or as string
+          if (typeof favorite === 'string') {
+            return favorite; // It's a productId string
+          }
+          return favorite.product?.productId; // It's an object with product field
+        });
+
+        const productPromises = validFavorites.map(favorite => {
+          // Extract productId based on favorite structure
+          const productId = typeof favorite === 'string' 
+            ? favorite 
+            : favorite.product?.productId;
+          return productService.getProductById(productId);
+        });
+
+        console.log('productPromises', productPromises);
         
         const products = await Promise.all(productPromises);
         const validProducts = products
@@ -68,6 +85,7 @@ const FavouritesPage = () => {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
 
   return (
     <div className="min-h-screen bg-gray-50">
