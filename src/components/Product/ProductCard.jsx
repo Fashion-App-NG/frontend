@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
-import { calculateTaxRate } from '../../utils/priceCalculations';
 
 const ProductCard = ({
   product,
@@ -35,11 +34,6 @@ const ProductCard = ({
 
   const displayPrice = calculateDisplayPrice();
   
-  // Calculate tax rate from actual values to avoid rounding issues
-  const basePrice = parseFloat(product.pricePerYard) || 0;
-  const taxAmount = parseFloat(product.taxAmount) || 0;
-  const vatRate = calculateTaxRate(taxAmount, basePrice);
-
   const handleImageError = () => {
     setImageError(true);
   };

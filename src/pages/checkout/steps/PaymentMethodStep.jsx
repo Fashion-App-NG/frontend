@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { PaystackButton } from 'react-paystack';
 import { PAYSTACK_CONFIG, formatAmountForPaystack } from '../../../config/paystack';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
 
 const PaymentMethodStep = ({ 
@@ -22,7 +21,6 @@ const PaymentMethodStep = ({
   }
 
   const { user } = useAuth();
-  const { cartItems } = useCart();
 
   // 🎯 USE BACKEND VALUES - Backend is the source of truth
   const backendBaseAmount = cart?.totalAmount || 0;
@@ -37,7 +35,7 @@ const PaymentMethodStep = ({
   // State management
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('paystack');
-  const [paymentError, setPaymentError] = useState(null);
+  const [, setPaymentError] = useState(null);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   
   const [paymentData, setPaymentData] = useState({

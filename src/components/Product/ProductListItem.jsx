@@ -14,7 +14,6 @@ const ProductListItem = ({ product }) => {
   };
 
   const displayPrice = calculateDisplayPrice();
-  const vatRate = product.taxRate || 0;
 
   const getDisplayImage = () => {
     if (imageError) return '/api/placeholder/80/80';

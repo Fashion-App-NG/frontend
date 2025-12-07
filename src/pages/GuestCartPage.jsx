@@ -3,9 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
 
-// ✅ EXTRACT: Move to constants file
-const DEFAULT_TAX_RATE = 0.075; // 7.5% VAT
-
 const GuestCartPage = () => {
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -73,11 +70,6 @@ const GuestCartPage = () => {
   const calculateGrandTotal = () => {
     return calculateBaseSubtotal() + calculateTaxTotal() + calculatePlatformFeeTotal();
   };
-
-  // ✅ Get tax rate from first item
-  const taxRate = (cartItems && cartItems.length > 0) 
-    ? (cartItems[0]?.taxRate || DEFAULT_TAX_RATE) 
-    : DEFAULT_TAX_RATE;
 
   // Handle quantity updates
   const handleQuantityUpdate = (itemId, newQuantity) => {
