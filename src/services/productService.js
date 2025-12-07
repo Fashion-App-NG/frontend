@@ -61,7 +61,11 @@ class ProductService {
 
   // ✅ FIX: Enhanced getAllProducts with better error handling
   async getAllProducts(filters = {}) {
-    const cacheKey = JSON.stringify(filters);
+    // ✅ FIX: Create cache key from plain object, not URLSearchParams
+    const cacheKey = filters instanceof URLSearchParams 
+      ? filters.toString() 
+      : JSON.stringify(filters);
+      
     if (this.cache[cacheKey]) {
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Returning products from cache:', cacheKey);
@@ -72,23 +76,36 @@ class ProductService {
     try {
       console.log('🔄 Loading products with filters:', filters);
       
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value.toString().trim()) {
-          params.append(key, value);
-        }
-      });
+      // ✅ Handle both URLSearchParams objects and plain objects
+      let queryString = '';
+      
+      if (filters instanceof URLSearchParams) {
+        // It's already a URLSearchParams object, just convert to string
+        queryString = filters.toString();
+      } else if (typeof filters === 'object' && filters !== null) {
+        // It's a plain object, build URLSearchParams from it
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            params.append(key, String(value));
+          }
+        });
+        queryString = params.toString();
+      }
 
-      const url = `${this.baseURL}/product${params.toString() ? `?${params}` : ''}`;
+      const url = queryString 
+        ? `${this.baseURL}/product?${queryString}` 
+        : `${this.baseURL}/product`;
+      
       console.log('📡 API URL:', url);
+      console.log('🔍 Query string:', queryString); // ✅ NEW: Debug log
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         },
-        // ✅ Add timeout to prevent infinite loading
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        signal: AbortSignal.timeout(30000)
       });
 
       if (!response.ok) {
@@ -110,7 +127,6 @@ class ProductService {
       // Store in cache
       this.cache[cacheKey] = data;
 
-      // ✅ Fix: Gate debug logging in getAllProducts
       if (data.products && data.products.length > 0) {
         if (process.env.NODE_ENV === 'development') {
           console.log('🔍 Sample product vendor data:', {
@@ -122,14 +138,12 @@ class ProductService {
         }
       }
       
-      // ✅ FIXED: Normalize product status and ensure proper IDs
       if (data.products && Array.isArray(data.products)) {
         data.products = data.products.map((product, index) => ({
           ...product,
           id: product.id || product._id || product.productId || `product-${index}`,
           display: product.display !== false,
           status: this.normalizeProductStatus(product),
-          // ✅ ENHANCED: Normalize vendor data
           vendor: product.vendor || {
             id: product.vendorId,
             name: product.vendorName || product.createdBy?.name,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ProductFilters from '../components/Product/ProductFilters';
 import ProductGrid from '../components/Product/ProductGrid';
@@ -33,7 +33,8 @@ const ShopperProductListPage = () => {
     sortBy: searchParams.get('sortBy') || 'date',
     sortOrder: searchParams.get('sortOrder') || 'desc'
   }));
-  const debouncedFilters = useDebounce(filters, 400);
+  
+  const debouncedFilters = useDebounce(filters, 500); // ✅ Increase to 500ms
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -48,21 +49,15 @@ const ShopperProductListPage = () => {
       setLoading(true);
       setError(null);
 
-      const queryParams = new URLSearchParams();
-      Object.entries(currentFilters).forEach(([key, value]) => {
-        if (value && value.toString().trim()) {
-          queryParams.append(key, value);
-        }
-      });
-
-      const response = await productService.getAllProducts(queryParams.toString());
+      // ✅ FIX: Pass plain object, not URLSearchParams
+      const response = await productService.getAllProducts(currentFilters);
       
       if (response.error) {
         throw new Error(response.error);
       }
 
       setProducts(response.products || []);
-      setTotalCount(response.total || response.products?.length || 0);
+      setTotalCount(response.total || response.totalCount || response.products?.length || 0);
       
     } catch (err) {
       console.error('Failed to load products:', err);
@@ -72,11 +67,21 @@ const ShopperProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // ✅ EMPTY dependency array - function never changes
 
-  const handleFiltersChange = useCallback((newFilters) => {
-    setFilters(newFilters);
-    
+  // ✅ FIX: Stable reference to avoid infinite loops
+  const loadProductsRef = useRef(loadProducts);
+  useEffect(() => {
+    loadProductsRef.current = loadProducts;
+  }, [loadProducts]);
+
+  // ✅ Only trigger API call when debounced filters change
+  useEffect(() => {
+    loadProductsRef.current(debouncedFilters);
+  }, [debouncedFilters]); // ✅ Only debouncedFilters in dependency
+
+  // FIX: Update URL params WITHOUT triggering loadProducts
+  const updateURLParams = useCallback((newFilters) => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value && value.toString().trim()) {
@@ -84,19 +89,28 @@ const ShopperProductListPage = () => {
       }
     });
     setSearchParams(params);
-    
-    loadProducts(newFilters);
-    setShowFilters(false);
-  }, [setSearchParams, loadProducts]);
+  }, [setSearchParams]);
 
+  // FIX: Handle filter updates WITHOUT triggering API calls
+  const handleFilterUpdate = useCallback((newFilters) => {
+    setFilters(newFilters); // Updates local state only
+    updateURLParams(newFilters); // Updates URL only
+    // Debounced filters will trigger API call after 500ms
+  }, [updateURLParams]);
+
+  // FIX: This should ONLY be called by desktop filter "Apply" button or dropdowns
+  const handleFiltersChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+    updateURLParams(newFilters);
+    loadProducts(newFilters); // Only called when user explicitly applies filters
+    setShowFilters(false);
+  }, [updateURLParams, loadProducts]);
+
+  // NEW: Add the missing handleViewChange function
   const handleViewChange = useCallback((newView) => {
     setView(newView);
     localStorage.setItem('shopperProductView', newView);
   }, []);
-
-  useEffect(() => {
-    loadProducts(debouncedFilters);
-  }, [debouncedFilters, loadProducts]);
 
   // Count active filters
   const activeFilterCount = [
@@ -126,8 +140,8 @@ const ShopperProductListPage = () => {
                   placeholder="Search products..."
                   value={filters.search}
                   onChange={(e) => {
-                    const newFilters = { ...filters, search: e.target.value };
-                    setFilters(newFilters);
+                    // ✅ FIX: Just update state, don't call loadProducts
+                    handleFilterUpdate({ ...filters, search: e.target.value });
                   }}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
@@ -252,6 +266,7 @@ const ShopperProductListPage = () => {
 
           <ProductFilters 
             onFiltersChange={handleFiltersChange}
+            onFilterUpdate={handleFilterUpdate} // ✅ NEW: For text inputs
             loading={loading}
             initialFilters={filters}
           />
