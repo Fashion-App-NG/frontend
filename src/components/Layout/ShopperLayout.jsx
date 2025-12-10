@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -5,10 +6,9 @@ const ShopperLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // ✅ FIX: Hide Dashboard - shoppers land on Browse Products
   const navigation = [
-    // { name: 'Dashboard', href: '/shopper/dashboard', icon: 'home' }, // ✅ HIDDEN
     { name: 'Browse Products', href: '/shopper/browse', icon: 'grid' },
     { name: 'My Orders', href: '/shopper/orders', icon: 'clipboard' },
     { name: 'Shopping Cart', href: '/shopper/cart', icon: 'cart' },
@@ -17,11 +17,6 @@ const ShopperLayout = () => {
   ];
 
   const iconComponents = {
-    home: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    ),
     grid: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -42,17 +37,6 @@ const ShopperLayout = () => {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       </svg>
     ),
-    bell: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM11 19H6a2 2 0 01-2-2V7a2 2 0 012-2h8a2 2 0 012 2v5" />
-      </svg>
-    ),
-    settings: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
     user: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -60,50 +44,89 @@ const ShopperLayout = () => {
     )
   };
 
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleSignOut = async () => {
     try {
       console.log('🔐 Shopper signing out...');
       const success = await logout();
       if (success) {
-        navigate('/browse', { replace: true }); // ✅ Navigate to browse
+        navigate('/browse', { replace: true });
       }
     } catch (error) {
       console.error('❌ Sign out error:', error);
-      navigate('/browse', { replace: true }); // ✅ Still navigate even on error
+      navigate('/browse', { replace: true });
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
-          <Link to="/" className="flex items-center space-x-3">
+      <aside
+        className={`
+          fixed lg:static inset-y-0 left-0 z-50
+          w-64 bg-white shadow-lg border-r border-gray-200
+          transform transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          flex flex-col
+        `}
+      >
+        {/* Header with Close Button */}
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200">
+          <Link to="/" className="flex items-center space-x-3 flex-1 min-w-0" onClick={() => setIsSidebarOpen(false)}>
             <img 
               src="/assets/logos/faari-icon-lg.png" 
               alt="Fáàrí" 
-              className="h-16 w-16 object-contain"
+              className="h-12 w-12 lg:h-16 lg:w-16 object-contain flex-shrink-0"
             />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Fáàrí</h1>
-              <p className="text-sm text-gray-500">Fashion Marketplace</p>
+            <div className="min-w-0">
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">Fáàrí</h1>
+              <p className="text-xs lg:text-sm text-gray-500 truncate">Fashion Marketplace</p>
             </div>
           </Link>
+
+          {/* Close Button (Mobile Only) */}
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0 ml-2"
+            aria-label="Close menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="mt-6 px-3 pb-20">
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <div className="space-y-1">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href || 
-                (item.href === '/shopper' && location.pathname === '/shopper/');
+              const isActive = location.pathname === item.href;
               
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={`group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -120,7 +143,7 @@ const ShopperLayout = () => {
         </nav>
 
         {/* User Info & Logout */}
-        <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200 bg-white">
+        <div className="p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center mb-3">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
@@ -129,7 +152,7 @@ const ShopperLayout = () => {
                 </svg>
               </div>
             </div>
-            <div className="ml-3 flex-1">
+            <div className="ml-3 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
                 {user?.email?.split('@')[0] || 'Shopper'}
               </p>
@@ -138,17 +161,48 @@ const ShopperLayout = () => {
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-6 py-3 text-red-600 hover:bg-red-50 w-full text-left rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
-            <span>🔴</span>
-            Sign out
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign out</span>
           </button>
         </div>
-      </div>
+      </aside>
 
       {/* Main Content */}
-      <div className="flex-1">
-        <Outlet />
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile Header with Hamburger */}
+        <header className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-30">
+          <div className="flex items-center justify-between px-4 py-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="Open menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <Link to="/" className="flex items-center space-x-2">
+              <img 
+                src="/assets/logos/faari-icon-lg.png" 
+                alt="Fáàrí" 
+                className="h-10 w-10 object-contain"
+              />
+              <span className="text-lg font-bold text-gray-900">Fáàrí</span>
+            </Link>
+
+            <div className="w-10" /> {/* Spacer for centering */}
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

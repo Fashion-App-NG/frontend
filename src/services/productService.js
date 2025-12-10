@@ -10,6 +10,15 @@ class ProductService {
     }
   }
 
+  // ✅ ADD: Helper function to calculate all-inclusive price
+  calculateAllInclusivePrice(product) {
+    const basePrice = parseFloat(product.pricePerYard) || 0;
+    const platformFeeAmount = parseFloat(product.platformFee?.amount) || Math.round(basePrice * 0.08);
+    const taxAmount = parseFloat(product.taxAmount) || Math.round(basePrice * 0.02);
+    
+    return basePrice + platformFeeAmount + taxAmount;
+  }
+
   // ✅ FIXED: Use consistent token key and add debugging
   getAuthHeaders() {
     const token = localStorage.getItem('token'); // ✅ Use same key as vendorService
@@ -61,7 +70,10 @@ class ProductService {
 
   // ✅ FIX: Enhanced getAllProducts with better error handling
   async getAllProducts(filters = {}) {
-    const cacheKey = JSON.stringify(filters);
+    const cacheKey = filters instanceof URLSearchParams 
+      ? filters.toString() 
+      : JSON.stringify(filters);
+      
     if (this.cache[cacheKey]) {
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Returning products from cache:', cacheKey);
@@ -72,14 +84,27 @@ class ProductService {
     try {
       console.log('🔄 Loading products with filters:', filters);
       
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value.toString().trim()) {
-          params.append(key, value);
-        }
-      });
+      // ✅ CHANGED: Extract price filters before sending to backend
+      const { minPrice, maxPrice, ...backendFilters } = filters;
+      
+      let queryString = '';
+      
+      if (backendFilters instanceof URLSearchParams) {
+        queryString = backendFilters.toString();
+      } else if (typeof backendFilters === 'object' && backendFilters !== null) {
+        const params = new URLSearchParams();
+        Object.entries(backendFilters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            params.append(key, String(value));
+          }
+        });
+        queryString = params.toString();
+      }
 
-      const url = `${this.baseURL}/product${params.toString() ? `?${params}` : ''}`;
+      const url = queryString 
+        ? `${this.baseURL}/product?${queryString}` 
+        : `${this.baseURL}/product`;
+      
       console.log('📡 API URL:', url);
 
       const response = await fetch(url, {
@@ -87,8 +112,7 @@ class ProductService {
         headers: {
           'Content-Type': 'application/json'
         },
-        // ✅ Add timeout to prevent infinite loading
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        signal: AbortSignal.timeout(30000)
       });
 
       if (!response.ok) {
@@ -105,40 +129,54 @@ class ProductService {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      let data = await response.json();
       
-      // Store in cache
-      this.cache[cacheKey] = data;
+      // ✅ NEW: Apply price filtering on frontend
+      if (data.products && Array.isArray(data.products)) {
+        let filteredProducts = data.products;
 
-      // ✅ Fix: Gate debug logging in getAllProducts
-      if (data.products && data.products.length > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Sample product vendor data:', {
-            firstProduct: data.products[0],
-            vendorField: data.products[0].vendor,
-            vendorIdField: data.products[0].vendorId,
-            createdByField: data.products[0].createdBy
+        // Apply price filter in memory
+        if (minPrice || maxPrice) {
+          const min = minPrice ? parseFloat(minPrice) : 0;
+          const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+
+          filteredProducts = filteredProducts.filter(product => {
+            const allInclusivePrice = this.calculateAllInclusivePrice(product);
+            return allInclusivePrice >= min && allInclusivePrice <= max;
+          });
+
+          console.log(`💰 Price filtered: ${data.products.length} → ${filteredProducts.length} products`);
+        }
+
+        // Apply sorting by all-inclusive price if needed
+        if (filters.sortBy === 'pricePerYard') {
+          filteredProducts.sort((a, b) => {
+            const aPrice = this.calculateAllInclusivePrice(a);
+            const bPrice = this.calculateAllInclusivePrice(b);
+            const order = filters.sortOrder === 'asc' ? 1 : -1;
+            return aPrice < bPrice ? -order : aPrice > bPrice ? order : 0;
           });
         }
-      }
-      
-      // ✅ FIXED: Normalize product status and ensure proper IDs
-      if (data.products && Array.isArray(data.products)) {
-        data.products = data.products.map((product, index) => ({
+
+        // Map products with normalized data
+        data.products = filteredProducts.map((product, index) => ({
           ...product,
           id: product.id || product._id || product.productId || `product-${index}`,
           display: product.display !== false,
           status: this.normalizeProductStatus(product),
-          // ✅ ENHANCED: Normalize vendor data
           vendor: product.vendor || {
             id: product.vendorId,
             name: product.vendorName || product.createdBy?.name,
             storeName: product.vendorStoreName || product.createdBy?.storeName
           }
         })).filter(product => product.display !== false);
+
+        // Update total count
+        data.total = data.products.length;
       }
 
-      // ✅ Apply same pattern to all debug logs
+      this.cache[cacheKey] = data;
+
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Products fetched:', data.products?.length || 0);
       }

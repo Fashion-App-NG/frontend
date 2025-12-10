@@ -241,40 +241,40 @@ export const LoginForm = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
+    <form onSubmit={handleSubmit} className="flex flex-col w-full">
       {/* Shopper Indicator */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-6 sm:mb-4">
         <div className="bg-[#0ea5e9] text-white px-3 py-1 rounded-full text-xs font-semibold">
           Shopper Account
         </div>
-        <span className="text-[rgba(46,46,46,0.6)] text-sm">Personal Sign In</span>
+        <span className="text-[rgba(46,46,46,0.6)] text-xs sm:text-sm">Personal Sign In</span>
       </div>
 
-      <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">
-        <h1 className="text-black text-[32px] font-bold">
+      <div className="flex flex-col mb-6 sm:mb-8 lg:mt-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-black">
           Sign In to Your Account
         </h1>
-        <p className="text-[rgba(46,46,46,1)] text-base font-normal leading-[1.2] mt-[5px]">
+        <p className="text-sm sm:text-base text-[rgba(46,46,46,1)] font-normal mt-2">
           Welcome back!
         </p>
       </div>
 
       {/* Success Message */}
       {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded text-sm mb-4">
           {successMessage}
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded text-sm mb-4">
           {error}
         </div>
       )}
 
       {/* Email Address Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[42px] max-md:mt-10">
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal mb-2 sm:mb-4">
         Email Address
       </label>
       <input
@@ -283,11 +283,11 @@ export const LoginForm = () => {
         placeholder="Enter your email"
         required
         disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+        className="w-full bg-[rgba(242,242,242,1)] border border-[rgba(203,203,203,1)] min-h-[52px] sm:min-h-[61px] text-sm sm:text-base text-[rgba(180,180,180,1)] font-normal px-3 sm:px-4 py-3 sm:py-4 rounded-[5px] disabled:opacity-50 focus:outline-none focus:border-blue-500 transition-colors"
       />
 
       {/* Password Field */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal mt-4 mb-2">
         Password
       </label>
       <PasswordInput
@@ -297,14 +297,14 @@ export const LoginForm = () => {
       />
 
       {/* Forgot Password Link */}
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-end mt-2 mb-6 sm:mb-8">
         <button
           type="button"
           onClick={() => navigate('/forgot-password')}
           disabled={isLoading}
-          className="text-[rgba(46,46,46,1)] text-sm font-normal underline hover:no-underline disabled:opacity-50"
+          className="text-[rgba(46,46,46,1)] text-xs sm:text-sm font-normal underline hover:no-underline disabled:opacity-50"
         >
-          Forgot Password
+          Forgot Password?
         </button>
       </div>
 
@@ -312,25 +312,25 @@ export const LoginForm = () => {
       <button
         type="submit"
         disabled={isLoading}
-        className="self-stretch bg-[rgba(46,46,46,1)] min-h-[52px] text-base text-[rgba(237,255,140,1)] font-bold leading-[1.2] mt-[29px] px-4 py-[21px] rounded-[26px] max-md:max-w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-[rgba(46,46,46,1)] min-h-[48px] sm:min-h-[52px] text-sm sm:text-base text-[rgba(237,255,140,1)] font-bold px-4 py-3 sm:py-4 rounded-[26px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[rgba(26,26,26,1)] transition-colors"
       >
         {isLoading ? 'Signing in...' : 'Sign in'}
       </button>
 
       {/* Navigation Link */}
-      <div className="self-center flex items-center text-sm text-[rgba(46,46,46,1)] font-normal leading-[1.2] mt-[11px]">
-        <span className="self-stretch my-auto">New here?</span>
+      <div className="flex items-center justify-center text-xs sm:text-sm text-[rgba(46,46,46,1)] font-normal mt-4">
+        <span>New here?</span>
         <button
           type="button"
           onClick={() => navigate('/register')}
           disabled={isLoading}
-          className="self-stretch my-auto font-bold ml-1 disabled:opacity-50"
+          className="font-bold ml-1 disabled:opacity-50 hover:underline"
         >
           Sign up
         </button>
       </div>
 
-      {/* ✅ Social Login - Only render once with default import */}
+      {/* Social Login */}
       <SocialLogin isLogin={true} />
     </form>
   );

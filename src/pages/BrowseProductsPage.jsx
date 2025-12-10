@@ -1,42 +1,54 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import ProductCard from '../components/Product/ProductCard';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import ProductFilters from '../components/Product/ProductFilters';
+import ProductGrid from '../components/Product/ProductGrid';
+import ProductViewToggle from '../components/Product/ProductViewToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import useDebounce from '../hooks/useDebounce';
 import productService from '../services/productService';
 
 const BrowseProductsPage = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('grid');
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [totalCount, setTotalCount] = useState(0);
+  const [view, setView] = useState('grid');
+  const [showFilters, setShowFilters] = useState(false);
 
   const { user, isAuthenticated } = useAuth();
   const { cartCount } = useCart();
 
-  // Filters state
-  const [filters, setFilters] = useState({
+  // Initialize filters from URL params
+  const [filters, setFilters] = useState(() => ({
     search: searchParams.get('search') || '',
     materialType: searchParams.get('materialType') || '',
+    pattern: searchParams.get('pattern') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     sortBy: searchParams.get('sortBy') || 'newest',
     sortOrder: searchParams.get('sortOrder') || 'desc'
-  });
+  }));
   const debouncedFilters = useDebounce(filters, 400);
 
-  const loadProducts = useCallback(async (filters) => {
-    setLoading(true);
-    setError(null);
+  // Load view preference from localStorage
+  useEffect(() => {
+    const savedView = localStorage.getItem('shopperProductView');
+    if (savedView && ['grid', 'list'].includes(savedView)) {
+      setView(savedView);
+    }
+  }, []);
 
+  const loadProducts = useCallback(async (currentFilters) => {
     try {
+      setLoading(true);
+      setError(null);
+
       const queryParams = new URLSearchParams();
-      
-      // Add filters to query
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value.trim()) {
+      Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value && value.toString().trim()) {
           queryParams.append(key, value);
         }
       });
@@ -48,31 +60,49 @@ const BrowseProductsPage = () => {
       }
 
       setProducts(response.products || []);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      setError(error.message);
+      setTotalCount(response.total || response.products?.length || 0);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      setError(err.message || 'Failed to load products. Please try again.');
       setProducts([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const handleFiltersChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+    
+    const params = new URLSearchParams();
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value && value.toString().trim()) {
+        params.set(key, value);
+      }
+    });
+    setSearchParams(params);
+    
+    loadProducts(newFilters);
+    setShowFilters(false);
+  }, [setSearchParams, loadProducts]);
+
+  const handleViewChange = useCallback((newView) => {
+    setView(newView);
+    localStorage.setItem('shopperProductView', newView);
   }, []);
 
   useEffect(() => {
     loadProducts(debouncedFilters);
   }, [debouncedFilters, loadProducts]);
 
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-    
-    // Update URL
-    const params = new URLSearchParams();
-    Object.entries(newFilters).forEach(([key, value]) => {
-      if (value && value.trim()) {
-        params.set(key, value);
-      }
-    });
-    setSearchParams(params);
-  };
+  // Count active filters
+  const activeFilterCount = [
+    filters.search,
+    filters.materialType,
+    filters.pattern,
+    filters.minPrice,
+    filters.maxPrice
+  ].filter(Boolean).length;
 
   const handleProductClick = (product) => {
     window.location.href = `/product/${product._id || product.id}`;
@@ -80,284 +110,230 @@ const BrowseProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-blue-600">
-                Fáàrí
-              </Link>
-            </div>
-            <div className="flex items-center space-x-6">
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 py-3">
+          {/* Search + Actions Row */}
+          <div className="flex items-center gap-2 mb-3">
+            {/* Search Input */}
+            <div className="flex-1">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search products, vendors..."
+                  placeholder="Search products..."
                   value={filters.search}
-                  onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
-                  className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => {
+                    const newFilters = { ...filters, search: e.target.value };
+                    setFilters(newFilters);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
-                <svg className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              
-              <Link to="/shopper/cart" className="relative">
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.293 1.293A1 1 0 007 16h8M7 13v5a2 2 0 002 2h8a2 2 0 002-2v-5" />
+            </div>
+
+            {/* Cart Button */}
+            <button
+              onClick={() => navigate('/shopper/cart')}
+              className="relative p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0h8m-8 0a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Favorites Button */}
+            <button
+              onClick={() => navigate('/shopper/favorites')}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Tabs Row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2 text-sm">
+              <button className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-medium">
+                All ({totalCount})
+              </button>
+              <button className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 rounded-lg">
+                In Stock
+              </button>
+              <button className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 rounded-lg">
+                Favorites
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <ProductViewToggle 
+                currentView={view}
+                onViewChange={handleViewChange}
+                defaultView="grid"
+                disabled={loading}
+                className="scale-90"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Button Row */}
+        <div className="px-4 py-2 border-t border-gray-100">
+          <button
+            onClick={() => setShowFilters(true)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span className="text-sm font-medium">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Header */}
+      <div className="hidden lg:block bg-white border-b border-gray-200 mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Browse Fabrics
+              </h1>
+              {!loading && (
+                <p className="text-gray-600">
+                  {totalCount > 0 ? (
+                    <>Showing {totalCount} product{totalCount !== 1 ? 's' : ''}</>
+                  ) : (
+                    'No products found'
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/shopper/cart')}
+                className="relative px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0h8m-8 0a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z" />
                 </svg>
+                <span>Cart</span>
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </button>
 
-              <Link to="/shopper/favorites" className="text-gray-700 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </Link>
-
-              {isAuthenticated ? (
-                <Link to="/shopper/dashboard" className="text-gray-700 hover:text-gray-900">
-                  Dashboard
-                </Link>
-              ) : (
-                <Link to="/login" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                  Sign In
-                </Link>
-              )}
+              <ProductViewToggle 
+                currentView={view}
+                onViewChange={handleViewChange}
+                defaultView="grid"
+                disabled={loading}
+              />
             </div>
           </div>
+
+          <ProductFilters 
+            onFiltersChange={handleFiltersChange}
+            loading={loading}
+            initialFilters={filters}
+          />
         </div>
-      </header>
+      </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-sm min-h-screen">
-          <div className="p-6 border-b border-gray-200">
-          <Link to="/" className="flex items-center space-x-3">
-            <img 
-              src="/assets/logos/faari-icon-md.png" 
-              alt="Fáàrí" 
-              className="h-14 w-14 object-contain"
-            />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Fáàrí</h1>
-              <p className="text-xs text-gray-500">Fashion Marketplace</p>
-            </div>
-          </Link>
-        </div>
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">CATEGORIES</h2>
-            <p className="text-sm text-gray-600 mb-6">Shopper Dashboard</p>
-            
-            <nav className="space-y-2">
-              <Link to="/shopper/dashboard" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                </svg>
-                Dashboard
-              </Link>
-              
-              <Link to="/shopper/browse" className="flex items-center px-3 py-2 text-blue-600 bg-blue-50 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10" />
-                </svg>
-                Browse Products
-              </Link>
-              
-              <Link to="/shopper/orders" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                My Orders
-              </Link>
-              
-              <Link to="/shopper/cart" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.293 1.293A1 1 0 007 16h8M7 13v5a2 2 0 002 2h8a2 2 0 002-2v-5" />
-                </svg>
-                Shopping Cart
-              </Link>
-              
-              <Link to="/shopper/favorites" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-                Favorites
-              </Link>
+      {/* Product Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-0">
+        <ProductGrid 
+          products={products}
+          loading={loading}
+          error={error}
+          showVendorInfo={true}
+          view={view}
+          onClick={handleProductClick}
+          emptyMessage="No products match your search criteria. Try adjusting your filters."
+        />
+      </div>
 
-              <Link to="/shopper/notifications" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 6h16v12H4z" />
+      {/* Mobile Filter Drawer */}
+      {showFilters && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowFilters(false)}
+          />
+          
+          <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Notifications
-              </Link>
-
-              <Link to="/shopper/settings" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Settings
-              </Link>
-
-              <Link to="/shopper/profile" className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Profile
-              </Link>
-            </nav>
-
-            {/* User Info */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user?.firstName?.[0] || user?.email?.[0] || 'S'}
-                  </span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.firstName || 'shopper0'}
-                  </p>
-                  <p className="text-xs text-gray-500">Shopper</p>
-                </div>
-              </div>
-              <button className="mt-4 text-sm text-red-600 hover:text-red-800">
-                Sign out
               </button>
             </div>
-          </div>
-        </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Filter Tabs */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-8">
-                <button className="py-2 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
-                  All Products (44)
-                </button>
-                <button className="py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
-                  In Stock (44)
-                </button>
-                <button className="py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
-                  Favorites (1)
-                </button>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                >
-                  Grid
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                >
-                  List
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="mb-6 flex items-center space-x-4">
-            <select
-              value={filters.materialType}
-              onChange={(e) => handleFilterChange({ ...filters, materialType: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Materials</option>
-              <option value="cotton">Cotton</option>
-              <option value="silk">Silk</option>
-              <option value="linen">Linen</option>
-              <option value="polyester">Polyester</option>
-            </select>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="number"
-                placeholder="Min ₦"
-                value={filters.minPrice}
-                onChange={(e) => handleFilterChange({ ...filters, minPrice: e.target.value })}
-                className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <span>-</span>
-              <input
-                type="number"
-                placeholder="Max ₦"
-                value={filters.maxPrice}
-                onChange={(e) => handleFilterChange({ ...filters, maxPrice: e.target.value })}
-                className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            <div className="flex-1 overflow-y-auto p-4">
+              <ProductFilters 
+                onFiltersChange={handleFiltersChange}
+                loading={loading}
+                initialFilters={filters}
+                isMobile={true}
               />
             </div>
 
-            <select
-              value={filters.sortBy}
-              onChange={(e) => handleFilterChange({ ...filters, sortBy: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="newest">Newest</option>
-              <option value="name">Name</option>
-              <option value="pricePerYard">Price</option>
-            </select>
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    handleFiltersChange({
+                      search: '',
+                      materialType: '',
+                      pattern: '',
+                      minPrice: '',
+                      maxPrice: '',
+                      sortBy: 'newest',
+                      sortOrder: 'desc'
+                    });
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
           </div>
-
-          {/* Products Grid */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Browse Products</h1>
-            <p className="text-gray-600">Showing {products.length} products</p>
-          </div>
-
-          {loading && (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-red-600">{error}</p>
-            </div>
-          )}
-
-          {!loading && !error && (
-            <div className={
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                : 'space-y-4'
-            }>
-              {products.map((product) => (
-                <ProductCard
-                  key={product._id || product.id}
-                  product={product}
-                  showVendorInfo={true}
-                  onClick={handleProductClick}
-                />
-              ))}
-            </div>
-          )}
-
-          {!loading && !error && products.length === 0 && (
-            <div className="text-center py-12">
-              <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m-2 0v5a2 2 0 002 2h14a2 2 0 002-2v-5" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-              <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
-            </div>
-          )}
-        </main>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
