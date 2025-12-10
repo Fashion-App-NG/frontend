@@ -8,41 +8,38 @@ const ProductFilters = ({
   initialFilters = {}
 }) => {
   const [filters, setFilters] = useState(initialFilters);
-  
-  // ✅ FIX: Don't sync with parent if we're typing
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
-
-  // ✅ Only sync with parent when NOT typing
+  
+  const prevFiltersRef = useRef(initialFilters);
+  
   useEffect(() => {
-    if (!isTyping) {
+    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(initialFilters);
+    
+    if (!isTyping && filtersChanged) {
       setFilters(initialFilters);
+      prevFiltersRef.current = initialFilters;
     }
   }, [initialFilters, isTyping]);
 
-  // ✅ For text inputs - debounce locally first
   const handleTextInput = useCallback((key, value) => {
     const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters); // Update local state immediately
+    setFilters(newFilters);
     
-    // Mark as typing
     setIsTyping(true);
     
-    // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     
-    // Set new timeout
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
       if (onFilterUpdate) {
         onFilterUpdate(newFilters);
       }
-    }, 300); // Local debounce before parent update
+    }, 300);
   }, [filters, onFilterUpdate]);
 
-  // ✅ Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) {
@@ -51,15 +48,17 @@ const ProductFilters = ({
     };
   }, []);
 
-  // ✅ For dropdowns - trigger immediate filter
+  // ✅ FIX: Use debounced update for dropdowns on BOTH mobile AND desktop
   const handleDropdownChange = useCallback((key, value) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
     
-    if (!isMobile && onFiltersChange) {
-      onFiltersChange(newFilters);
+    // ✅ CHANGED: Always use debounced update to preserve focus
+    if (onFilterUpdate) {
+      onFilterUpdate(newFilters);
     }
-  }, [filters, onFiltersChange, isMobile]);
+    // Only explicitly apply on mobile when drawer closes (via Apply button)
+  }, [filters, onFilterUpdate]);
 
   const materialTypes = ['Cotton', 'Silk', 'Linen', 'Wool', 'Polyester', 'Chiffon', 'Lace'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
@@ -120,11 +119,8 @@ const ProductFilters = ({
             value={`${filters.sortBy}-${filters.sortOrder}`}
             onChange={(e) => {
               const [sortBy, sortOrder] = e.target.value.split('-');
-              const newFilters = { ...filters, sortBy, sortOrder };
-              setFilters(newFilters);
-              if (!isMobile && onFiltersChange) {
-                onFiltersChange(newFilters);
-              }
+              handleDropdownChange('sortBy', sortBy);
+              handleDropdownChange('sortOrder', sortOrder);
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
             disabled={loading}
@@ -139,10 +135,12 @@ const ProductFilters = ({
         </div>
       </div>
 
-      {/* ✅ Price Range - Use text input handler */}
+      {/* ✅ Price Range */}
       <div className={`mt-4 grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Min Price (₦)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Min Price (₦)
+          </label>
           <input
             type="number"
             placeholder="0"
@@ -153,7 +151,9 @@ const ProductFilters = ({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Max Price (₦)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Max Price (₦)
+          </label>
           <input
             type="number"
             placeholder="10000"
