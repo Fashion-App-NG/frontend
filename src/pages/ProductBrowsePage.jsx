@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductFilters from '../components/Product/ProductFilters';
 import ProductGrid from '../components/Product/ProductGrid';
@@ -33,7 +33,7 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
     }
   }, [searchQuery]);
 
-  const debouncedFilters = useDebounce(filters, 400);
+  const debouncedFilters = useDebounce(filters, 500); // ✅ Increased to 500ms
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -48,14 +48,8 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
       setLoading(true);
       setError(null);
 
-      const queryParams = new URLSearchParams();
-      Object.entries(currentFilters).forEach(([key, value]) => {
-        if (value && value.toString().trim()) {
-          queryParams.append(key, value);
-        }
-      });
-
-      const response = await productService.getAllProducts(queryParams.toString());
+      // ✅ FIX: Pass plain object instead of URLSearchParams string
+      const response = await productService.getAllProducts(currentFilters);
       
       if (response.error) {
         throw new Error(response.error);
@@ -72,11 +66,21 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // ✅ EMPTY dependency array
 
-  const handleFiltersChange = useCallback((newFilters) => {
-    setFilters(newFilters);
-    
+  // ✅ FIX: Stable reference
+  const loadProductsRef = useRef(loadProducts);
+  useEffect(() => {
+    loadProductsRef.current = loadProducts;
+  }, [loadProducts]);
+
+  // ✅ Only trigger API call when debounced filters change
+  useEffect(() => {
+    loadProductsRef.current(debouncedFilters);
+  }, [debouncedFilters]);
+
+  // ✅ NEW: Update URL params WITHOUT triggering loadProducts
+  const updateURLParams = useCallback((newFilters) => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value && value.toString().trim()) {
@@ -84,19 +88,27 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
       }
     });
     setSearchParams(params);
-    
+  }, [setSearchParams]);
+
+  // ✅ NEW: Handle filter updates WITHOUT triggering API calls
+  const handleFilterUpdate = useCallback((newFilters) => {
+    setFilters(newFilters);
+    updateURLParams(newFilters);
+    // Debounced filters will trigger API call after 500ms
+  }, [updateURLParams]);
+
+  // ✅ UPDATED: Only for explicit filter application (mobile Apply button)
+  const handleFiltersChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+    updateURLParams(newFilters);
     loadProducts(newFilters);
     setShowFilters(false);
-  }, [setSearchParams, loadProducts]);
+  }, [updateURLParams, loadProducts]);
 
   const handleViewChange = useCallback((newView) => {
     setView(newView);
     localStorage.setItem('shopperProductView', newView);
   }, []);
-
-  useEffect(() => {
-    loadProducts(debouncedFilters);
-  }, [debouncedFilters, loadProducts]);
 
   // Count active filters
   const activeFilterCount = [
@@ -166,6 +178,7 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
         <div className="hidden lg:block">
           <ProductFilters 
             onFiltersChange={handleFiltersChange}
+            onFilterUpdate={handleFilterUpdate} // ✅ ADD THIS
             loading={loading}
             initialFilters={filters}
           />
@@ -207,6 +220,7 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
             <div className="flex-1 overflow-y-auto p-4">
               <ProductFilters 
                 onFiltersChange={handleFiltersChange}
+                onFilterUpdate={handleFilterUpdate} // ✅ ADD THIS
                 loading={loading}
                 initialFilters={filters}
                 isMobile={true}
@@ -217,7 +231,7 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    handleFiltersChange({
+                    const emptyFilters = {
                       search: '',
                       materialType: '',
                       pattern: '',
@@ -225,14 +239,15 @@ const ProductBrowsePage = ({ searchQuery = '' }) => {
                       maxPrice: '',
                       sortBy: 'newest',
                       sortOrder: 'desc'
-                    });
+                    };
+                    handleFiltersChange(emptyFilters); // ✅ FIX: Use handleFiltersChange
                   }}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium"
                 >
                   Clear All
                 </button>
                 <button
-                  onClick={() => setShowFilters(false)}
+                  onClick={() => handleFiltersChange(filters)} // ✅ FIX: Apply current filters
                   className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
                   Apply Filters
