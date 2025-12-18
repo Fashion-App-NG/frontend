@@ -1,3 +1,4 @@
+/fashion-app/frontend/.gitignore
 # dependencies
 /node_modules
 /.pnp
@@ -10,13 +11,18 @@
 /build
 /dist
 
-# misc
-.DS_Store
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Keep .env.example for reference
+!.env.example
+
+# misc
+.DS_Store
 
 # logs
 npm-debug.log*
@@ -37,3 +43,15 @@ figma-*
 
 # OS generated files
 Thumbs.db
+
+# Netlify
+/.netlify
+
+# ✅ UPDATED: Keep Auth directory out of git but ensure build copies work
+src/components/Auth
+
+# ✅ IMPORTANT: Ensure Auth-Designer and Auth-AI are tracked
+!src/components/Auth-Designer/
+!src/components/Auth-AI/
+
+.copilot/README.md
