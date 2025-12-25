@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
-import { useAuth } from '../contexts/AuthContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import vendorOrderService from '../services/vendorOrderService';
 import { formatPrice } from '../utils/formatPrice';
 
 const VendorOrderDetailsPage = () => {
-  // ✅ ALL HOOKS FIRST
   const { orderId } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  
+  // ✅ One line replaces all auth logic!
+  const { user, loading: authLoading, isAuthorized } = useRequireAuth({
+    requiredRole: 'vendor',
+    redirectTo: '/login/vendor'
+  });
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
 
-  // ✅ useEffect for fetching order details
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!orderId || !isAuthenticated || user?.role !== 'vendor') {
+      if (!orderId || !user?.id) {
         return;
       }
 
@@ -41,9 +45,8 @@ const VendorOrderDetailsPage = () => {
     };
 
     fetchOrderDetails();
-  }, [orderId, isAuthenticated, user?.role]);
+  }, [orderId, user?.id]);
 
-  // ✅ Add the missing handleStatusUpdate function
   const handleStatusUpdate = async (newStatus) => {
     if (!order || updating) return;
 
@@ -54,15 +57,11 @@ const VendorOrderDetailsPage = () => {
       const response = await vendorOrderService.updateOrderStatus(orderId, newStatus);
       
       if (response.success) {
-        // Update the order state with the new status
         setOrder(prevOrder => ({
           ...prevOrder,
           status: newStatus,
           updatedAt: new Date().toISOString()
         }));
-        
-        // Optional: Show success message
-        console.log('Order status updated successfully');
       } else {
         setError(response.message || 'Failed to update order status');
       }
@@ -74,16 +73,15 @@ const VendorOrderDetailsPage = () => {
     }
   };
 
-  // ✅ CONDITIONAL LOGIC AFTER ALL HOOKS AND FUNCTIONS
-  if (!isAuthenticated) {
-    return <Navigate to="/login/vendor" replace />;
+  // ✅ Show loading while auth checks
+  if (authLoading || !isAuthorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
 
-  if (user && user.role !== 'vendor') {
-    return <Navigate to="/vendor/dashboard" replace />;
-  }
-
-  // ✅ Loading and error states
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -126,150 +124,76 @@ const VendorOrderDetailsPage = () => {
     );
   }
 
-  // ✅ Main render logic
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex-1 ml-[254px] p-6">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="bg-white rounded-[10px] p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <Link
-                  to="/vendor/orders"
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium mb-2 inline-block"
-                >
-                  ← Back to Orders
-                </Link>
-                <h1 className="text-3xl font-bold text-gray-900">Order Details</h1>
-                <p className="text-gray-600">Order {order.orderId}</p>
-              </div>
-              
-              {/* Status update */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-sm text-gray-500 mb-1">Update Status</div>
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleStatusUpdate(e.target.value)}
-                    disabled={updating}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <Link 
+          to="/vendor/orders"
+          className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Orders
+        </Link>
 
-            {/* Order summary cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">Order Date</div>
-                <div className="font-semibold">{new Date(order.createdAt).toLocaleDateString()}</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">Total Amount</div>
-                <div className="font-semibold text-lg">{formatPrice(order.orderSummary.totalAmount)}</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">Order Status</div>
-                <div className="mt-1"><OrderStatusBadge status={order.status} /></div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-500">Payment Status</div>
-                <div className="mt-1"><OrderStatusBadge status={order.paymentStatus} type="payment" /></div>
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Order #{order.orderNumber || order._id}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Placed on {new Date(order.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <OrderStatusBadge status={order.status} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <OrderDeliveryInfo order={order} />
+            
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Order Summary</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">{formatPrice(order.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery:</span>
+                  <span className="font-medium">{formatPrice(order.deliveryFee || 0)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-200">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-bold">{formatPrice(order.total)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Customer Information */}
-            <div className="bg-white rounded-[10px] p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Customer Information</h2>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-sm text-gray-500">Name</div>
-                  <div className="font-medium">{order.customer.firstName} {order.customer.lastName}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Email</div>
-                  <div>{order.customer.email}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Phone</div>
-                  <div>{order.customer.phone}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Shipping Address */}
-            <div className="bg-white rounded-[10px] p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Shipping Address</h2>
-              <div className="text-gray-700">
-                {order.shippingAddress.street}<br />
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}<br />
-                {order.shippingAddress.country}
-              </div>
-            </div>
-          </div>
-
-          {/* Order Items */}
-          <div className="bg-white rounded-[10px] p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Items</h2>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
             <div className="space-y-4">
-              {order.products.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              {order.items?.map((item, index) => (
+                <div key={index} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
+                  <img 
+                    src={item.product?.image || '/placeholder-product.png'} 
+                    alt={item.product?.name}
+                    className="w-20 h-20 object-cover rounded"
+                  />
                   <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-500">Product ID: {item.productId}</p>
-                    {item.specifications && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        {Object.entries(item.specifications).map(([key, value]) => (
-                          <span key={key} className="mr-3">
-                            {key}: {value}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <h4 className="font-medium text-gray-900">{item.product?.name}</h4>
+                    <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatPrice(item.price * item.quantity)}
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <div className="font-medium">{formatPrice(item.price)} × {item.quantity}</div>
-                    <div className="text-lg font-semibold">{formatPrice(item.totalPrice)}</div>
-                    <OrderStatusBadge status={item.status} />
-                  </div>
+                  <OrderStatusBadge status={item.status} />
                 </div>
               ))}
             </div>
-
-            {/* Order totals */}
-            <div className="border-t border-gray-200 mt-6 pt-4">
-              <div className="space-y-2 text-right">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span>{formatPrice(order.orderSummary.subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping:</span>
-                  <span>{formatPrice(order.orderSummary.shipping)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax:</span>
-                  <span>{formatPrice(order.orderSummary.tax)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-2">
-                  <span>Total:</span>
-                  <span>{formatPrice(order.orderSummary.totalAmount)}</span>
-                </div>
-              </div>
-            </div>
           </div>
-
-          {/* Delivery Information - New Section */}
-          <OrderDeliveryInfo order={order} />
         </div>
       </div>
     </div>

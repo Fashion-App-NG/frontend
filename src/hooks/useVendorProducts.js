@@ -1,483 +1,184 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import productService from '../services/productService'; // ✅ Use consistent import
+import productService from '../services/productService';
 
 export const useVendorProducts = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false); // ✅ Fix naming consistency
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [totalProducts, setTotalProducts] = useState(0);
 
-  // Transform API product to component format
-  const transformApiProduct = useCallback((apiProduct) => ({
-    id: apiProduct.id,
-    name: apiProduct.name,
-    description: apiProduct.description || 'No description available',
-    image: apiProduct.image || '/api/placeholder/86/66',
-    images: apiProduct.images || [],
-    quantity: apiProduct.quantity || 0,
-    date: apiProduct.createdAt ? new Date(apiProduct.createdAt).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    }) : 'Unknown',
-    uploadDate: apiProduct.createdAt || new Date().toISOString(),
-    createdAt: apiProduct.createdAt,
-    pricePerYard: apiProduct.pricePerYard || 0,
-    price: apiProduct.pricePerYard || apiProduct.price || 0,
-    status: apiProduct.status || (apiProduct.display ? 'ACTIVE' : 'INACTIVE'),
-    statusColor: apiProduct.display ? '#28b446' : '#cd0000',
-    materialType: apiProduct.materialType,
-    pattern: apiProduct.pattern,
-    idNumber: apiProduct.idNumber,
-    display: apiProduct.display,
-    isApiProduct: true
-  }), []);
-
-  // Load products from API - ✅ Updated to use productService
-  const loadProducts = useCallback(async () => {
+  /**
+   * Load vendor products with filters
+   * @param {Object} filters - Filter parameters
+   */
+  const loadVendorProducts = useCallback(async (filters = {}) => {
     if (!user?.id) {
       console.warn('No user ID available for loading products');
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
+      console.log('🔍 Loading vendor products for vendor:', user.id);
+      console.log('📊 Filters:', filters);
+
+      const response = await productService.getVendorProducts(user.id, filters);
       
-      // ✅ Use productService instead of VendorService
-      const response = await productService.getVendorProducts(user.id);
-      
-      if (response.success && response.products) {
-        const transformedProducts = response.products.map(transformApiProduct);
-        setProducts(transformedProducts);
-        console.log(`✅ Loaded ${transformedProducts.length} products from API`);
-      } else if (response.products) {
-        // Handle direct products array response
-        const transformedProducts = response.products.map(transformApiProduct);
-        setProducts(transformedProducts);
-        console.log(`✅ Loaded ${transformedProducts.length} products from API`);
+      console.log('✅ Vendor products loaded:', response);
+
+      if (response.success) {
+        setProducts(response.products || []);
+        setTotalProducts(response.totalCount || response.products?.length || 0);
       } else {
-        setProducts([]);
-        console.log('No products found for vendor');
+        throw new Error(response.message || 'Failed to load products');
       }
-    } catch (error) {
-      console.error('❌ Failed to load products:', error);
-      setError(error.message);
-      
-      // Fallback to localStorage if API fails
-      try {
-        const localProducts = JSON.parse(localStorage.getItem('vendorProducts') || '[]');
-        const validateProduct = (product) => ({
-          id: product.id || null,
-          name: product.name || 'Unknown Product',
-          description: product.description || 'No description available',
-          image: product.image || '/api/placeholder/86/66',
-          images: product.images || [],
-          quantity: product.quantity || 0,
-          date: product.date || 'Unknown',
-          uploadDate: product.uploadDate || new Date().toISOString(),
-          createdAt: product.createdAt || product.uploadDate,
-          pricePerYard: product.pricePerYard || product.price || 0,
-          price: product.price || product.pricePerYard || 0,
-          status: product.status || 'INACTIVE',
-          statusColor: product.statusColor || '#cd0000',
-          materialType: product.materialType || null,
-          pattern: product.pattern || null,
-          idNumber: product.idNumber || null,
-          display: product.display || false,
-          isApiProduct: product.isApiProduct || false,
-        });
-        const sanitizedProducts = Array.isArray(localProducts)
-          ? localProducts.map(validateProduct)
-          : [];
-        if (sanitizedProducts.length > 0) {
-          setProducts(sanitizedProducts);
-          console.log('📦 Loaded products from localStorage as fallback');
-        } else {
-          setProducts([]);
-        }
-      } catch (localError) {
-        console.error('Failed to load from localStorage:', localError);
-        setProducts([]);
-      }
+    } catch (err) {
+      console.error('❌ Error loading vendor products:', err);
+      setError(err.message || 'Failed to load products');
+      setProducts([]);
+      setTotalProducts(0);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, transformApiProduct]);
+  }, [user?.id]);
 
-  // Create product - ✅ Updated to use productService
-  const createProduct = useCallback(async (productData) => {
+  /**
+   * Update a single product
+   * @param {Object} updatedProduct - Updated product data
+   */
+  const updateProduct = useCallback(async (productId, updates) => {
     try {
-      setLoading(true);
-      setError(null);
+      console.log('🔄 Updating product:', productId, updates);
       
-      // ✅ Use productService for consistency
-      const response = await productService.createProduct(productData);
+      const response = await productService.updateProduct(productId, updates);
       
-      // Refresh products list
-      await loadProducts();
-      
-      return response;
-    } catch (error) {
-      console.error('Failed to create product:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [loadProducts]);
-
-  // ✅ Add bulk creation method using productService
-  const createBulkProducts = useCallback(async (productsArray) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await productService.createBulkProducts(productsArray);
-      
-      // Refresh products list
-      await loadProducts();
-      
-      return response;
-    } catch (error) {
-      console.error('Failed to create bulk products:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [loadProducts]);
-
-  // Update product - ✅ Updated to use productService
-  const updateProduct = useCallback(async (productId, updateData) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await productService.updateProduct(productId, updateData);
-      
-      if (response.success || response.message) {
-        // Refresh products list
-        await loadProducts();
+      if (response.success) {
+        // Update local state
+        setProducts(prevProducts =>
+          prevProducts.map(p =>
+            (p._id === productId || p.id === productId)
+              ? { ...p, ...updates }
+              : p
+          )
+        );
         return response;
+      } else {
+        throw new Error(response.message || 'Failed to update product');
       }
-    } catch (error) {
-      console.error('Failed to update product:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('❌ Error updating product:', err);
+      throw err;
     }
-  }, [loadProducts]);
+  }, []);
 
-  // Delete product - ✅ Updated to use productService
+  /**
+   * Delete a product
+   * @param {string} productId - Product ID to delete
+   */
   const deleteProduct = useCallback(async (productId) => {
     try {
-      setLoading(true);
-      setError(null);
-
+      console.log('🗑️ Deleting product:', productId);
+      
       const response = await productService.deleteProduct(productId);
       
-      if (response.success || response.message) {
-        // Refresh products list
-        await loadProducts();
+      if (response.success) {
+        // Remove from local state
+        setProducts(prevProducts =>
+          prevProducts.filter(p => p._id !== productId && p.id !== productId)
+        );
+        setTotalProducts(prev => Math.max(0, prev - 1));
         return response;
+      } else {
+        throw new Error(response.message || 'Failed to delete product');
       }
-    } catch (error) {
-      console.error('Failed to delete product:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('❌ Error deleting product:', err);
+      throw err;
     }
-  }, [loadProducts]);
+  }, []);
 
-  // Auto-load products when user is available
-  useEffect(() => {
-    if (user?.id) {
-      loadProducts();
+  /**
+   * Restock a product
+   * @param {string} productId - Product ID
+   * @param {number} quantity - Quantity to add
+   */
+  const restockProduct = useCallback(async (productId, quantity) => {
+    try {
+      console.log('📦 Restocking product:', productId, 'Quantity:', quantity);
+      
+      // Call your restock endpoint
+      const response = await productService.updateProduct(productId, {
+        $inc: { stock: quantity }
+      });
+      
+      if (response.success) {
+        // Update local state
+        setProducts(prevProducts =>
+          prevProducts.map(p =>
+            (p._id === productId || p.id === productId)
+              ? { ...p, stock: (p.stock || 0) + quantity }
+              : p
+          )
+        );
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to restock product');
+      }
+    } catch (err) {
+      console.error('❌ Error restocking product:', err);
+      throw err;
     }
-  }, [user?.id, loadProducts]);
+  }, []);
+
+  /**
+   * Toggle product status (active/inactive)
+   * @param {string} productId - Product ID
+   * @param {boolean} status - New status
+   */
+  const toggleProductStatus = useCallback(async (productId, status) => {
+    try {
+      console.log('🔄 Toggling product status:', productId, status);
+      
+      const response = await productService.updateProduct(productId, {
+        status: status ? 'ACTIVE' : 'INACTIVE',
+        isActive: status,
+        display: status
+      });
+      
+      if (response.success) {
+        // Update local state
+        setProducts(prevProducts =>
+          prevProducts.map(p =>
+            (p._id === productId || p.id === productId)
+              ? { ...p, status: status ? 'ACTIVE' : 'INACTIVE', isActive: status, display: status }
+              : p
+          )
+        );
+        return response;
+      } else {
+        throw new Error(response.message || 'Failed to update product status');
+      }
+    } catch (err) {
+      console.error('❌ Error toggling product status:', err);
+      throw err;
+    }
+  }, []);
 
   return {
     products,
     loading,
     error,
-    loadProducts,
-    createProduct,
-    createBulkProducts,
+    totalProducts,
+    loadVendorProducts,
     updateProduct,
     deleteProduct,
-    setError: (errorMessage) => setError(errorMessage)
+    restockProduct,
+    toggleProductStatus
   };
-};
-
-
-// eslint-disable-next-line no-unused-vars
-const VendorProductEditModal = ({ isOpen, onClose, product, onSave }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    pricePerYard: '',
-    quantity: '',
-    description: '',
-    materialType: ''
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  // Material type options
-  const materialTypes = [
-    'cotton', 'silk', 'wool', 'linen', 'polyester', 
-    'nylon', 'rayon', 'cashmere', 'denim', 'leather'
-  ];
-
-  // Initialize form data when product changes
-  useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name || '',
-        pricePerYard: product.price || '',
-        quantity: product.quantity || '',
-        description: product.description || '',
-        materialType: product.materialType || ''
-      });
-      setErrors({});
-    }
-  }, [product]);
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Product name is required';
-    }
-
-    if (!formData.pricePerYard || parseFloat(formData.pricePerYard) <= 0) {
-      newErrors.pricePerYard = 'Valid price is required';
-    }
-
-    if (!formData.quantity || parseInt(formData.quantity) < 0) {
-      newErrors.quantity = 'Valid quantity is required';
-    }
-
-    if (!formData.materialType) {
-      newErrors.materialType = 'Material type is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      const updateData = {
-        name: formData.name.trim(),
-        pricePerYard: parseFloat(formData.pricePerYard),
-        quantity: parseInt(formData.quantity),
-        materialType: formData.materialType.toLowerCase()
-      };
-
-      if (formData.description.trim()) {
-        updateData.description = formData.description.trim();
-      }
-
-      await onSave(updateData);
-    } catch (error) {
-      console.error('Error saving product:', error);
-      setErrors({ general: error.message || 'Failed to save product' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    if (!isLoading) {
-      setErrors({});
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Edit Product
-            </h2>
-            <button
-              onClick={handleClose}
-              disabled={isLoading}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Form */}
-        <div className="p-6 space-y-4">
-          {/* General Error */}
-          {errors.general && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{errors.general}</p>
-            </div>
-          )}
-
-          {/* Product Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Enter product name"
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-            )}
-          </div>
-
-          {/* Price per Yard */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Price per Yard (₦) *
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.pricePerYard}
-              onChange={(e) => handleInputChange('pricePerYard', e.target.value)}
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                errors.pricePerYard ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="0.00"
-            />
-            {errors.pricePerYard && (
-              <p className="mt-1 text-sm text-red-600">{errors.pricePerYard}</p>
-            )}
-          </div>
-
-          {/* Quantity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quantity (Pieces) *
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.quantity}
-              onChange={(e) => handleInputChange('quantity', e.target.value)}
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                errors.quantity ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="0"
-            />
-            {errors.quantity && (
-              <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
-            )}
-          </div>
-
-          {/* Material Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Material Type *
-            </label>
-            <select
-              value={formData.materialType}
-              onChange={(e) => handleInputChange('materialType', e.target.value)}
-              disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                errors.materialType ? 'border-red-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">Select material type</option>
-              {materialTypes.map(type => (
-                <option key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </option>
-              ))}
-            </select>
-            {errors.materialType && (
-              <p className="mt-1 text-sm text-red-600">{errors.materialType}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              disabled={isLoading}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              placeholder="Optional product description"
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-          <button
-            onClick={handleClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            {isLoading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            )}
-            {isLoading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default useVendorProducts;
