@@ -134,7 +134,8 @@ class UserService {
 
   async getVendorProfile() {
     try {
-      const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
+      // ✅ Change from .includes('/api') to .endsWith('/api')
+      const apiBase = this.baseURL.endsWith('/api') ? this.baseURL : `${this.baseURL}/api`;
       const url = `${apiBase}/profile/me`;
 
       const response = await authFetch(url);
@@ -197,7 +198,8 @@ class UserService {
 
   async updateVendorProfile(profileData) {
     try {
-      const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
+      // ✅ Change from .includes('/api') to .endsWith('/api')
+      const apiBase = this.baseURL.endsWith('/api') ? this.baseURL : `${this.baseURL}/api`;
       const url = `${apiBase}/profile/me`;
 
       // Transform the form data to match what the API expects

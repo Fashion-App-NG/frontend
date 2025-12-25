@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  frontend-designer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UI_TYPE: designer
+    image: faari-frontend:designer
+    container_name: faari-frontend-designer
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com
+      - REACT_APP_ENV=production
+      - REACT_APP_APP_NAME=Fáàrí Fashion
+      - REACT_APP_PAYSTACK_PUBLIC_KEY=pk_live_9da64977c728a9fba082d8909e0604b487c4dc47
+    restart: unless-stopped
+    networks:
+      - faari-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UI_TYPE: ai
+    image: faari-frontend:ai
+    container_name: faari-frontend-ai
+    ports:
+      - "3001:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_BASE_URL=https://backend-bsm1.onrender.com
+      - REACT_APP_ENV=production
+      - REACT_APP_APP_NAME=Fáàrí Fashion AI
+      - REACT_APP_PAYSTACK_PUBLIC_KEY=pk_live_9da64977c728a9fba082d8909e0604b487c4dc47
+    restart: unless-stopped
+    networks:
+      - faari-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles:
+      - ai
+
+networks:
+  faari-network:
+    driver: bridge
