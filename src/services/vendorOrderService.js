@@ -14,54 +14,54 @@ class VendorOrderService {
       }
     });
 
-    const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
+    // ✅ Change from .includes('/api') to .endsWith('/api')
+    const apiBase = this.baseURL.endsWith('/api') ? this.baseURL : `${this.baseURL}/api`;
     
-    // ✅ CORRECTED: Use plural 'vendor-orders' as you confirmed is correct
     const url = `${apiBase}/vendor-orders/${vendorId}/orders${
-        queryParams.toString() ? `?${queryParams.toString()}` : ''
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
     }`;
 
     console.log(`🔍 Fetching vendor orders: ${url}`);
 
     try {
-        const response = await authFetch(url);
-        console.log('🔍 VENDOR ORDERS RESPONSE:', response);
-        return response;
+      const response = await authFetch(url);
+      console.log('🔍 VENDOR ORDERS RESPONSE:', response);
+      return response;
     } catch (error) {
-        console.error('❌ Failed to fetch vendor orders:', error);
-        throw new Error(error.message || 'Failed to fetch vendor orders');
+      console.error('❌ Failed to fetch vendor orders:', error);
+      throw new Error(error.message || 'Failed to fetch vendor orders');
     }
-}
+  }
 
   async updateOrderStatus(vendorId, orderId, productIds, status) {
-    const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
-    // ✅ Correct endpoint for batch product status update
+    // ✅ Change from .includes('/api') to .endsWith('/api')
+    const apiBase = this.baseURL.endsWith('/api') ? this.baseURL : `${this.baseURL}/api`;
     const url = `${apiBase}/vendor-orders/${vendorId}/orders/${orderId}/products/status`;
 
     try {
-        const response = await authFetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productIds, status })
-        });
-        return response;
+      const response = await authFetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds, status })
+      });
+      return response;
     } catch (error) {
-        throw new Error(error.message || 'Failed to update product statuses');
+      throw new Error(error.message || 'Failed to update product statuses');
     }
-}
+  }
 
   async getOrderDetails(orderId) {
-    const apiBase = this.baseURL.includes('/api') ? this.baseURL : `${this.baseURL}/api`;
-    // ✅ CORRECTED: Use plural 'vendor-orders' 
+    // ✅ Change from .includes('/api') to .endsWith('/api')
+    const apiBase = this.baseURL.endsWith('/api') ? this.baseURL : `${this.baseURL}/api`;
     const url = `${apiBase}/vendor-orders/orders/${orderId}`;
     
     try {
-        const response = await authFetch(url);
-        return response;
+      const response = await authFetch(url);
+      return response;
     } catch (error) {
-        throw new Error(error.message || 'Failed to fetch order details');
+      throw new Error(error.message || 'Failed to fetch order details');
     }
-}
+  }
 }
 
 const vendorOrderService = new VendorOrderService();

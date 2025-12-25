@@ -35,15 +35,16 @@ function ensureUIForBuild() {
         return;
       } else if (stats.isDirectory()) {
         console.log('✅ Auth directory exists - using current UI');
-        const files = fs.readdirSync(authPath).slice(0, 5); // Show first 5 files
+        const files = fs.readdirSync(authPath).slice(0, 5);
         console.log(`📋 Auth directory contents: ${files.join(', ')}...`);
         return;
       }
     }
 
-    // Determine which UI to use based on environment or default
+    // ✅ Updated: Support Docker build args and Netlify
     const uiType = process.env.UI_TYPE || process.env.NETLIFY_BUILD_UI || 'designer';
     console.log(`🎯 No Auth directory found - setting up ${uiType.toUpperCase()} UI for build`);
+    console.log(`📋 UI_TYPE env: ${process.env.UI_TYPE}`);
 
     const sourcePath = uiType === 'ai' ? aiPath : designerPath;
 

@@ -56,7 +56,19 @@
     "git:add-docs": "git add README.md docs/",
     "git:add-all-shared": "npm run git:add-core && npm run git:add-shared && npm run git:add-docs",
     "git:add-ai": "git add src/components/Auth-AI/ src/pages/",
-    "git:add-designer": "git add src/components/Auth-Designer/ src/pages/"
+    "git:add-designer": "git add src/components/Auth-Designer/ src/pages/",
+    "docker:build:designer": "docker build --build-arg UI_TYPE=designer -t faari-frontend:designer .",
+    "docker:build:ai": "docker build --build-arg UI_TYPE=ai -t faari-frontend:ai .",
+    "docker:run:designer": "docker run -p 3000:80 --name faari-designer faari-frontend:designer",
+    "docker:run:ai": "docker run -p 3001:80 --name faari-ai faari-frontend:ai",
+    "docker:up": "docker-compose up -d frontend-designer",
+    "docker:up:all": "docker-compose --profile ai up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:designer": "docker-compose logs -f frontend-designer",
+    "docker:logs:ai": "docker-compose logs -f frontend-ai",
+    "docker:restart": "docker-compose restart",
+    "docker:clean": "docker-compose down -v && docker system prune -f"
   },
   "eslintConfig": {
     "extends": [
