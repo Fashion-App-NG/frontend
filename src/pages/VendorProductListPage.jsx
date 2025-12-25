@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import ProductCard from '../components/Product/VendorProductCard';
-import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
 import { RestockModal } from '../components/Vendor/RestockModal';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useVendorProducts } from '../hooks/useVendorProducts';

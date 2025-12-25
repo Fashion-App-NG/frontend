@@ -6,7 +6,6 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import productService from '../services/productService';
 
 const FavouritesPage = () => {
-  // ✅ One line replaces all auth/redirect logic!
   const { isAuthorized, loading: authLoading } = useRequireAuth({
     requiredRole: 'shopper',
     redirectTo: '/login'
@@ -19,7 +18,6 @@ const FavouritesPage = () => {
 
   useEffect(() => {
     const loadFavoriteProducts = async () => {
-      // Skip if not authorized
       if (!isAuthorized) {
         setLoading(false);
         return;
@@ -34,15 +32,20 @@ const FavouritesPage = () => {
           return;
         }
         
-        const productPromises = favorites.map(productId => 
-          productService.getProductById(productId)
-        );
+        // ✅ FIX: Ensure we're only passing string IDs
+        const productPromises = favorites
+          .filter(id => typeof id === 'string' && id.length > 0) // Only valid string IDs
+          .map(productId => {
+            console.log('🔍 Fetching product with ID:', productId);
+            return productService.getProductById(productId);
+          });
         
         const products = await Promise.all(productPromises);
         const validProducts = products
-          .filter(response => response && !response.error)
+          .filter(response => response && !response.error && response.product)
           .map(response => response.product);
         
+        console.log('✅ Loaded favorite products:', validProducts.length);
         setFavoriteProducts(validProducts);
       } catch (error) {
         console.error('Failed to load favorite products:', error);
@@ -57,7 +60,6 @@ const FavouritesPage = () => {
     }
   }, [favorites, favoritesLoading, isAuthorized]);
 
-  // Refresh favorites on page load
   useEffect(() => {
     if (isAuthorized) {
       refreshFavorites();
@@ -68,7 +70,6 @@ const FavouritesPage = () => {
     window.location.href = `/product/${product._id || product.id}`;
   };
 
-  // ✅ Show loading while auth checks
   if (authLoading || !isAuthorized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

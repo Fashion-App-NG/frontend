@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import VendorDashboardContent from '../components/Vendor/VendorDashboardContent';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 
 const VendorDashboardPage = () => {
   const location = useLocation();
