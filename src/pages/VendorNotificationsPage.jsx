@@ -1,20 +1,18 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 
 export const VendorNotificationsPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  // ✅ One line replaces all auth logic!
+  const { loading, isAuthorized } = useRequireAuth({
+    requiredRole: 'vendor',
+    redirectTo: '/login/vendor'
+  });
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login/vendor" replace />;
-  }
-
-  if (user && user.role !== 'vendor') {
-    if (user.role === 'shopper') {
-      return <Navigate to="/shopper/dashboard" replace />;
-    }
-    if (user.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
+  if (loading || !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-[#d8dfe9] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
   }
 
   return (

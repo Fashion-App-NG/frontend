@@ -1,8 +1,9 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import { useAuth } from "../contexts/AuthContext";
+import { useRequireAuth } from '../hooks/useRequireAuth'; // ✅ ADD THIS LINE
 import checkoutService from "../services/checkoutService";
 import { formatPrice } from "../utils/formatPrice";
 import { calculateOrderStatus, normalizeOrderStatus } from '../utils/orderUtils';
@@ -11,8 +12,8 @@ import { calculateSubtotal } from "../utils/priceCalculations";
 const FILTER_TABS = [
     { key: "ALL", label: "All" },
     { key: "PROCESSING", label: "Processing" },
-    { key: "IN_PROGRESS", label: "In Progress" }, // ✅ NEW
-    { key: "COMPLETED", label: "Completed" }, // ✅ NEW
+    { key: "IN_PROGRESS", label: "In Progress" },
+    { key: "COMPLETED", label: "Completed" },
     { key: "DELIVERED", label: "Delivered" },
     { key: "CANCELLED", label: "Cancelled" },
 ];
@@ -20,7 +21,16 @@ const FILTER_TABS = [
 const PAGE_SIZE = 10;
 
 const ShopperOrders = () => {
-    const { user, isAuthenticated } = useAuth();
+    // ✅ REPLACE THIS LINE:
+    // const { user, isAuthenticated } = useAuth();
+    
+    // ✅ WITH THESE TWO LINES:
+    const { user } = useAuth();
+    const { loading: authLoading, isAuthorized } = useRequireAuth({
+        requiredRole: 'shopper',
+        redirectTo: '/login'
+    });
+
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
     const [loading, setLoading] = useState(true);
@@ -28,11 +38,13 @@ const ShopperOrders = () => {
     const [activeTab, setActiveTab] = useState("ALL");
     const [search, setSearch] = useState("");
 
-    // ✅ All hooks BEFORE conditional returns
     useEffect(() => {
         async function verifyAndFetchOrders() {
-            // Skip if not authenticated
-            if (!isAuthenticated || !user?.id) {
+            // ✅ REPLACE THIS LINE:
+            // if (!isAuthenticated || !user?.id) {
+            
+            // ✅ WITH THIS LINE:
+            if (!isAuthorized || !user?.id) {
                 setLoading(false);
                 return;
             }
@@ -112,7 +124,7 @@ const ShopperOrders = () => {
         }
         
         verifyAndFetchOrders();
-    }, [pagination.currentPage, user?.id, isAuthenticated]);
+    }, [pagination.currentPage, user?.id, isAuthorized]); // ✅ CHANGE: isAuthenticated -> isAuthorized
 
     const filteredOrders = useMemo(() => {
         let filtered = orders;
@@ -148,9 +160,18 @@ const ShopperOrders = () => {
         };
     };
 
-    // ✅ Conditional redirect AFTER all hooks
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+    // ✅ REPLACE THIS SECTION:
+    // if (!isAuthenticated) {
+    //     return <Navigate to="/login" replace />;
+    // }
+    
+    // ✅ WITH THIS:
+    if (authLoading || !isAuthorized) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
     }
 
     return (
