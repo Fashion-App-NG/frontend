@@ -7,8 +7,7 @@ const VendorDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // ✅ One line replaces 30+ lines of auth logic!
-  const { user, loading, isAuthorized } = useRequireAuth({
+  const { loading, isAuthorized } = useRequireAuth({
     requiredRole: 'vendor',
     redirectTo: '/login/vendor'
   });
@@ -40,7 +39,6 @@ const VendorDashboardPage = () => {
     }
   }, [location.state?.message, location.state?.type, location.pathname, navigate]);
 
-  // ✅ Show loading while auth checks
   if (loading || !isAuthorized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

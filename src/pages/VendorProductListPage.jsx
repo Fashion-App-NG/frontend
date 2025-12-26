@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'; // ✅ Add useRef
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import ProductCard from '../components/Product/VendorProductCard';
@@ -157,6 +157,13 @@ const VendorProductListPage = () => {
   
   const navigate = useNavigate();
 
+  const filtersRef = useRef(filters);
+  
+  // Update ref when filters change
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
   // Load vendor products with filtering
   const loadVendorProducts = useCallback(async (currentFilters) => {
     if (!user?.id || !isAuthorized) {
@@ -257,7 +264,7 @@ const VendorProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, isAuthorized, activeFilterTab, currentPage, limit]);
+  }, [user?.id, isAuthorized, activeFilterTab, currentPage, limit]); // ✅ Added activeFilterTab
 
   // Filter tab counts
   const getFilterCounts = () => {
@@ -386,9 +393,10 @@ const VendorProductListPage = () => {
   // ✅ FIX: Load products on mount and when dependencies change
   useEffect(() => {
     if (user?.id && isAuthorized) {
-      loadVendorProducts(filters);
+      loadVendorProducts(filtersRef.current); // ✅ Use ref instead
     }
-  }, [user?.id, isAuthorized, loadVendorProducts, activeFilterTab, currentPage]); // ✅ Removed 'filters' to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAuthorized, loadVendorProducts, activeFilterTab, currentPage]); // ✅ No filters dependency
 
   // ✅ FIX: Show loading while auth checks
   if (authLoading || !isAuthorized) {

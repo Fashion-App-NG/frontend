@@ -9,7 +9,6 @@ import { formatPrice } from '../utils/formatPrice';
 const VendorOrderDetailsPage = () => {
   const { orderId } = useParams();
   
-  // ✅ One line replaces all auth logic!
   const { user, loading: authLoading, isAuthorized } = useRequireAuth({
     requiredRole: 'vendor',
     redirectTo: '/login/vendor'
@@ -18,7 +17,6 @@ const VendorOrderDetailsPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -47,33 +45,30 @@ const VendorOrderDetailsPage = () => {
     fetchOrderDetails();
   }, [orderId, user?.id]);
 
-  const handleStatusUpdate = async (newStatus) => {
-    if (!order || updating) return;
+  // ✅ Commented out function that uses the removed state
+  // const handleStatusUpdate = async (newStatus) => {
+  //   if (!order || updating) return;
+  //   setUpdating(true);
+  //   setError(null);
+  //   try {
+  //     const response = await vendorOrderService.updateOrderStatus(orderId, newStatus);
+  //     if (response.success) {
+  //       setOrder(prevOrder => ({
+  //         ...prevOrder,
+  //         status: newStatus,
+  //         updatedAt: new Date().toISOString()
+  //       }));
+  //     } else {
+  //       setError(response.message || 'Failed to update order status');
+  //     }
+  //   } catch (err) {
+  //     console.error('Error updating order status:', err);
+  //     setError(err.message || 'Failed to update order status');
+  //   } finally {
+  //     setUpdating(false);
+  //   }
+  // };
 
-    setUpdating(true);
-    setError(null);
-
-    try {
-      const response = await vendorOrderService.updateOrderStatus(orderId, newStatus);
-      
-      if (response.success) {
-        setOrder(prevOrder => ({
-          ...prevOrder,
-          status: newStatus,
-          updatedAt: new Date().toISOString()
-        }));
-      } else {
-        setError(response.message || 'Failed to update order status');
-      }
-    } catch (err) {
-      console.error('Error updating order status:', err);
-      setError(err.message || 'Failed to update order status');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // ✅ Show loading while auth checks
   if (authLoading || !isAuthorized) {
     return (
       <div className="flex items-center justify-center min-h-screen">
