@@ -1,10 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import ShopperDashboard from '../components/Auth-Designer/Dashboard/ShopperDashboard'; // ✅ Use default import
+import ShopperDashboard from '../components/Auth-Designer/Dashboard/ShopperDashboard';
 import { useAuth } from '../contexts/AuthContext';
 
 // React Component: Shopper dashboard page wrapper using existing ShopperDashboard
 export const ShopperDashboardPage = () => {
-  const { isAuthenticated, user } = useAuth(); // ✅ Add user back
+  const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
   
   console.log('🔍 ShopperDashboard Debug:', {
@@ -31,6 +31,18 @@ export const ShopperDashboardPage = () => {
       userRole: user?.role,
       decision: isGuest ? 'GUEST_MODE' : !isAuthenticated ? 'REDIRECT_LOGIN' : user?.role
     });
+  }
+
+  // ✅ Show loading while auth checks (only for non-guest)
+  if (!isGuest && loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   // ✅ CRITICAL: Guest mode takes absolute priority

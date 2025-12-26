@@ -1,7 +1,6 @@
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3002';
 
 class FavoriteService {
-  // ✅ Remove useless constructor
   getAuthHeaders() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -14,7 +13,6 @@ class FavoriteService {
   }
 
   async addToFavorites(productId) {
-    // ❌ REMOVE localStorage fallback
     try {
       const response = await fetch(`${API_BASE_URL}/api/favorites`, {
         method: 'POST',
@@ -39,7 +37,6 @@ class FavoriteService {
   }
 
   async getFavorites() {
-    // ❌ REMOVE localStorage fallback
     try {
       const response = await fetch(`${API_BASE_URL}/api/favorites`, {
         headers: this.getAuthHeaders()
@@ -57,6 +54,29 @@ class FavoriteService {
       return await response.json();
     } catch (error) {
       console.error('❌ Get favorites failed:', error);
+      throw error;
+    }
+  }
+
+  async removeFromFavorites(productId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/favorites/${productId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+
+      if (response.status === 401) {
+        throw new Error('Session expired');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to remove from favorites');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Remove from favorites failed:', error);
       throw error;
     }
   }

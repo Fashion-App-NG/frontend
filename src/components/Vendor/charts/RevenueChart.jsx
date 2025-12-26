@@ -23,6 +23,21 @@ ChartJS.register(
 );
 
 export const RevenueChart = ({ data }) => {
+  // ✅ Validate data structure
+  if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
+    return (
+      <div className="relative h-full flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <svg className="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <p className="text-sm font-medium">No revenue data available</p>
+          <p className="text-xs mt-1">Revenue trends will appear here once you have sales</p>
+        </div>
+      </div>
+    );
+  }
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -59,7 +74,7 @@ export const RevenueChart = ({ data }) => {
               label += ': ';
             }
             if (context.parsed.y !== null) {
-              if (context.dataset.label.includes('Revenue')) {
+              if (context.dataset.label?.includes('Revenue')) {
                 label += new Intl.NumberFormat('en-NG', {
                   style: 'currency',
                   currency: 'NGN',
@@ -109,5 +124,9 @@ export const RevenueChart = ({ data }) => {
     },
   };
 
-  return <Line options={options} data={data} />;
+  return (
+    <div className="relative h-full">
+      <Line options={options} data={data} />
+    </div>
+  );
 };

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react'; // ✅ Add useRef
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductViewToggle from '../components/Product/ProductViewToggle';
 import ProductCard from '../components/Product/VendorProductCard';
 import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdown';
 import { RestockModal } from '../components/Vendor/RestockModal';
-import { useAuth } from '../contexts/AuthContext';
+import { useRequireAuth } from '../hooks/useRequireAuth'; // ✅ Add this back
 import { useVendorProducts } from '../hooks/useVendorProducts';
 import productService from '../services/productService';
 
@@ -116,24 +116,29 @@ const VIEW_MODES = {
 };
 
 const VendorProductListPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  // ✅ FIX: Use useRequireAuth instead of manual useAuth
+  const { user, loading: authLoading, isAuthorized } = useRequireAuth({
+    requiredRole: 'vendor',
+    redirectTo: '/login/vendor'
+  });
+  
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // ✅ State variables
+  // State variables
   const [products, setProducts] = useState([]);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // ✅ Pagination state
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [paginationData, setPaginationData] = useState(null);
-  const [limit] = useState(20); // Items per page
+  const [limit] = useState(20);
   
-  // ✅ Filter tab state
+  // Filter tab state
   const [activeFilterTab, setActiveFilterTab] = useState(FILTER_TABS.ALL);
   
-  // ✅ Action menu states
+  // Action menu states
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
   
@@ -147,17 +152,21 @@ const VendorProductListPage = () => {
     sortOrder: searchParams.get('sortOrder') || 'desc'
   }));
   
-  const { 
-    loadProducts,
-    updateProduct
-    // ✅ Removed unused: createProduct, deleteProduct
-  } = useVendorProducts();
+  // ✅ FIX: Only destructure what exists in the hook
+  const { updateProduct } = useVendorProducts();
   
   const navigate = useNavigate();
 
-  // ✅ Load vendor products with filtering
+  const filtersRef = useRef(filters);
+  
+  // Update ref when filters change
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  // Load vendor products with filtering
   const loadVendorProducts = useCallback(async (currentFilters) => {
-    if (!user?.id) {
+    if (!user?.id || !isAuthorized) {
       setError('Vendor ID not found. Please log in again.');
       setLoading(false);
       return;
@@ -167,14 +176,12 @@ const VendorProductListPage = () => {
     setError(null);
 
     try {
-      // ✅ Pass pagination params to API
       const response = await productService.getVendorProducts(user.id, currentPage, limit);
       
       if (response.error) {
         throw new Error(response.error);
       }
 
-      // ✅ Store pagination data from API response
       setTotalCount(response.totalCount || 0);
       setPaginationData(response.pagination || null);
 
@@ -190,14 +197,12 @@ const VendorProductListPage = () => {
         );
       }
 
-      // ✅ Material type filter
       if (currentFilters.materialType) {
         vendorProducts = vendorProducts.filter(product => 
           product.materialType?.toLowerCase() === currentFilters.materialType.toLowerCase()
         );
       }
 
-      // ✅ Price range filter
       if (currentFilters.minPrice) {
         const minPrice = parseFloat(currentFilters.minPrice);
         vendorProducts = vendorProducts.filter(product => 
@@ -212,14 +217,14 @@ const VendorProductListPage = () => {
         );
       }
       
-      // ✅ Filter by status based on active tab
+      // Filter by status based on active tab
       if (activeFilterTab === FILTER_TABS.AVAILABLE) {
         vendorProducts = vendorProducts.filter(product => getProductStatus(product));
       } else if (activeFilterTab === FILTER_TABS.DISABLED) {
         vendorProducts = vendorProducts.filter(product => !getProductStatus(product));
       }
       
-      // ✅ Apply sorting
+      // Apply sorting
       vendorProducts.sort((a, b) => {
         let aValue, bValue;
         
@@ -259,14 +264,11 @@ const VendorProductListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, activeFilterTab, currentPage, limit]); // ✅ Fixed dependencies
+  }, [user?.id, isAuthorized, activeFilterTab, currentPage, limit]); // ✅ Added activeFilterTab
 
-  // ✅ Filter tab counts - now using totalCount and current page products
+  // Filter tab counts
   const getFilterCounts = () => {
-    // Use totalCount from API for "All Products"
     const all = totalCount;
-    
-    // Count available/disabled from current page products only
     const available = products.filter(p => getProductStatus(p)).length;
     const disabled = products.filter(p => !getProductStatus(p)).length;
     
@@ -290,11 +292,10 @@ const VendorProductListPage = () => {
   const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
     
-    // ✅ Fix: Use params.set instead of append
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value && value.toString().trim()) {
-        params.set(key, value); // ✅ Use set instead of append
+        params.set(key, value);
       }
     });
     
@@ -302,13 +303,11 @@ const VendorProductListPage = () => {
     loadVendorProducts(newFilters);
   }, [setSearchParams, loadVendorProducts]);
 
-  // ✅ Filter tab handler
   const handleFilterTabChange = useCallback((tab) => {
     setActiveFilterTab(tab);
-    loadVendorProducts(filters); // ✅ Direct call
+    loadVendorProducts(filters);
   }, [loadVendorProducts, filters]);
 
-  // Update handleProductClick to ensure proper ID
   const handleProductClick = useCallback((product) => {
     const productId = product.id || product._id;
     if (!productId) {
@@ -318,7 +317,6 @@ const VendorProductListPage = () => {
     navigate(`/vendor/products/${productId}`);
   }, [navigate]);
 
-  // Update handleProductAction to ensure proper ID
   const handleProductAction = useCallback((product, action) => {
     const productId = product.id || product._id;
     if (!productId) {
@@ -343,7 +341,6 @@ const VendorProductListPage = () => {
     }
   }, [navigate, handleHideProduct]);
 
-  // Update handleRestock to use proper ID
   const handleRestock = useCallback(async (stockData) => {
     const productId = selectedProduct?.id || selectedProduct?._id;
     if (!productId) {
@@ -375,13 +372,11 @@ const VendorProductListPage = () => {
     }
   }, [selectedProduct, updateProduct, loadVendorProducts, filters]);
 
-  // Add back viewMode state in the main component
   const [viewMode, setViewMode] = useState(() => {
     const urlViewMode = searchParams.get('view');
     return urlViewMode === 'grid' ? VIEW_MODES.GRID : VIEW_MODES.LIST;
   });
 
-  // Add back view mode handler
   const handleViewModeChange = useCallback((newViewMode) => {
     setViewMode(newViewMode);
     localStorage.setItem('vendorProductView', newViewMode);
@@ -395,28 +390,24 @@ const VendorProductListPage = () => {
     setSearchParams(params);
   }, [searchParams, setSearchParams]);
 
-  // ✅ Fixed: proper dependency array
+  // ✅ FIX: Load products on mount and when dependencies change
   useEffect(() => {
-    if (user?.id) {
-      loadVendorProducts(filters);
+    if (user?.id && isAuthorized) {
+      loadVendorProducts(filtersRef.current); // ✅ Use ref instead
     }
-  }, [user?.id, loadVendorProducts, activeFilterTab, filters]); // ✅ Add filters dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAuthorized, loadVendorProducts, activeFilterTab, currentPage]); // ✅ No filters dependency
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login/vendor" replace />;
-  }
-
-  if (user && user.role !== 'vendor') {
-    if (user.role === 'shopper') {
-      return <Navigate to="/shopper/dashboard" replace />;
-    }
-    if (user.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
+  // ✅ FIX: Show loading while auth checks
+  if (authLoading || !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user?.id) {

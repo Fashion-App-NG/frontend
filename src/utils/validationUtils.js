@@ -7,19 +7,56 @@
  * @param {Object} profile - The vendor profile object
  * @returns {boolean} - True if profile has all required fields
  */
-export const validateVendorProfileCompleteness = (profile) => {
-  if (!profile) return false;
-  
-  // Check if required fields for Terminal delivery integration are present
-  return !!(
-    profile.businessInfo?.contactPerson?.name && 
-    profile.businessInfo?.contactPerson?.phone &&
-    profile.businessInfo?.contactPerson?.email &&
-    profile.pickupAddress?.street &&
-    profile.pickupAddress?.city &&
-    profile.pickupAddress?.state &&
-    profile.pickupAddress?.zipCode
-  );
+export const validateVendorProfileCompleteness = (profileData) => {
+  const missingFields = [];
+
+  // Check required fields
+  if (!profileData.storeName || profileData.storeName.trim() === '') {
+    missingFields.push('Store Name');
+  }
+
+  if (!profileData.pickupAddress?.street || profileData.pickupAddress.street.trim() === '') {
+    missingFields.push('Pickup Street Address');
+  }
+
+  if (!profileData.pickupAddress?.city || profileData.pickupAddress.city.trim() === '') {
+    missingFields.push('Pickup City');
+  }
+
+  if (!profileData.pickupAddress?.state || profileData.pickupAddress.state.trim() === '') {
+    missingFields.push('Pickup State');
+  }
+
+  if (!profileData.businessInfo?.contactPerson?.name || profileData.businessInfo.contactPerson.name.trim() === '') {
+    missingFields.push('Contact Person Name');
+  }
+
+  if (!profileData.businessInfo?.contactPerson?.phone || profileData.businessInfo.contactPerson.phone.trim() === '') {
+    missingFields.push('Contact Phone');
+  }
+
+  if (!profileData.businessInfo?.contactPerson?.email || profileData.businessInfo.contactPerson.email.trim() === '') {
+    missingFields.push('Contact Email');
+  }
+
+  if (!profileData.businessInfo?.bankDetails?.accountNumber || profileData.businessInfo.bankDetails.accountNumber.trim() === '') {
+    missingFields.push('Bank Account Number');
+  }
+
+  if (!profileData.businessInfo?.bankDetails?.accountName || profileData.businessInfo.bankDetails.accountName.trim() === '') {
+    missingFields.push('Bank Account Name');
+  }
+
+  if (!profileData.businessInfo?.bankDetails?.bankName || profileData.businessInfo.bankDetails.bankName.trim() === '') {
+    missingFields.push('Bank Name');
+  }
+
+  // ✅ IMPORTANT: Always return a consistent object structure
+  return {
+    isComplete: missingFields.length === 0,
+    missingFields: missingFields, // Always return an array (even if empty)
+    completionPercentage: Math.round(((10 - missingFields.length) / 10) * 100)
+  };
 };
 
 /**

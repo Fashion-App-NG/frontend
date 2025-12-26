@@ -1,19 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { RevenueChart } from '../components/Vendor/charts/RevenueChart';
 import { SalesStatusChart } from '../components/Vendor/charts/SalesStatusChart';
-import { useAuth } from '../contexts/AuthContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import vendorAnalyticsService from '../services/vendorAnalyticsService';
 
 export const VendorSalesPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  // ✅ FIX: Use useRequireAuth FIRST, rename loading to authLoading
+  const { user, loading: authLoading, isAuthorized } = useRequireAuth({
+    requiredRole: 'vendor',
+    redirectTo: '/login/vendor'
+  });
+
   const [salesAnalytics, setSalesAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true); // ✅ Renamed from 'loading' to 'dataLoading'
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
 
   useEffect(() => {
     const loadSalesAnalytics = async () => {
-      setLoading(true);
+      if (!user?.id || !isAuthorized) return;
+
+      setDataLoading(true);
       
       try {
         const analytics = await vendorAnalyticsService.getSalesAnalytics(selectedPeriod);
@@ -22,26 +28,23 @@ export const VendorSalesPage = () => {
       } catch (error) {
         console.error('❌ Failed to load sales analytics:', error);
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     };
 
-    if (user?.id) {
-      loadSalesAnalytics();
-    }
-  }, [user?.id, selectedPeriod]);
+    loadSalesAnalytics();
+  }, [user?.id, isAuthorized, selectedPeriod]); // ✅ Added isAuthorized to dependencies
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login/vendor" replace />;
-  }
-
-  if (user && user.role !== 'vendor') {
-    if (user.role === 'shopper') {
-      return <Navigate to="/shopper/dashboard" replace />;
-    }
-    if (user.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
+  // ✅ FIX: Show loading while auth checks
+  if (authLoading || !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   const formatNumber = (num) => {
@@ -81,7 +84,8 @@ export const VendorSalesPage = () => {
           </div>
         </div>
 
-        {loading ? (
+        {/* ✅ FIX: Use dataLoading instead of loading */}
+        {dataLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin text-6xl mb-4">⏳</div>

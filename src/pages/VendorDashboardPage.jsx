@@ -1,63 +1,45 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import VendorDashboardContent from '../components/Vendor/VendorDashboardContent';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 
 const VendorDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading } = useAuth();
+  
+  const { loading, isAuthorized } = useRequireAuth({
+    requiredRole: 'vendor',
+    redirectTo: '/login/vendor'
+  });
+
   const [showMessage, setShowMessage] = useState(false);
-  const [displayMessage, setDisplayMessage] = useState(null); // ✅ Store message locally
-  const [displayMessageType, setDisplayMessageType] = useState(null); // ✅ Store type locally
+  const [displayMessage, setDisplayMessage] = useState(null);
+  const [displayMessageType, setDisplayMessageType] = useState(null);
 
-  // ✅ FIX: Re-add authentication and role-based access control
-  useEffect(() => {
-    if (loading) return;
-
-    if (!isAuthenticated) {
-      console.log('❌ Not authenticated, redirecting to login');
-      navigate('/login/vendor', { replace: true });
-      return;
-    }
-
-    if (user && user.role !== 'vendor') {
-      console.log('❌ User is not a vendor, redirecting');
-      navigate('/', { replace: true });
-      return;
-    }
-  }, [isAuthenticated, user, loading, navigate]);
-
-  // ✅ FIX: Handle message display with proper state management
   useEffect(() => {
     const message = location.state?.message;
     const messageType = location.state?.type;
 
     if (message) {
-      // Store message in local state first
       setDisplayMessage(message);
       setDisplayMessageType(messageType);
       setShowMessage(true);
 
-      // Clear location state using navigate (safer than window.history)
       navigate(location.pathname, { replace: true, state: {} });
       
-      // Auto-hide after 5 seconds
       const timer = setTimeout(() => {
         setShowMessage(false);
-        // Clear local state after animation completes
         setTimeout(() => {
           setDisplayMessage(null);
           setDisplayMessageType(null);
-        }, 300); // Wait for fade-out animation
+        }, 300);
       }, 5000);
       
       return () => clearTimeout(timer);
     }
-  }, [location.state?.message, location.state?.type, location.pathname, navigate]); // ✅ Added location.state?.type
+  }, [location.state?.message, location.state?.type, location.pathname, navigate]);
 
-  // ✅ Show loading while auth checks complete
-  if (loading) {
+  if (loading || !isAuthorized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -68,14 +50,8 @@ const VendorDashboardPage = () => {
     );
   }
 
-  // ✅ Don't render until auth is verified
-  if (!isAuthenticated || !user || user.role !== 'vendor') {
-    return null;
-  }
-
   return (
     <>
-      {/* ✅ Toast message - now uses local state */}
       {showMessage && displayMessage && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
           <div className={`rounded-lg shadow-lg p-4 flex items-center gap-3 max-w-md transition-opacity duration-300 ${

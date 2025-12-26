@@ -23,7 +23,20 @@ export const FavoritesProvider = ({ children }) => {
     setLoading(true);
     try {
       const response = await favoriteService.getFavorites();
-      setFavorites(response.favorites || []);
+      
+      // ✅ FIX: Extract productId from favorite objects
+      const productIds = (response.favorites || []).map(fav => {
+        // Handle both object format and string format
+        if (typeof fav === 'object' && fav.productId) {
+          // If productId is nested object, get its _id
+          return typeof fav.productId === 'object' ? fav.productId._id : fav.productId;
+        }
+        // If it's already a string, return it
+        return fav;
+      }).filter(Boolean); // Remove any null/undefined values
+      
+      console.log('✅ Favorites loaded:', productIds);
+      setFavorites(productIds);
     } catch (error) {
       console.error('Failed to load favorites:', error);
       setFavorites([]);
@@ -35,6 +48,12 @@ export const FavoritesProvider = ({ children }) => {
   const addToFavorites = useCallback(async (productId) => {
     if (!isAuthenticated) return false;
 
+    // ✅ FIX: Check if already favorited before adding
+    if (favorites.includes(productId)) {
+      console.log('Product already in favorites:', productId);
+      return true; // Return true since it's already favorited
+    }
+
     try {
       await favoriteService.addToFavorites(productId);
       setFavorites(prev => [...prev, productId]);
@@ -43,7 +62,7 @@ export const FavoritesProvider = ({ children }) => {
       console.error('Failed to add to favorites:', error);
       return false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, favorites]);
 
   const removeFromFavorites = useCallback(async (productId) => {
     if (!isAuthenticated) return false;
@@ -60,9 +79,13 @@ export const FavoritesProvider = ({ children }) => {
 
   const toggleFavorite = useCallback(async (productId) => {
     const isFavorite = favorites.includes(productId);
+    
+    // ✅ FIX: Better toggle logic
     if (isFavorite) {
+      console.log('Removing from favorites:', productId);
       return await removeFromFavorites(productId);
     } else {
+      console.log('Adding to favorites:', productId);
       return await addToFavorites(productId);
     }
   }, [favorites, addToFavorites, removeFromFavorites]);
@@ -75,15 +98,11 @@ export const FavoritesProvider = ({ children }) => {
     loadFavorites();
   }, [loadFavorites]);
 
-  // Update context to properly save favorites
-
-  // Ensure favorites are properly stored
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('Favorites updated:', favorites);
     }
     
-    // Make sure localStorage persists correctly
     if (favorites.length > 0) {
       localStorage.setItem('fashion-app-favorites', JSON.stringify(favorites));
     }

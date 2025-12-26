@@ -16,7 +16,16 @@ const VendorProfileCheck = () => {
           
           if (response.success) {
             const profileData = response.data?.vendorProfile || response.data || {};
-            setIsComplete(validateVendorProfileCompleteness(profileData));
+            
+            // ✅ FIX: Extract isComplete property from validation result
+            const validation = validateVendorProfileCompleteness(profileData);
+            
+            // Handle both boolean and object return types for backward compatibility
+            const completeness = typeof validation === 'boolean' 
+              ? validation 
+              : validation.isComplete;
+            
+            setIsComplete(completeness);
           } else {
             setIsComplete(false);
           }

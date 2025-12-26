@@ -7,7 +7,6 @@ import { SalesStatusChart } from './charts/SalesStatusChart';
 export const VendorDashboardContent = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
-  const [salesAnalytics, setSalesAnalytics] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
@@ -16,6 +15,53 @@ export const VendorDashboardContent = () => {
   const [ordersPerPage] = useState(10);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // ✅ ADD: Initialize salesAnalytics with default chart data structure
+  const [salesAnalytics, setSalesAnalytics] = useState({
+    revenueTrends: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Revenue',
+          data: [],
+          borderColor: 'rgb(147, 51, 234)',
+          backgroundColor: 'rgba(147, 51, 234, 0.1)',
+          fill: true,
+          tension: 0.4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Orders',
+          data: [],
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.4,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    salesByStatus: {
+      labels: ['Processing', 'Completed', 'Cancelled'],
+      datasets: [
+        {
+          label: 'Sales Status',
+          data: [0, 0, 0],
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(34, 197, 94, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+          ],
+          borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(34, 197, 94, 1)',
+            'rgba(239, 68, 68, 1)',
+          ],
+          borderWidth: 1,
+        }
+      ]
+    }
+  });
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -46,9 +92,17 @@ export const VendorDashboardContent = () => {
       try {
         const analytics = await vendorAnalyticsService.getSalesAnalytics(selectedPeriod);
         console.log('📊 Sales Analytics Loaded:', analytics);
-        setSalesAnalytics(analytics);
+        
+        // ✅ CHANGE: Merge with defaults to ensure structure exists
+        if (analytics) {
+          setSalesAnalytics(prevState => ({
+            revenueTrends: analytics.revenueTrends || prevState.revenueTrends,
+            salesByStatus: analytics.salesByStatus || prevState.salesByStatus
+          }));
+        }
       } catch (error) {
         console.error('❌ Failed to load sales analytics:', error);
+        // Keep default empty chart data on error
       } finally {
         setAnalyticsLoading(false);
       }
@@ -154,7 +208,7 @@ export const VendorDashboardContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b px-8 py-6">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -297,73 +351,42 @@ export const VendorDashboardContent = () => {
 
       {/* Charts Section */}
       <div className="px-8 pb-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Revenue Trends Chart */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Revenue & Orders Trends</h2>
-                <p className="text-sm text-gray-500">Monthly performance overview</p>
-              </div>
-              <select 
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Revenue Trends</h3>
+              <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
               >
-                <option value="daily">Last 30 Days</option>
-                <option value="weekly">Last 12 Weeks</option>
-                <option value="monthly">Last 12 Months</option>
-                <option value="yearly">Last 5 Years</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
               </select>
             </div>
-            
             <div className="h-80">
               {analyticsLoading ? (
-                <div className="h-full bg-gradient-to-br from-blue-50 to-orange-50 rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin text-4xl mb-2">⏳</div>
-                    <div className="text-sm text-gray-600">Loading analytics...</div>
-                  </div>
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                 </div>
-              ) : salesAnalytics?.revenueTrends ? (
-                <RevenueChart data={salesAnalytics.revenueTrends} />
               ) : (
-                <div className="h-full bg-gradient-to-br from-blue-50 to-orange-50 rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">📊</div>
-                    <div className="text-sm text-gray-600">No data available</div>
-                  </div>
-                </div>
+                <RevenueChart data={salesAnalytics.revenueTrends} />
               )}
             </div>
           </div>
 
-          {/* Sales by Status Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Sales by Status</h2>
-                <p className="text-sm text-gray-500">Revenue breakdown</p>
-              </div>
-            </div>
-            
-            <div className="h-72">
+          {/* Sales Status Chart */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales by Status</h3>
+            <div className="h-80">
               {analyticsLoading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin text-4xl mb-2">⏳</div>
-                    <div className="text-sm text-gray-600">Loading...</div>
-                  </div>
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                 </div>
-              ) : salesAnalytics?.salesByStatus ? (
-                <SalesStatusChart data={salesAnalytics.salesByStatus} />
               ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">📊</div>
-                    <div className="text-sm text-gray-600">No data available</div>
-                  </div>
-                </div>
+                <SalesStatusChart data={salesAnalytics.salesByStatus} />
               )}
             </div>
           </div>

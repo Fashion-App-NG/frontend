@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ProductCard from '../components/Product/ProductCard';
-import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import productService from '../services/productService';
 
 const FavouritesPage = () => {
+  const { isAuthorized, loading: authLoading } = useRequireAuth({
+    requiredRole: 'shopper',
+    redirectTo: '/login'
+  });
+
   const { favorites, loading: favoritesLoading, refreshFavorites } = useFavorites();
-  const { isAuthenticated } = useAuth();
   const [favoriteProducts, setFavoriteProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Hooks must come BEFORE any conditional returns
   useEffect(() => {
     const loadFavoriteProducts = async () => {
-      // Skip if not authenticated
-      if (!isAuthenticated) {
+      if (!isAuthorized) {
         setLoading(false);
         return;
       }
@@ -30,15 +32,20 @@ const FavouritesPage = () => {
           return;
         }
         
-        const productPromises = favorites.map(productId => 
-          productService.getProductById(productId)
-        );
+        // ✅ FIX: Ensure we're only passing string IDs
+        const productPromises = favorites
+          .filter(id => typeof id === 'string' && id.length > 0) // Only valid string IDs
+          .map(productId => {
+            console.log('🔍 Fetching product with ID:', productId);
+            return productService.getProductById(productId);
+          });
         
         const products = await Promise.all(productPromises);
         const validProducts = products
-          .filter(response => response && !response.error)
+          .filter(response => response && !response.error && response.product)
           .map(response => response.product);
         
+        console.log('✅ Loaded favorite products:', validProducts.length);
         setFavoriteProducts(validProducts);
       } catch (error) {
         console.error('Failed to load favorite products:', error);
@@ -48,25 +55,30 @@ const FavouritesPage = () => {
       }
     };
 
-    if (!favoritesLoading) {
+    if (!favoritesLoading && isAuthorized) {
       loadFavoriteProducts();
     }
-  }, [favorites, favoritesLoading, isAuthenticated]);
+  }, [favorites, favoritesLoading, isAuthorized]);
 
-  // Refresh favorites on page load
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthorized) {
       refreshFavorites();
     }
-  }, [refreshFavorites, isAuthenticated]);
+  }, [refreshFavorites, isAuthorized]);
 
   const handleProductClick = (product) => {
     window.location.href = `/product/${product._id || product.id}`;
   };
 
-  // ✅ Conditional redirect AFTER all hooks
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (authLoading || !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -101,14 +113,11 @@ const FavouritesPage = () => {
         
         {!loading && !error && favoriteProducts.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {favoriteProducts.map(product => (
+            {favoriteProducts.map((product) => (
               <ProductCard
                 key={product._id || product.id}
                 product={product}
-                showVendorInfo={true}
-                onClick={handleProductClick}
-                showFavoriteButton={true}
-                showAddToCartButton={true}
+                onProductClick={() => handleProductClick(product)}
               />
             ))}
           </div>
