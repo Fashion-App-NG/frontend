@@ -162,8 +162,18 @@ const VendorProfilePage = () => {
     try {
       const validation = validateVendorProfileCompleteness(formData);
       
-      if (!validation.isComplete) {
-        toast.warning(`Profile incomplete: ${validation.missingFields.join(', ')}`);
+      // ✅ FIX: Handle both boolean and object return types
+      const isComplete = typeof validation === 'boolean' 
+        ? validation 
+        : validation.isComplete;
+      
+      if (!isComplete) {
+        // If it's an object with missingFields, show them
+        const missingFieldsMsg = validation.missingFields?.length > 0
+          ? ` Missing: ${validation.missingFields.join(', ')}`
+          : '';
+        
+        toast.warning(`Profile incomplete.${missingFieldsMsg}`);
       }
 
       const response = await userService.updateVendorProfile(formData);
