@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'; // ✅ Add useCallback
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
@@ -9,6 +9,9 @@ export const VendorProductUploadContent = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
+  // ✅ FIX: Remove unused variable - VendorProfileCheck handles validation
+  // const profileCompleted = user?.profileCompleted ?? true;
+
   const [formData, setFormData] = useState({
     productName: '',
     status: true, // Available by default
@@ -238,8 +241,6 @@ export const VendorProductUploadContent = () => {
   const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
   const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
-  const profileCompleted = user?.profileCompleted;
-
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
       {/* Header */}
@@ -297,13 +298,12 @@ export const VendorProductUploadContent = () => {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!profileCompleted || isUploading}
+              disabled={isUploading} // ✅ REMOVED: profileCompleted check - validation happens in VendorProfileCheck component
               className={`px-6 py-2.5 text-base font-medium rounded-lg transition-colors ${
-                !profileCompleted || isUploading
+                isUploading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'text-[#edff8c] bg-[#2e2e2e] hover:bg-gray-800'
               }`}
-              title={!profileCompleted ? 'Complete your profile to publish products' : ''}
             >
               {isUploading ? 'Publishing...' : 'Publish Product'}
             </button>
@@ -494,13 +494,6 @@ export const VendorProductUploadContent = () => {
           {/* Right Upload Section */}
           <div className="col-span-5 bg-[#f9f9f9] rounded-[10px] p-6">
             <h3 className="text-[20px] font-bold mb-6 leading-[150%]">Upload Image</h3>
-            
-            {/* Storage Warning */}
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-xs text-yellow-700">
-                <strong>Demo Mode:</strong> Images are compressed and stored locally for demonstration. Full resolution images will be supported with backend integration.
-              </p>
-            </div>
             
             {/* Upload Area */}
             <div 
