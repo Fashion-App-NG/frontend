@@ -35,38 +35,53 @@ export const VendorProductUploadContent = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Utility function to compress image with better quality control
-  const compressImage = (file, maxWidth = 300, quality = 0.8) => {
-    return new Promise((resolve) => {
+  // ✅ IMPROVED: Detect mobile and compress more aggressively
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  const compressImage = (file, maxWidth = isMobile ? 800 : 1200, quality = isMobile ? 0.7 : 0.85) => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
       img.onload = () => {
-        // Calculate new dimensions maintaining aspect ratio
         let { width, height } = img;
         
+        // ✅ More aggressive mobile compression
+        const targetWidth = isMobile ? 800 : 1200;
+        
         if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
+          if (width > targetWidth) {
+            height = (height * targetWidth) / width;
+            width = targetWidth;
           }
         } else {
-          if (height > maxWidth) {
-            width = (width * maxWidth) / height;
-            height = maxWidth;
+          if (height > targetWidth) {
+            width = (width * targetWidth) / height;
+            height = targetWidth;
           }
         }
         
         canvas.width = width;
         canvas.height = height;
-        
-        // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        
+        // ✅ Try different quality levels until under 2MB
+        let currentQuality = quality;
+        let compressedDataUrl = canvas.toDataURL('image/jpeg', currentQuality);
+        
+        // ✅ Reduce quality if file is still too large
+        while (compressedDataUrl.length > 2 * 1024 * 1024 && currentQuality > 0.3) {
+          currentQuality -= 0.1;
+          compressedDataUrl = canvas.toDataURL('image/jpeg', currentQuality);
+        }
+        
+        console.log(`📸 Compressed ${file.name}: ${(file.size / 1024).toFixed(0)}KB → ${(compressedDataUrl.length / 1024).toFixed(0)}KB (quality: ${currentQuality.toFixed(1)})`);
+        
         resolve(compressedDataUrl);
       };
       
+      img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`));
       img.src = URL.createObjectURL(file);
     });
   };
@@ -76,10 +91,16 @@ export const VendorProductUploadContent = () => {
     const fileArray = Array.from(files);
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
-    // Limit file size (5MB per file)
+    // ✅ Mobile-specific limit (lower)
+    const maxFileSize = isMobile ? 8 * 1024 * 1024 : 10 * 1024 * 1024; // 8MB mobile, 10MB desktop
+    
     const validFiles = imageFiles.filter(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.warning(`File ${file.name} is too large. Maximum size is 5MB.`);
+      if (file.size > maxFileSize) {
+        toast.warning(
+          `${file.name} is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). ` +
+          `Max ${(maxFileSize / (1024 * 1024)).toFixed(0)}MB per image.`,
+          { autoClose: 5000 }
+        );
         return false;
       }
       return true;
@@ -88,15 +109,26 @@ export const VendorProductUploadContent = () => {
     if (validFiles.length === 0) return;
 
     try {
-      // ✅ Process images while preserving File objects
       const imagePromises = validFiles.map(async (file) => {
-        const compressedPreview = await compressImage(file); // For display only
+        const compressedPreview = await compressImage(file);
+        
+        // ✅ Convert base64 back to Blob for smaller size
+        const base64Data = compressedPreview.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const compressedBlob = new Blob([byteArray], { type: 'image/jpeg' });
+        const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+        
         return {
-          file: file, // ✅ Preserve original File object for upload
-          preview: compressedPreview, // For UI display
+          file: compressedFile, // ✅ Use compressed File object
+          preview: compressedPreview,
           id: Math.random().toString(36).slice(2, 9),
           name: file.name,
-          size: file.size
+          size: compressedFile.size // ✅ Show compressed size
         };
       });
 
@@ -104,11 +136,19 @@ export const VendorProductUploadContent = () => {
       
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages].slice(0, 4) // Limit to 4 images
+        images: [...prev.images, ...newImages].slice(0, 4)
       }));
+      
+      // ✅ Show success message with sizes
+      const totalSize = newImages.reduce((sum, img) => sum + img.size, 0);
+      toast.success(
+        `${newImages.length} image(s) compressed and ready (${(totalSize / (1024 * 1024)).toFixed(1)}MB total)`,
+        { autoClose: 3000 }
+      );
+      
     } catch (error) {
       console.error('Error processing images:', error);
-      toast.warning('Error processing images. Please try again.');
+      toast.error('Error processing images. Please try smaller files.');
     }
   };
 
@@ -171,8 +211,34 @@ export const VendorProductUploadContent = () => {
       return;
     }
 
+    if (formData.images.length === 0) {
+      toast.warning('Please upload at least one image');
+      return;
+    }
+
     try {
       setIsUploading(true);
+
+      // ✅ ADD: Calculate total upload size
+      const totalImageSize = formData.images.reduce((sum, img) => sum + (img.size || 0), 0);
+      const totalSizeMB = (totalImageSize / (1024 * 1024)).toFixed(2);
+      
+      console.log('📦 Upload Info:', {
+        imageCount: formData.images.length,
+        totalSizeMB: totalSizeMB,
+        individualSizes: formData.images.map(img => ({
+          name: img.name,
+          sizeKB: Math.round(img.size / 1024)
+        }))
+      });
+
+      // ✅ ADD: Warn if total size is large
+      if (totalImageSize > 10 * 1024 * 1024) { // 10MB total
+        toast.warning(
+          `Large upload: ${totalSizeMB}MB total. This may fail on slower connections.`,
+          { autoClose: 5000 }
+        );
+      }
 
       const productData = [{
         name: formData.productName.trim(),
@@ -180,7 +246,7 @@ export const VendorProductUploadContent = () => {
         quantity: parseInt(formData.quantity) || 1,
         materialType: formData.materialType,
         vendorId: user?.id,
-        idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}-${Math.floor(Math.random()).toString(36).substr(2, 9)}`,
+        idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         description: formData.description?.trim() || 'Product description',
         pattern: formData.pattern || 'Solid',
         status: formData.status ? 'Available' : 'Unavailable',
@@ -189,7 +255,7 @@ export const VendorProductUploadContent = () => {
 
       const result = await vendorService.createBulkProducts(productData);
 
-      // Reset form
+      // Reset form on success
       setFormData({
         productName: '',
         status: true,
@@ -217,11 +283,35 @@ export const VendorProductUploadContent = () => {
 
     } catch (error) {
       console.error('❌ Upload failed:', error);
-      toast.error(`Upload failed: ${error.message}`);
+      
+      // ✅ IMPROVED: Better error messages with size context
+      let errorMessage = error.message;
+      
+      if (error.message === 'Failed to fetch') {
+        const totalImageSize = formData.images.reduce((sum, img) => sum + (img.size || 0), 0);
+        const totalSizeMB = (totalImageSize / (1024 * 1024)).toFixed(2);
+        
+        errorMessage = `Upload failed (${formData.images.length} images, ${totalSizeMB}MB total). `;
+        
+        if (totalImageSize > 10 * 1024 * 1024) {
+          errorMessage += 'Your images are too large. Try uploading fewer or smaller images.';
+        } else {
+          errorMessage += 'Please check your internet connection and try again.';
+        }
+      } else if (error.message.includes('413') || error.message.includes('Payload Too Large')) {
+        const totalImageSize = formData.images.reduce((sum, img) => sum + (img.size || 0), 0);
+        const totalSizeMB = (totalImageSize / (1024 * 1024)).toFixed(2);
+        errorMessage = `Upload too large (${totalSizeMB}MB). Maximum is 10MB total. Please reduce image sizes or upload fewer images.`;
+      }
+      
+      toast.error(errorMessage, {
+        autoClose: 7000,
+        style: { fontSize: '14px' }
+      });
     } finally {
       setIsUploading(false);
     }
-  }, [formData, user, navigate]);  // ✅ Add dependencies
+  }, [formData, user, navigate]);
 
   // ✅ Add handleCancel function
   const handleCancel = () => {
@@ -493,86 +583,154 @@ export const VendorProductUploadContent = () => {
             </div>
           </div>
 
-          {/* Right Upload Section */}
-          <div className="col-span-5 bg-[#f9f9f9] rounded-[10px] p-6">
-            <h3 className="text-[20px] font-bold mb-6 leading-[150%]">Upload Image</h3>
-            
-            {/* Upload Area */}
-            <div 
-              className={`border-2 border-dashed rounded-[12px] h-[200px] flex flex-col items-center justify-center mb-6 cursor-pointer transition-colors ${
-                isDragOver 
-                  ? 'border-[#347ae2] bg-blue-50' 
-                  : 'border-black hover:border-[#347ae2] hover:bg-gray-50'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={handleBrowseClick}
-            >
-              <div className="w-[48px] h-[48px] mb-3 text-gray-400">
-                <svg viewBox="0 0 48 48" className="w-full h-full" fill="none" stroke="currentColor">
-                  <path d="M24 12L24 36M12 24L36 24" strokeWidth="2" strokeLinecap="round"/>
-                  <circle cx="24" cy="24" r="20" strokeWidth="2" strokeDasharray="2,2"/>
-                </svg>
+          {/* Right Image Upload Section */}
+          <div className="col-span-5 space-y-6">
+            <div className="bg-[#f9f9f9] rounded-[10px] p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[20px] font-bold leading-[150%]">Upload Image</h3>
+                {/* ✅ Upload size indicator */}
+                {formData.images.length > 0 && (
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${
+                    formData.images.reduce((sum, img) => sum + img.size, 0) > 10 * 1024 * 1024
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {(formData.images.reduce((sum, img) => sum + img.size, 0) / (1024 * 1024)).toFixed(1)}MB / 10MB
+                  </span>
+                )}
               </div>
-              <p className="text-center text-sm">
-                <span className="text-[#0f0f0f]">Drag & drop files or </span>
-                <span className="text-[#347ae2] underline font-medium">Browse</span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF (Max 5MB each)</p>
-            </div>
 
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+              {/* ✅ Upload guidelines */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-800 mb-1">
+                  <strong>📸 Image Guidelines:</strong>
+                </p>
+                <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
+                  <li>Max 5MB per image</li>
+                  <li>Max 10MB total for all images</li>
+                  <li>Up to 4 images allowed</li>
+                  <li>JPG, PNG, GIF formats</li>
+                </ul>
+              </div>
+              
+              {/* ✅ CLASSIC UPLOAD AREA - Big dotted circle with + */}
+              <div 
+                className={`border-2 border-dashed rounded-[12px] h-[200px] flex flex-col items-center justify-center mb-6 cursor-pointer transition-colors ${
+                  isDragOver 
+                    ? 'border-[#347ae2] bg-blue-50' 
+                    : 'border-black hover:border-[#347ae2] hover:bg-gray-50'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={handleBrowseClick}
+              >
+                <div className="w-[48px] h-[48px] mb-3 text-gray-400">
+                  <svg viewBox="0 0 48 48" className="w-full h-full" fill="none" stroke="currentColor">
+                    <path d="M24 12L24 36M12 24L36 24" strokeWidth="2" strokeLinecap="round"/>
+                    <circle cx="24" cy="24" r="20" strokeWidth="2" strokeDasharray="2,2"/>
+                  </svg>
+                </div>
+                <p className="text-center text-sm">
+                  <span className="text-[#0f0f0f]">Drag & drop files or </span>
+                  <span className="text-[#347ae2] underline font-medium">Browse</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF (Max 5MB each)</p>
+              </div>
 
-            {/* Image Thumbnails */}
-            <div className="grid grid-cols-4 gap-3">
-              {formData.images.map((image, index) => (
-                <div key={image.id} className="relative w-20 h-16 bg-gray-200 rounded-[5px] overflow-hidden group">
-                  <img 
-                    src={image.preview} 
-                    alt={`Product ${index + 1}`} 
-                    className="w-full h-full object-cover" 
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(image.id);
-                    }}
-                    className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                  >
-                    ×
-                  </button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
-                    {Math.round(image.size / 1024)}KB
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {/* ✅ IMPROVED IMAGE PREVIEWS - Larger thumbnails in 2x2 grid */}
+              {formData.images.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    {formData.images.map((image) => (
+                      <div key={image.id} className="relative group">
+                        <img
+                          src={image.preview}
+                          alt={image.name}
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(image.id);
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                        {/* ✅ Size badge with color coding */}
+                        <div className="absolute bottom-2 left-2">
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            image.size > 5 * 1024 * 1024 
+                              ? 'bg-red-500 text-white' 
+                              : image.size > 3 * 1024 * 1024
+                              ? 'bg-yellow-500 text-white'
+                              : 'bg-gray-800 text-white'
+                          }`}>
+                            {(image.size / 1024).toFixed(0)}KB
+                          </span>
+                        </div>
+                        {/* ✅ Warning for oversized files */}
+                        {image.size > 5 * 1024 * 1024 && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                            ⚠️ Too large
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* ✅ Add more slots (empty + boxes) */}
+                    {Array.from({ length: 4 - formData.images.length }).map((_, index) => (
+                      <div 
+                        key={`empty-${index}`} 
+                        className="h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                        onClick={handleBrowseClick}
+                      >
+                        <span className="text-gray-400 text-4xl">+</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* ✅ Total size summary */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">
+                      {formData.images.length}/4 images uploaded
+                    </span>
+                    <span className={`font-medium ${
+                      formData.images.reduce((sum, img) => sum + img.size, 0) > 10 * 1024 * 1024
+                        ? 'text-red-600'
+                        : 'text-green-600'
+                    }`}>
+                      Total: {(formData.images.reduce((sum, img) => sum + img.size, 0) / (1024 * 1024)).toFixed(2)}MB
+                    </span>
                   </div>
                 </div>
-              ))}
-              
-              {/* Empty slots */}
-              {Array.from({ length: 4 - formData.images.length }).map((_, index) => (
-                <div 
-                  key={`empty-${index}`} 
-                  className="w-20 h-16 bg-gray-100 rounded-[5px] border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
-                  onClick={handleBrowseClick}
-                >
-                  <span className="text-gray-400 text-lg">+</span>
+              ) : (
+                /* ✅ CLASSIC 4 EMPTY SLOTS - When no images uploaded */
+                <div className="grid grid-cols-4 gap-3">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div 
+                      key={`placeholder-${index}`} 
+                      className="w-20 h-16 bg-gray-100 rounded-[5px] border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
+                      onClick={handleBrowseClick}
+                    >
+                      <span className="text-gray-400 text-lg">+</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-            
-            {formData.images.length > 0 && (
-              <p className="text-xs text-gray-600 mt-2">
-                {formData.images.length}/4 images • Compressed for demo
-              </p>
-            )}
           </div>
         </div>
       </div>
