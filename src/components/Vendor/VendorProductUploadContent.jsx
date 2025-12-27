@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
 import VendorProfileCheck from '../VendorProfileCheck';
+// ✅ ADD THIS IMPORT at the top
+import { toast } from 'react-toastify';
 
 export const VendorProductUploadContent = () => {
   const { user } = useAuth();
@@ -77,7 +79,7 @@ export const VendorProductUploadContent = () => {
     // Limit file size (5MB per file)
     const validFiles = imageFiles.filter(file => {
       if (file.size > 5 * 1024 * 1024) {
-        alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+        toast.warning(`File ${file.name} is too large. Maximum size is 5MB.`);
         return false;
       }
       return true;
@@ -106,7 +108,7 @@ export const VendorProductUploadContent = () => {
       }));
     } catch (error) {
       console.error('Error processing images:', error);
-      alert('Error processing images. Please try again.');
+      toast.warning('Error processing images. Please try again.');
     }
   };
 
@@ -155,17 +157,17 @@ export const VendorProductUploadContent = () => {
   const handleSubmit = useCallback(async () => {
     // Validation
     if (!formData.productName.trim()) {
-      alert('Please enter a product name');
+      toast.warning('Please enter a product name');
       return;
     }
 
     if (!formData.pricePerYard || parseFloat(formData.pricePerYard) <= 0) {
-      alert('Please enter a valid price');
+      toast.warning('Please enter a valid price');
       return;
     }
 
     if (!formData.materialType) {
-      alert('Please select a material type');
+      toast.warning('Please select a material type');
       return;
     }
 
@@ -215,7 +217,7 @@ export const VendorProductUploadContent = () => {
 
     } catch (error) {
       console.error('❌ Upload failed:', error);
-      alert(`Upload failed: ${error.message}`);
+      toast.error(`Upload failed: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
