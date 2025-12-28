@@ -130,10 +130,6 @@ const CartReviewStep = ({ onNext }) => {
             <span>Total:</span>
             <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal() + (shippingCost || 0))}</span>
           </div>
-          
-          <p className="text-xs text-gray-500 pt-2">
-            * VAT ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.
-          </p>
         </div>
 
         {/* Action button */}
