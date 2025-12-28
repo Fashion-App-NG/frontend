@@ -100,9 +100,34 @@ const ProductDetailPage = () => {
   }
 
   const isProductFavorited = isFavorite(product._id || product.id);
-  const images = Array.isArray(product.images) && product.images.length > 0
-    ? product.images.map(img => img.url)
-    : ['/images/default-product.jpg'];
+  
+  // ✅ FIXED: Extract all images with deduplication
+  const images = (() => {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const urls = product.images
+        .map(img => {
+          if (typeof img === 'object' && img.url) return img.url;
+          if (typeof img === 'object' && img.data) return img.data;
+          if (typeof img === 'string' && img.trim()) return img;
+          return null;
+        })
+        .filter(Boolean);
+      
+      // Deduplicate
+      const uniqueUrls = [...new Set(urls)];
+      if (uniqueUrls.length > 0) return uniqueUrls;
+    }
+    
+    // Fallback to single image
+    if (product.image) {
+      const url = typeof product.image === 'object' 
+        ? (product.image.url || product.image.data) 
+        : product.image;
+      if (url) return [url];
+    }
+    
+    return ['/images/default-product.jpg'];
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -148,27 +173,31 @@ const ProductDetailPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Images */}
-          <div>
-            <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
+          <div className="space-y-4">
+            {/* Main Image */}
+            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
                 src={images[selectedImage]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                onError={e => {
-                  if (!e.target.src.endsWith('/default-product.jpg')) {
-                    e.target.src = '/images/default-product.jpg';
-                  }
+                onError={(e) => {
+                  e.target.src = '/images/default-product.jpg';
                 }}
               />
             </div>
+            
+            {/* ✅ Thumbnail Gallery - Show all images */}
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square bg-gray-200 rounded-lg overflow-hidden ${selectedImage === index ? 'ring-2 ring-blue-500' : ''
-                      }`}
+                    className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImage === index 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-transparent hover:border-gray-300'
+                    }`}
                   >
                     <img
                       src={image}
@@ -181,6 +210,13 @@ const ProductDetailPage = () => {
                   </button>
                 ))}
               </div>
+            )}
+            
+            {/* Image counter */}
+            {images.length > 1 && (
+              <p className="text-center text-sm text-gray-500">
+                Image {selectedImage + 1} of {images.length}
+              </p>
             )}
           </div>
 
