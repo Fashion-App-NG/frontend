@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import * as Sentry from "@sentry/react";
 
 const AuthContext = createContext();
 
@@ -259,6 +260,20 @@ export const AuthProvider = ({ children }) => {
       }
     }
   };
+
+  // ✅ Set Sentry user context (without PII)
+  useEffect(() => {
+    if (user) {
+      Sentry.setUser({
+        id: user.id,
+        // ✅ Don't send email/name for NDPR compliance
+        // email: user.email,  // Uncomment only if you have consent
+        role: user.role,
+      });
+    } else {
+      Sentry.setUser(null);
+    }
+  }, [user]);
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔐 AuthContext current state:', {
