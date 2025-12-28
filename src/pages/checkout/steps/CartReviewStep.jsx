@@ -24,8 +24,6 @@ const CartReviewStep = ({ onNext }) => {
     return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
   };
 
-  const taxRate = cartItems[0]?.taxRate || 0.02;
-
   return (
     <div className="bg-white rounded-lg shadow-sm">
       <div className="p-4 sm:p-6">
