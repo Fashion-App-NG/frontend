@@ -110,7 +110,15 @@ function App() {
                   {/* Home and public routes */}
                   <Route path="/user-type-selection" element={<UserTypeSelectionPage />} />
                   <Route path="/get-started" element={<UserTypeSelectionPage />} />  {/* ✅ ADD: Friendly alias */}
-                  <Route path="/product/:id" element={<ProductDetailPage />} />
+                  {/* ✅ FIX: Public product detail with CartProvider */}
+                  <Route 
+                    path="/product/:productId" 
+                    element={
+                      <CartProvider key="public-product-provider">
+                        <ProductDetailPage />
+                      </CartProvider>
+                    } 
+                  />
                   <Route path="/products" element={<Navigate to="/browse" replace />} />
                   <Route path="/explore" element={<GuestBrowsePage />} />
 
@@ -148,7 +156,8 @@ function App() {
                         <Routes>
                           <Route path="browse" element={<GuestBrowsePage />} />
                           <Route path="cart" element={<GuestCartPage />} />
-                          <Route path="checkout" element={<GuestCheckoutPage />} />  {/* ✅ Add checkout route */}
+                          <Route path="checkout" element={<GuestCheckoutPage />} />
+                          <Route path="product/:productId" element={<ProductDetailPage />} />
                         </Routes>
                       </CartProvider>
                     }
