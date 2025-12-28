@@ -18,27 +18,36 @@ export const FavoritesProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
 
   const loadFavorites = useCallback(async () => {
+    // ✅ FIX: Only load favorites for shoppers, not vendors or admins
     if (!isAuthenticated || !user) return;
+    
+    // ✅ Skip favorites for non-shopper roles
+    if (user.role && user.role !== 'shopper') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⏭️ Skipping favorites load for non-shopper role:', user.role);
+      }
+      return;
+    }
 
     setLoading(true);
     try {
       const response = await favoriteService.getFavorites();
       
-      // ✅ FIX: Extract productId from favorite objects
+      // Extract productId from favorite objects
       const productIds = (response.favorites || []).map(fav => {
-        // Handle both object format and string format
         if (typeof fav === 'object' && fav.productId) {
-          // If productId is nested object, get its _id
           return typeof fav.productId === 'object' ? fav.productId._id : fav.productId;
         }
-        // If it's already a string, return it
         return fav;
-      }).filter(Boolean); // Remove any null/undefined values
+      }).filter(Boolean);
       
       console.log('✅ Favorites loaded:', productIds);
       setFavorites(productIds);
     } catch (error) {
-      console.error('Failed to load favorites:', error);
+      // ✅ Only log error in development, don't spam console
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ Favorites not available:', error.message);
+      }
       setFavorites([]);
     } finally {
       setLoading(false);
@@ -46,12 +55,17 @@ export const FavoritesProvider = ({ children }) => {
   }, [isAuthenticated, user]);
 
   const addToFavorites = useCallback(async (productId) => {
-    if (!isAuthenticated) return false;
+    // ✅ FIX: Only allow shoppers to add favorites
+    if (!isAuthenticated || !user || user.role !== 'shopper') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⏭️ Cannot add favorites - not a shopper');
+      }
+      return false;
+    }
 
-    // ✅ FIX: Check if already favorited before adding
     if (favorites.includes(productId)) {
       console.log('Product already in favorites:', productId);
-      return true; // Return true since it's already favorited
+      return true;
     }
 
     try {
@@ -62,10 +76,11 @@ export const FavoritesProvider = ({ children }) => {
       console.error('Failed to add to favorites:', error);
       return false;
     }
-  }, [isAuthenticated, favorites]);
+  }, [isAuthenticated, user, favorites]);
 
   const removeFromFavorites = useCallback(async (productId) => {
-    if (!isAuthenticated) return false;
+    // ✅ FIX: Only allow shoppers to remove favorites
+    if (!isAuthenticated || !user || user.role !== 'shopper') return false;
 
     try {
       await favoriteService.removeFromFavorites(productId);
@@ -75,7 +90,7 @@ export const FavoritesProvider = ({ children }) => {
       console.error('Failed to remove from favorites:', error);
       return false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const toggleFavorite = useCallback(async (productId) => {
     const isFavorite = favorites.includes(productId);
