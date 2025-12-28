@@ -203,7 +203,7 @@ class VendorService {
             images: []
           };
 
-          // ✅ Convert images to base64 format
+          // ✅ Convert images to base64 format with UNIQUE filenames
           if (product.images && product.images.length > 0) {
             const imagePromises = product.images.map(async (imageItem, imgIndex) => {
               let file = null;
@@ -212,12 +212,18 @@ class VendorService {
 
               if (imageItem.file instanceof File) {
                 file = imageItem.file;
-                filename = imageItem.name || file.name;
-                tag = imgIndex === 0 ? 'main' : 'detail';
+                const baseName = imageItem.name || file.name;
+                const ext = baseName.split('.').pop() || 'jpg';
+                const nameWithoutExt = baseName.replace(/\.[^/.]+$/, '');
+                // ✅ FIX: Use unique tag with index
+                tag = imgIndex === 0 ? 'main' : `detail_${imgIndex}`;
+                filename = `${nameWithoutExt}_${tag}.${ext}`;
               } else if (imageItem instanceof File) {
                 file = imageItem;
-                filename = file.name;
-                tag = imgIndex === 0 ? 'main' : 'detail';
+                const ext = file.name.split('.').pop() || 'jpg';
+                const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+                tag = imgIndex === 0 ? 'main' : `detail_${imgIndex}`;
+                filename = `${nameWithoutExt}_${tag}.${ext}`;
               }
 
               if (file) {
@@ -362,7 +368,7 @@ class VendorService {
     }
   }
 
-  // ✅ ADD: Non-recursive helper method
+  // ✅ ADD: Non-recursive helper method with unique filenames
   async processSingleProduct(productData) {
     const formData = new FormData();
     
@@ -377,16 +383,31 @@ class VendorService {
     formData.append('pattern', productData.pattern);
     formData.append('status', productData.status);
 
-    // ✅ FIX: Handle both image formats
+    // ✅ FIX: Handle images with unique filenames
     if (productData.images && productData.images.length > 0) {
-      productData.images.forEach((imageItem, index) => {
+      productData.images.forEach((imageItem, imgIndex) => {
+        let file = null;
+        
         // Handle File objects wrapped in objects (e.g., {file: File, name: 'image.jpg'})
         if (imageItem.file instanceof File) {
-          formData.append('images', imageItem.file);
+          file = imageItem.file;
         }
-        // ✅ RESTORE: Handle bare File objects in array
+        // Handle bare File objects in array
         else if (imageItem instanceof File) {
-          formData.append('images', imageItem);
+          file = imageItem;
+        }
+        
+        if (file) {
+          // ✅ Create unique filename with index
+          const baseName = imageItem.name || file.name;
+          const ext = baseName.split('.').pop() || 'jpg';
+          const nameWithoutExt = baseName.replace(/\.[^/.]+$/, '');
+          const tag = imgIndex === 0 ? 'main' : `detail_${imgIndex}`;
+          const uniqueFilename = `${nameWithoutExt}_${tag}.${ext}`;
+          
+          // ✅ Create new File with unique name
+          const renamedFile = new File([file], uniqueFilename, { type: file.type });
+          formData.append('images', renamedFile);
         }
       });
     }

@@ -143,6 +143,45 @@ const VendorProductDetailPage = () => {
     }
   };
 
+  // Replace the debug useEffect (around line 147-170)
+
+  // ✅ DEBUG: Log the FULL URLs to check for duplicates
+  useEffect(() => {
+    if (product) {
+      console.log('🖼️ RAW PRODUCT DATA:', {
+        productId: product.id || product._id,
+        productName: product.name,
+        imagesLength: product.images?.length,
+      });
+      
+      // ✅ Log FULL URLs to see if they're duplicates
+      if (product.images && Array.isArray(product.images)) {
+        console.log('🖼️ ALL IMAGE URLs:');
+        product.images.forEach((img, idx) => {
+          const url = typeof img === 'object' ? img.url : img;
+          console.log(`  Image ${idx}: ${url}`);
+        });
+        
+        // ✅ Check for duplicates
+        const urls = product.images.map(img => typeof img === 'object' ? img.url : img);
+        const uniqueUrls = [...new Set(urls)];
+        console.log(`🖼️ DUPLICATE CHECK: ${urls.length} total, ${uniqueUrls.length} unique`);
+        
+        if (urls.length !== uniqueUrls.length) {
+          console.log('⚠️ DUPLICATES FOUND IN DATABASE DATA!');
+          console.log('Duplicate URLs:', urls.filter((url, idx) => urls.indexOf(url) !== idx));
+        }
+      }
+      
+      // ✅ Also log what getProductImages returns
+      const extracted = getProductImages(product);
+      console.log('🖼️ getProductImages() returned:', extracted.length, 'images');
+      extracted.forEach((url, idx) => {
+        console.log(`  Extracted ${idx}: ${url}`);
+      });
+    }
+  }, [product]);
+
   // ✅ ADD: Get all images from product
   const getProductImages = (product) => {
     if (!product) return ['/assets/img/placeholder.png'];

@@ -7,7 +7,8 @@ const ProductGrid = ({
   error = null, 
   showVendorInfo = true, 
   emptyMessage = "No products found.",
-  view = 'grid' // 'grid' or 'list'
+  view = 'grid',
+  onClick  // ✅ ADD: Accept onClick prop
 }) => {
   if (loading) {
     return view === 'grid' ? (
@@ -78,6 +79,7 @@ const ProductGrid = ({
             key={product.id || product._id}
             product={product}
             showVendorInfo={showVendorInfo}
+            onClick={onClick}  // ✅ ADD: Pass onClick to list items too
           />
         ))}
       </div>
@@ -92,6 +94,7 @@ const ProductGrid = ({
           key={product.id || product._id}
           product={product}
           showVendorInfo={showVendorInfo}
+          onClick={onClick}  // ✅ ADD: Pass onClick to ProductCard
         />
       ))}
     </div>
