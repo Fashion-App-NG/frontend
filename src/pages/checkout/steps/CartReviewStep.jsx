@@ -24,8 +24,6 @@ const CartReviewStep = ({ onNext }) => {
     return cartItems.reduce((sum, item) => sum + getAllInclusiveLineItemTotal(item), 0);
   };
 
-  const taxRate = cartItems[0]?.taxRate || 0.02;
-
   return (
     <div className="bg-white rounded-lg shadow-sm">
       <div className="p-4 sm:p-6">
@@ -130,10 +128,6 @@ const CartReviewStep = ({ onNext }) => {
             <span>Total:</span>
             <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal() + (shippingCost || 0))}</span>
           </div>
-          
-          <p className="text-xs text-gray-500 pt-2">
-            * VAT ({Math.round(taxRate * 100)}%) is calculated on product price only. Platform fees are not taxed.
-          </p>
         </div>
 
         {/* Action button */}

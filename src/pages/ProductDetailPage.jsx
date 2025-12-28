@@ -91,7 +91,10 @@ const ProductDetailPage = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
           <p className="text-gray-600 mb-4">{error || 'The product you are looking for does not exist.'}</p>
-          <Link to="/shopper/browse" className="text-blue-600 hover:text-blue-800">
+          <Link 
+            to={isAuthenticated ? '/shopper/browse' : '/browse'} 
+            className="text-blue-600 hover:text-blue-800"
+          >
             Back to Products
           </Link>
         </div>
@@ -100,75 +103,130 @@ const ProductDetailPage = () => {
   }
 
   const isProductFavorited = isFavorite(product._id || product.id);
-  const images = Array.isArray(product.images) && product.images.length > 0
-    ? product.images.map(img => img.url)
-    : ['/images/default-product.jpg'];
+  
+  // ✅ FIXED: Extract all images with deduplication
+  const images = (() => {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const urls = product.images
+        .map(img => {
+          if (typeof img === 'object' && img.url) return img.url;
+          if (typeof img === 'object' && img.data) return img.data;
+          if (typeof img === 'string' && img.trim()) return img;
+          return null;
+        })
+        .filter(Boolean);
+      
+      // Deduplicate
+      const uniqueUrls = [...new Set(urls)];
+      if (uniqueUrls.length > 0) return uniqueUrls;
+    }
+    
+    // Fallback to single image
+    if (product.image) {
+      const url = typeof product.image === 'object' 
+        ? (product.image.url || product.image.data) 
+        : product.image;
+      if (url) return [url];
+    }
+    
+    return ['/images/default-product.jpg'];
+  })();
+
+  // ✅ Determine back navigation based on auth state
+  const getBackLink = () => {
+    if (isAuthenticated) {
+      return '/shopper/browse';
+    }
+    return '/browse';
+  };
+
+  const getBackLabel = () => {
+    return '← Products';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* ✅ FIXED: Context-aware header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link to="/shopper/browse" className="text-blue-600 hover:text-blue-800 font-medium">
-                ← Products
+              <Link to={getBackLink()} className="text-blue-600 hover:text-blue-800 font-medium">
+                {getBackLabel()}
               </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <Link to="/shopper/browse" className="text-gray-700 hover:text-gray-900">
+              <Link to={getBackLink()} className="text-gray-700 hover:text-gray-900">
                 Explore Products
               </Link>
-              {isAuthenticated && (
+              {isAuthenticated ? (
                 <Link to="/shopper/dashboard" className="text-gray-700 hover:text-gray-900">
                   Dashboard
                 </Link>
+              ) : (
+                <>
+                  <Link to="/login/shopper" className="text-gray-700 hover:text-gray-900">
+                    Shop
+                  </Link>
+                  <Link to="/login/vendor" className="text-gray-700 hover:text-gray-900">
+                    Sell
+                  </Link>
+                  <Link 
+                    to="/register/shopper" 
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    Sign Up
+                  </Link>
+                </>
               )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Breadcrumb */}
-      <div className="bg-yellow-50 py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {process.env.NODE_ENV === 'development' && (
+      {/* ✅ FIXED: Remove dev breadcrumb in production, fix links */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 py-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <p className="text-sm">
-              Path: product/{productId}/4dc0e608/70f0d4 |{' '}
-              <Link to="/shopper/browse" className="text-blue-600">Layout files</Link> |{' '}
-              <span>Show Guest Sidebar Tabs</span> |{' '}
-              <span>User: Shopper</span> |{' '}
-              <span>Auth: true</span>
+              Path: product/{productId} |{' '}
+              <Link to={getBackLink()} className="text-blue-600">Layout files</Link> |{' '}
+              <span>User: {isAuthenticated ? 'Shopper' : 'Guest'}</span> |{' '}
+              <span>Auth: {isAuthenticated ? 'true' : 'false'}</span>
             </p>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Images */}
-          <div>
-            <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden mb-4">
+          <div className="space-y-4">
+            {/* Main Image */}
+            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
                 src={images[selectedImage]}
                 alt={product.name}
                 className="w-full h-full object-cover"
-                onError={e => {
-                  if (!e.target.src.endsWith('/default-product.jpg')) {
-                    e.target.src = '/images/default-product.jpg';
-                  }
+                onError={(e) => {
+                  e.target.src = '/images/default-product.jpg';
                 }}
               />
             </div>
+            
+            {/* ✅ Thumbnail Gallery - Show all images */}
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square bg-gray-200 rounded-lg overflow-hidden ${selectedImage === index ? 'ring-2 ring-blue-500' : ''
-                      }`}
+                    className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImage === index 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-transparent hover:border-gray-300'
+                    }`}
                   >
                     <img
                       src={image}
@@ -181,6 +239,13 @@ const ProductDetailPage = () => {
                   </button>
                 ))}
               </div>
+            )}
+            
+            {/* Image counter */}
+            {images.length > 1 && (
+              <p className="text-center text-sm text-gray-500">
+                Image {selectedImage + 1} of {images.length}
+              </p>
             )}
           </div>
 

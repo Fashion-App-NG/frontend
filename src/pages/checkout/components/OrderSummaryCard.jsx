@@ -4,15 +4,13 @@ import { formatPrice } from '../../../utils/formatPrice';
 const OrderSummaryCard = ({ cart, currentStep }) => {
   const { cartItems } = useCart();
   
-  // ✅ FIXED: Handle both cart structures
-  // Review Cart: { cart: { totalAmount, taxAmount, totalPlatformFee } }
-  // Shipping/Payment: { cart: { totalAmount, taxAmount }, totalPlatformFee }
+  // Calculate totals
   const hasCartData = cart?.totalAmount !== undefined && cart?.taxAmount !== undefined;
   const platformFee = cart?.totalPlatformFee || cart?.platformFeeAmount || 0;
   const useAPIData = hasCartData && platformFee > 0;
   
   const subtotal = useAPIData
-    ? cart.totalAmount + cart.taxAmount + platformFee  // ✅ Use platformFee variable
+    ? cart.totalAmount + cart.taxAmount + platformFee
     : cartItems.reduce((sum, item) => {
         const basePrice = item.pricePerYard || 0;
         const taxAmount = item.taxAmount || 0;
@@ -24,11 +22,6 @@ const OrderSummaryCard = ({ cart, currentStep }) => {
   const showDetailedBreakdown = currentStep >= 3;
   const deliveryFee = showDetailedBreakdown ? (cart?.shippingCost || 0) : 0;
   const total = subtotal + deliveryFee;
-
-  // ✅ Get tax rate from API (handle both 2 and 0.02 formats)
-  const taxRate = useAPIData
-    ? (cart.taxRate > 1 ? cart.taxRate / 100 : cart.taxRate)
-    : (cartItems[0]?.taxRate || 0.02);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -51,12 +44,6 @@ const OrderSummaryCard = ({ cart, currentStep }) => {
           <span>Total</span>
           <span className="text-blue-600">{formatPrice(total)}</span>
         </div>
-        
-        {!showDetailedBreakdown && currentStep < 3 && (
-          <p className="text-xs text-gray-500 mt-2">
-            * VAT ({(taxRate * 100).toFixed(1)}%) is calculated on product price only. Platform fees are not taxed.
-          </p>
-        )}
       </div>
     </div>
   );
