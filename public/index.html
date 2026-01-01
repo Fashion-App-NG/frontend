@@ -4,6 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     
+    <!-- ✅ Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7F0L1S997H"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      
+      // ✅ Only enable in production, respect user consent
+      if (window.location.hostname !== 'localhost') {
+        gtag('config', 'G-7F0L1S997H', {
+          'anonymize_ip': true,  // NDPR compliance
+          'cookie_flags': 'SameSite=None;Secure'
+        });
+      }
+    </script>
+    
     <!-- ✅ RealFaviconGenerator Output -->
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

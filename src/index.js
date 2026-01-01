@@ -11,8 +11,9 @@ Sentry.init({
   // ✅ Environment-based configuration
   environment: process.env.REACT_APP_ENV || 'development',
   
-  // ✅ Only enable in production (or set to true for testing)
-  enabled: process.env.REACT_APP_ENV === 'production' || process.env.NODE_ENV === 'production',
+  // ✅ FIX: Only enable in production
+  enabled: process.env.NODE_ENV === 'production' && 
+           window.location.hostname !== 'localhost',
   
   // ✅ Don't send PII by default (NDPR compliance)
   sendDefaultPii: false,
@@ -70,6 +71,16 @@ Sentry.init({
     }
     return breadcrumb;
   },
+});
+
+// Add this AFTER Sentry.init() to debug
+
+// ✅ Temporary debug - remove after confirming Sentry works
+console.log('🔍 Sentry Debug:', {
+  environment: process.env.REACT_APP_ENV,
+  nodeEnv: process.env.NODE_ENV,
+  sentryEnabled: process.env.REACT_APP_ENV === 'production' || process.env.NODE_ENV === 'production',
+  dsn: process.env.REACT_APP_SENTRY_DSN ? 'Set' : 'Not set (using hardcoded)',
 });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
