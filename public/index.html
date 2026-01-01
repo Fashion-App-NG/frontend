@@ -4,19 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     
-    <!-- ✅ Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7F0L1S997H"></script>
+    <!-- ✅ Google Analytics 4 - Only load in production -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      
-      // ✅ Only enable in production, respect user consent
-      if (window.location.hostname !== 'localhost') {
+      // ✅ FIX: Only load GA script in production
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
         gtag('config', 'G-7F0L1S997H', {
           'anonymize_ip': true,  // NDPR compliance
           'cookie_flags': 'SameSite=None;Secure'
         });
+
+        // Dynamically load the GA script
+        var gaScript = document.createElement('script');
+        gaScript.async = true;
+        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-7F0L1S997H';
+        document.head.appendChild(gaScript);
       }
     </script>
     

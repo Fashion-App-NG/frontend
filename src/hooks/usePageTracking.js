@@ -8,6 +8,9 @@ const usePageTracking = () => {
   useEffect(() => {
     trackPageView(location.pathname, document.title);
   }, [location]);
+
+  // ✅ FIX: Return null to follow React hook conventions
+  return null;
 };
 
 export default usePageTracking;

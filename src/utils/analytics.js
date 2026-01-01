@@ -55,7 +55,9 @@ export const trackAddToCart = (product, quantity = 1) => {
 };
 
 export const trackPurchase = (orderId, total, items) => {
-  if (!isGAEnabled()) return;
+  // ✅ FIX: Add validation for items parameter
+  if (!isGAEnabled() || !items || !Array.isArray(items)) return;
+  
   window.gtag('event', 'purchase', {
     transaction_id: orderId,
     currency: 'NGN',

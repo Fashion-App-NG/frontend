@@ -79,7 +79,9 @@ Sentry.init({
 console.log('🔍 Sentry Debug:', {
   environment: process.env.REACT_APP_ENV,
   nodeEnv: process.env.NODE_ENV,
-  sentryEnabled: process.env.REACT_APP_ENV === 'production' || process.env.NODE_ENV === 'production',
+  hostname: window.location.hostname,
+  // ✅ FIX: Match actual enabled condition from lines 15-16
+  sentryEnabled: process.env.NODE_ENV === 'production' && window.location.hostname !== 'localhost',
   dsn: process.env.REACT_APP_SENTRY_DSN ? 'Set' : 'Not set (using hardcoded)',
 });
 
