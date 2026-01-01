@@ -13,6 +13,7 @@ import { TaxProvider } from './contexts/TaxContext';
 import Footer from './components/Common/Footer';
 import Header from './components/Common/Header';
 import RoleConflictWarning from './components/Common/RoleConflictWarning';
+import SentryTestButton from './components/Common/SentryTestButton';
 
 // ✅ Import all page types
 import ExplorePage from './pages/ExplorePage';
@@ -95,7 +96,16 @@ import VendorProfilePage from './pages/VendorProfilePage';
 
 // Import order tracking component
 import ShopperOrderTracking from './pages/ShopperOrderTracking';
+// Add import at top (after other imports)
+import usePageTracking from './hooks/usePageTracking';
 
+// Create PageTracker component (add before the App function)
+const PageTracker = () => {
+  usePageTracking();
+  return null;
+};
+
+// Inside App component, add PageTracker right after <Router>
 function App() {
   return (
     // ✅ Wrap entire app in Sentry Error Boundary
@@ -126,6 +136,7 @@ function App() {
         <FavoritesProvider>
           <TaxProvider>
             <Router>
+              <PageTracker /> {/* ✅ ADD THIS LINE */}
               <div className="min-h-screen bg-gray-50">
                 <RoleConflictWarning /> {/* ✅ Move it here, inside Router */}
                 <div className="App">
@@ -292,6 +303,9 @@ function App() {
           </TaxProvider>
         </FavoritesProvider>
       </AuthProvider>
+      
+      {/* ✅ ADD: Sentry test button (only shows in development) */}
+      <SentryTestButton />
     </Sentry.ErrorBoundary>
   );
 }
