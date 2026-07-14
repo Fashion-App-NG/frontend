@@ -51,6 +51,7 @@ import AcceptableUsePolicyPage from './pages/AcceptableUsePolicyPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ReturnRefundPolicyPage from './pages/ReturnRefundPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
+import AboutPage from './pages/AboutPage';
 import VendorTermsPage from './pages/VendorTermsPage';
 
 // Import vendor pages
@@ -271,6 +272,7 @@ function App() {
                     {/* Legal routes */}
                     <Route path="/terms" element={<TermsOfServicePage />} />
                     <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                    <Route path="/about" element={<AboutPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                     <Route path="/refunds" element={<ReturnRefundPolicyPage />} />
                     <Route path="/vendor-terms" element={<VendorTermsPage />} />
