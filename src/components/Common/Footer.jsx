@@ -63,12 +63,17 @@ const Footer = () => {
             <ul className="space-y-2 text-gray-400 text-sm">
               <li>legal@faari.app</li>
               <li>privacy@faari.app</li>
+              <li>
+                <Link to="/about" className="text-gray-400 hover:text-white text-sm">
+                  About
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} Fáàrí. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Solution Synthesis Ltd. All rights reserved.</p>
         </div>
       </div>
     </footer>
