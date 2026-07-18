@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
+import materialService from '../services/materialService';
 
 const VendorProductEditPage = () => {
   const { id } = useParams();
@@ -28,6 +29,45 @@ const VendorProductEditPage = () => {
     pattern: '',
     status: 'Available'
   });
+
+  // ✅ Materials now come from the backend (admin-managed) instead of a
+  // hardcoded list — matches the same source and behavior as Add Product
+  // (VendorProductUploadContent.jsx), so Edit and Add always stay in sync.
+  const [materialTypes, setMaterialTypes] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+  const [materialsError, setMaterialsError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMaterials = async () => {
+      setMaterialsLoading(true);
+      const materials = await materialService.fetchActiveMaterials();
+
+      if (!isMounted) return;
+
+      if (materials.length === 0) {
+        setMaterialsError('Unable to load materials right now. Please refresh or try again shortly.');
+      } else {
+        setMaterialsError(null);
+      }
+
+      setMaterialTypes(materials);
+      setMaterialsLoading(false);
+    };
+
+    loadMaterials();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ✅ Matches Add Product's pattern list exactly, including 'Plain' and
+  // 'None'. Pattern has no backend entity yet (unlike Material), so this
+  // stays a hardcoded list — kept identical across Add Product, Edit
+  // Product, and Filters so vendors/shoppers see the same options everywhere.
+  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
   // ✅ Extract images from product
   const extractImages = useCallback((product) => {
@@ -324,19 +364,22 @@ const VendorProductEditPage = () => {
                 <select
                   value={formData.materialType}
                   onChange={(e) => setFormData({ ...formData, materialType: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={materialsLoading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   required
                 >
-                  <option value="">Select material</option>
-                  <option value="Cotton">Cotton</option>
-                  <option value="Silk">Silk</option>
-                  <option value="Linen">Linen</option>
-                  <option value="Lace">Lace</option>
-                  <option value="Polyester">Polyester</option>
-                  <option value="Wool">Wool</option>
-                  <option value="Chiffon">Chiffon</option>
-                  <option value="Satin">Satin</option>
+                  <option value="">
+                    {materialsLoading ? 'Loading materials...' : 'Select material'}
+                  </option>
+                  {materialTypes.map(material => (
+                    <option key={material._id} value={material.name}>
+                      {material.name}
+                    </option>
+                  ))}
                 </select>
+                {materialsError && !materialsLoading && (
+                  <p className="mt-1 text-sm text-red-600">{materialsError}</p>
+                )}
               </div>
 
               <div>
@@ -348,11 +391,11 @@ const VendorProductEditPage = () => {
                   onChange={(e) => setFormData({ ...formData, pattern: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="Solid">Solid</option>
-                  <option value="Striped">Striped</option>
-                  <option value="Floral">Floral</option>
-                  <option value="Geometric">Geometric</option>
-                  <option value="Abstract">Abstract</option>
+                  {patterns.map(pattern => (
+                    <option key={pattern} value={pattern}>
+                      {pattern}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

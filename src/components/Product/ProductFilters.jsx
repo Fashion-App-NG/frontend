@@ -88,7 +88,7 @@ const ProductFilters = ({
   // ✅ 'plain' added alongside the existing 'solid'. Pattern has no backend
   // entity yet (unlike Material), so this stays a hardcoded list for now —
   // see VendorProductUploadContent.jsx for the same note.
-  const patterns = ['Solid', 'Plain', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
+  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
 
   return (
     <div className={`bg-white ${isMobile ? '' : 'p-4 sm:p-6 rounded-lg shadow-sm border border-gray-100 mb-6'}`}>

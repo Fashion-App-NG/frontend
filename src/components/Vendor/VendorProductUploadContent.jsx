@@ -369,7 +369,7 @@ export const VendorProductUploadContent = () => {
   // Pattern has no backend entity yet (unlike Material), so this stays a
   // hardcoded list for now. If patterns need to become admin-manageable too,
   // that's a separate follow-up (a Pattern model + admin CRUD, mirroring Material).
-  const patterns = ['Solid', 'Plain', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
