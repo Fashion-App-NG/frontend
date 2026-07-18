@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
 import VendorProfileCheck from '../VendorProfileCheck';
+import { useMaterials } from '../../hooks/useMaterials';
+import { PATTERNS } from '../../constants/productOptions';
 
 // ✅ Add file size constants
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
@@ -26,8 +28,16 @@ export const VendorHybridBulkUpload = () => {
   // ❌ REMOVE: Unused state
   // const [bulkMatchResult, setBulkMatchResult] = useState(null);
 
-  const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
-  const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+  // ✅ Materials now come from the centralized useMaterials hook (backend
+  // admin-managed, sorted), matching Add Product / Edit Product / Filters.
+  // materialNames (plain strings) is used here rather than the full material
+  // objects, since this form's dropdown + "Custom" fallback pattern works on
+  // strings — vendors can still type a material not in the list if needed.
+  const { materialNames: materialTypes, loading: materialsLoading } = useMaterials();
+
+  // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
+  // see src/constants/productOptions.js.
+  const patterns = PATTERNS;
 
 
   // ✅ Add helper functions
@@ -883,6 +893,7 @@ export const VendorHybridBulkUpload = () => {
           <ProductFormStep 
             products={products}
             materialTypes={materialTypes}
+            materialsLoading={materialsLoading}
             patterns={patterns}
             onUpdate={updateProduct}
             onAdd={addProduct}
@@ -1057,6 +1068,7 @@ const CSVUploadStep = ({ onFileUpload, validationErrors, onBack }) => {
 const ProductFormStep = ({ 
   products = [], // ✅ Default to empty array to prevent undefined error
   materialTypes, 
+  materialsLoading,
   patterns, 
   onUpdate, 
   onAdd, 
@@ -1085,6 +1097,7 @@ const ProductFormStep = ({
           product={product}
           index={index}
           materialTypes={materialTypes}
+          materialsLoading={materialsLoading}
           patterns={patterns}
           onUpdate={onUpdate}
           onRemove={onRemove}
@@ -1116,6 +1129,7 @@ const ProductFormRow = ({
   product, 
   index, 
   materialTypes, 
+  materialsLoading,
   patterns, 
   onUpdate, 
   onRemove, 
@@ -1206,9 +1220,10 @@ const ProductFormRow = ({
                   onUpdate(product.tempId, 'materialType', e.target.value);
                 }
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              disabled={materialsLoading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              <option value="">Select material</option>
+              <option value="">{materialsLoading ? 'Loading materials...' : 'Select material'}</option>
               {materialTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}

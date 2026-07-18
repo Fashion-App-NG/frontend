@@ -6,6 +6,7 @@ import { ProductActionDropdown } from '../components/Vendor/ProductActionDropdow
 import { RestockModal } from '../components/Vendor/RestockModal';
 import { useRequireAuth } from '../hooks/useRequireAuth'; // ✅ Add this back
 import { useVendorProducts } from '../hooks/useVendorProducts';
+import { useMaterials } from '../hooks/useMaterials';
 import productService from '../services/productService';
 
 // ✅ Check if all these components exist and are properly exported:
@@ -151,6 +152,13 @@ const VendorProductListPage = () => {
     sortBy: searchParams.get('sortBy') || 'date',
     sortOrder: searchParams.get('sortOrder') || 'desc'
   }));
+
+  // ✅ Materials now come from the centralized useMaterials hook (backend
+  // admin-managed, sorted) instead of a hardcoded, incomplete local list —
+  // matches the same source used on Add Product / Edit Product / Filters,
+  // so the vendor's own product list always offers every material they
+  // could have chosen when uploading (e.g. Guinea).
+  const { materials: materialOptions, loading: materialsLoading } = useMaterials();
   
   // ✅ FIX: Only destructure what exists in the hook
   const { updateProduct } = useVendorProducts();
@@ -527,14 +535,13 @@ const VendorProductListPage = () => {
                 <select
                   value={filters.materialType}
                   onChange={(e) => handleFiltersChange({ ...filters, materialType: e.target.value })}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={materialsLoading}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">All Materials</option>
-                  <option value="cotton">Cotton</option>
-                  <option value="silk">Silk</option>
-                  <option value="linen">Linen</option>
-                  <option value="polyester">Polyester</option>
-                  <option value="wool">Wool</option>
+                  <option value="">{materialsLoading ? 'Loading materials...' : 'All Materials'}</option>
+                  {materialOptions.map(material => (
+                    <option key={material._id} value={material.name.toLowerCase()}>{material.name}</option>
+                  ))}
                 </select>
 
                 {/* Price Range Filter */}

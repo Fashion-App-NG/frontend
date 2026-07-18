@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
-import materialService from '../../services/materialService';
+import { useMaterials } from '../../hooks/useMaterials';
+import { PATTERNS } from '../../constants/productOptions';
 
 const ProductFilters = ({ 
   onFiltersChange,
@@ -61,34 +62,16 @@ const ProductFilters = ({
     // Only explicitly apply on mobile when drawer closes (via Apply button)
   }, [filters, onFilterUpdate]);
 
-  // ✅ Materials now come from the backend (admin-managed), not a hardcoded
-  // list — matches the same source used on the vendor product upload form,
-  // so a shopper can always filter by any material a vendor can select.
-  const [materialTypes, setMaterialTypes] = useState([]);
-  const [materialsLoading, setMaterialsLoading] = useState(true);
+  // ✅ Materials now come from the centralized useMaterials hook (backend
+  // admin-managed, sorted) instead of a component-local fetch — matches the
+  // same source used everywhere else, so a shopper can always filter by any
+  // material a vendor can select.
+  const { materials: materialTypes, loading: materialsLoading } = useMaterials();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadMaterials = async () => {
-      setMaterialsLoading(true);
-      const materials = await materialService.fetchActiveMaterials();
-      if (!isMounted) return;
-      setMaterialTypes(materials);
-      setMaterialsLoading(false);
-    };
-
-    loadMaterials();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // ✅ 'plain' added alongside the existing 'solid'. Pattern has no backend
-  // entity yet (unlike Material), so this stays a hardcoded list for now —
-  // see VendorProductUploadContent.jsx for the same note.
-  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
+  // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
+  // see src/constants/productOptions.js. Kept identical across Add Product,
+  // Edit Product, Filters, and Bulk Upload.
+  const patterns = PATTERNS;
 
   return (
     <div className={`bg-white ${isMobile ? '' : 'p-4 sm:p-6 rounded-lg shadow-sm border border-gray-100 mb-6'}`}>

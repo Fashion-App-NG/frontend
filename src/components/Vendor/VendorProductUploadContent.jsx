@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
-import materialService from '../../services/materialService';
+import { useMaterials } from '../../hooks/useMaterials';
+import { PATTERNS } from '../../constants/productOptions';
 import VendorProfileCheck from '../VendorProfileCheck';
 // ✅ ADD THIS IMPORT at the top
 import { toast } from 'react-toastify';
@@ -32,38 +33,11 @@ export const VendorProductUploadContent = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  // ✅ Materials now come from the backend (admin-managed), not a hardcoded list.
-  // This means a new fabric (e.g. Guinea) becomes available to vendors as soon
-  // as an admin adds it via the admin Materials page — no frontend deploy needed.
-  const [materialTypes, setMaterialTypes] = useState([]);
-  const [materialsLoading, setMaterialsLoading] = useState(true);
-  const [materialsError, setMaterialsError] = useState(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadMaterials = async () => {
-      setMaterialsLoading(true);
-      const materials = await materialService.fetchActiveMaterials();
-
-      if (!isMounted) return;
-
-      if (materials.length === 0) {
-        setMaterialsError('Unable to load materials right now. Please refresh or try again shortly.');
-      } else {
-        setMaterialsError(null);
-      }
-
-      setMaterialTypes(materials);
-      setMaterialsLoading(false);
-    };
-
-    loadMaterials();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // ✅ Materials now come from the centralized useMaterials hook (backend
+  // admin-managed, sorted). This means a new fabric (e.g. Guinea) becomes
+  // available to vendors as soon as an admin adds it via the admin Materials
+  // page — no frontend deploy needed.
+  const { materials: materialTypes, loading: materialsLoading, error: materialsError } = useMaterials();
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -364,12 +338,10 @@ export const VendorProductUploadContent = () => {
     navigate('/vendor/products');
   };
 
-  // ✅ 'Plain' added alongside the existing 'Solid' — both are kept since some
-  // vendors may distinguish them; not the same fabric convention in all cases.
-  // Pattern has no backend entity yet (unlike Material), so this stays a
-  // hardcoded list for now. If patterns need to become admin-manageable too,
-  // that's a separate follow-up (a Pattern model + admin CRUD, mirroring Material).
-  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+  // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
+  // see src/constants/productOptions.js. Kept identical across Add Product,
+  // Edit Product, Filters, and Bulk Upload.
+  const patterns = PATTERNS;
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]">

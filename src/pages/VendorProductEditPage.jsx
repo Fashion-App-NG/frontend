@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
-import materialService from '../services/materialService';
+import { useMaterials } from '../hooks/useMaterials';
+import { PATTERNS } from '../constants/productOptions';
 
 const VendorProductEditPage = () => {
   const { id } = useParams();
@@ -30,44 +31,15 @@ const VendorProductEditPage = () => {
     status: 'Available'
   });
 
-  // ✅ Materials now come from the backend (admin-managed) instead of a
-  // hardcoded list — matches the same source and behavior as Add Product
-  // (VendorProductUploadContent.jsx), so Edit and Add always stay in sync.
-  const [materialTypes, setMaterialTypes] = useState([]);
-  const [materialsLoading, setMaterialsLoading] = useState(true);
-  const [materialsError, setMaterialsError] = useState(null);
+  // ✅ Materials now come from the centralized useMaterials hook (backend
+  // admin-managed, sorted) — matches the same source used everywhere else,
+  // so Edit and Add always stay in sync.
+  const { materials: materialTypes, loading: materialsLoading, error: materialsError } = useMaterials();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadMaterials = async () => {
-      setMaterialsLoading(true);
-      const materials = await materialService.fetchActiveMaterials();
-
-      if (!isMounted) return;
-
-      if (materials.length === 0) {
-        setMaterialsError('Unable to load materials right now. Please refresh or try again shortly.');
-      } else {
-        setMaterialsError(null);
-      }
-
-      setMaterialTypes(materials);
-      setMaterialsLoading(false);
-    };
-
-    loadMaterials();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // ✅ Matches Add Product's pattern list exactly, including 'Plain' and
-  // 'None'. Pattern has no backend entity yet (unlike Material), so this
-  // stays a hardcoded list — kept identical across Add Product, Edit
-  // Product, and Filters so vendors/shoppers see the same options everywhere.
-  const patterns = ['Solid', 'Plain', 'None', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+  // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
+  // see src/constants/productOptions.js. Kept identical across Add Product,
+  // Edit Product, Filters, and Bulk Upload.
+  const patterns = PATTERNS;
 
   // ✅ Extract images from product
   const extractImages = useCallback((product) => {
