@@ -153,10 +153,14 @@ export const PasswordResetForm = () => {
     }
 
     try {
+      // ✅ FIXED: backend's resetPassword controller destructures `newPassword`
+      // from the request body, not `password` — sending the wrong key meant
+      // newPassword was always undefined server-side, regardless of what the
+      // user typed, and reset always failed with a "required fields" error.
       const response = await authService.resetPassword({
-        userId: userId,      // ✅ FIXED: Send userId instead of email
+        userId: userId,
         code: otp.join(''),
-        password: password
+        newPassword: password
       });
 
       console.log('✅ Password reset successful:', response);
