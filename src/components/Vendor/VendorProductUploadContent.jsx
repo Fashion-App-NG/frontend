@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import vendorService from '../../services/vendorService';
+import materialService from '../../services/materialService';
 import VendorProfileCheck from '../VendorProfileCheck';
 // ✅ ADD THIS IMPORT at the top
 import { toast } from 'react-toastify';
@@ -30,6 +31,39 @@ export const VendorProductUploadContent = () => {
   const [showPatternDropdown, setShowPatternDropdown] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // ✅ Materials now come from the backend (admin-managed), not a hardcoded list.
+  // This means a new fabric (e.g. Guinea) becomes available to vendors as soon
+  // as an admin adds it via the admin Materials page — no frontend deploy needed.
+  const [materialTypes, setMaterialTypes] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+  const [materialsError, setMaterialsError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMaterials = async () => {
+      setMaterialsLoading(true);
+      const materials = await materialService.fetchActiveMaterials();
+
+      if (!isMounted) return;
+
+      if (materials.length === 0) {
+        setMaterialsError('Unable to load materials right now. Please refresh or try again shortly.');
+      } else {
+        setMaterialsError(null);
+      }
+
+      setMaterialTypes(materials);
+      setMaterialsLoading(false);
+    };
+
+    loadMaterials();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -330,8 +364,12 @@ export const VendorProductUploadContent = () => {
     navigate('/vendor/products');
   };
 
-  const materialTypes = ['Cotton', 'Linen', 'Silk', 'Lace', 'Wool', 'Polyester', 'Chiffon', 'Satin'];
-  const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
+  // ✅ 'Plain' added alongside the existing 'Solid' — both are kept since some
+  // vendors may distinguish them; not the same fabric convention in all cases.
+  // Pattern has no backend entity yet (unlike Material), so this stays a
+  // hardcoded list for now. If patterns need to become admin-manageable too,
+  // that's a separate follow-up (a Pattern model + admin CRUD, mirroring Material).
+  const patterns = ['Solid', 'Plain', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract', 'Paisley', 'Plaid'];
 
   return (
     <div className="min-h-screen bg-[#d8dfe9]">
@@ -478,33 +516,46 @@ export const VendorProductUploadContent = () => {
                   <label className="block font-semibold mb-2">Material Type</label>
                   <div
                     onClick={() => {
+                      if (materialsLoading) return;
                       setShowMaterialDropdown(!showMaterialDropdown);
                       setShowPatternDropdown(false);
                     }}
-                    className="flex items-center justify-between h-[52px] px-4 bg-[#f9f9f9] border border-[#ccc] rounded-[8px] cursor-pointer hover:bg-gray-50 transition-colors"
+                    className={`flex items-center justify-between h-[52px] px-4 bg-[#f9f9f9] border border-[#ccc] rounded-[8px] transition-colors ${
+                      materialsLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-50'
+                    }`}
                   >
                     <span className={`${formData.materialType ? 'text-black' : 'text-[#aeaeae]'}`}>
-                      {formData.materialType || 'Choose Material'}
+                      {materialsLoading
+                        ? 'Loading materials...'
+                        : (formData.materialType || 'Choose Material')}
                     </span>
                     <svg className={`w-[10px] h-[5px] transition-transform ${showMaterialDropdown ? 'rotate-180' : ''}`} viewBox="0 0 10 5">
                       <path d="M0 0L5 5L10 0" fill="#aeaeae"/>
                     </svg>
                   </div>
+
+                  {materialsError && !materialsLoading && (
+                    <p className="text-xs text-red-600 mt-1">{materialsError}</p>
+                  )}
                   
-                  {showMaterialDropdown && (
+                  {showMaterialDropdown && !materialsLoading && (
                     <div className="absolute top-full left-0 w-full bg-white border border-[#ccc] rounded-[8px] mt-1 z-20 shadow-lg max-h-48 overflow-y-auto">
-                      {materialTypes.map((type) => (
-                        <div
-                          key={type}
-                          onClick={() => {
-                            handleInputChange('materialType', type);
-                            setShowMaterialDropdown(false);
-                          }}
-                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-black"
-                        >
-                          {type}
-                        </div>
-                      ))}
+                      {materialTypes.length === 0 ? (
+                        <div className="px-4 py-3 text-[#aeaeae]">No materials available</div>
+                      ) : (
+                        materialTypes.map((material) => (
+                          <div
+                            key={material._id}
+                            onClick={() => {
+                              handleInputChange('materialType', material.name);
+                              setShowMaterialDropdown(false);
+                            }}
+                            className="px-4 py-3 hover:bg-gray-100 cursor-pointer text-black"
+                          >
+                            {material.name}
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>

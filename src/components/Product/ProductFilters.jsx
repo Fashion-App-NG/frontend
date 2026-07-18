@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
+import materialService from '../../services/materialService';
 
 const ProductFilters = ({ 
   onFiltersChange,
@@ -60,8 +61,34 @@ const ProductFilters = ({
     // Only explicitly apply on mobile when drawer closes (via Apply button)
   }, [filters, onFilterUpdate]);
 
-  const materialTypes = ['Cotton', 'Silk', 'Linen', 'Wool', 'Polyester', 'Chiffon', 'Lace'];
-  const patterns = ['Solid', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
+  // ✅ Materials now come from the backend (admin-managed), not a hardcoded
+  // list — matches the same source used on the vendor product upload form,
+  // so a shopper can always filter by any material a vendor can select.
+  const [materialTypes, setMaterialTypes] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMaterials = async () => {
+      setMaterialsLoading(true);
+      const materials = await materialService.fetchActiveMaterials();
+      if (!isMounted) return;
+      setMaterialTypes(materials);
+      setMaterialsLoading(false);
+    };
+
+    loadMaterials();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ✅ 'plain' added alongside the existing 'solid'. Pattern has no backend
+  // entity yet (unlike Material), so this stays a hardcoded list for now —
+  // see VendorProductUploadContent.jsx for the same note.
+  const patterns = ['Solid', 'Plain', 'Striped', 'Floral', 'Geometric', 'Polka Dot', 'Abstract'];
 
   return (
     <div className={`bg-white ${isMobile ? '' : 'p-4 sm:p-6 rounded-lg shadow-sm border border-gray-100 mb-6'}`}>
@@ -87,11 +114,11 @@ const ProductFilters = ({
             value={filters.materialType}
             onChange={(e) => handleDropdownChange('materialType', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
-            disabled={loading}
+            disabled={loading || materialsLoading}
           >
-            <option value="">All Materials</option>
-            {materialTypes.map(type => (
-              <option key={type} value={type.toLowerCase()}>{type}</option>
+            <option value="">{materialsLoading ? 'Loading materials...' : 'All Materials'}</option>
+            {materialTypes.map(material => (
+              <option key={material._id} value={material.name.toLowerCase()}>{material.name}</option>
             ))}
           </select>
         </div>
