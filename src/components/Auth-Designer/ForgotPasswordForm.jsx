@@ -24,6 +24,13 @@ export const ForgotPasswordForm = () => {
     return 'shopper';
   };
 
+  // ✅ Computed once per render from location — cheap, synchronous, no need
+  // for state/useEffect. Now that VendorLoginForm/LoginForm pass `state.from`
+  // on navigation, this reliably reflects the role the person came from,
+  // and is shown here (not just on the OTP step) so the role is visible at
+  // every stage of the flow.
+  const userType = getUserType();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -54,7 +61,6 @@ export const ForgotPasswordForm = () => {
       console.log('✅ Forgot password request successful:', response);
       
       // ✅ FIXED: Store both email AND userId from response
-      const userType = getUserType();
       sessionStorage.setItem('passwordResetEmail', email);
       sessionStorage.setItem('passwordResetUserId', response.userId || response.data?.userId); // ✅ ADD THIS
       sessionStorage.setItem('passwordResetUserType', userType);
@@ -92,12 +98,16 @@ export const ForgotPasswordForm = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
-      {/* Shopper Password Reset Indicator */}
+      {/* Password Reset Indicator — now includes the detected role, matching
+          the badge already shown on the OTP step, so the role is visible
+          from the very first step of the flow. */}
       <div className="flex items-center gap-2 mb-4">
         <div className="bg-[#3b82f6] text-white px-3 py-1 rounded-full text-xs font-semibold">
           Password Reset
         </div>
-        <span className="text-[rgba(46,46,46,0.6)] text-sm">Account Recovery</span>
+        <span className="text-[rgba(46,46,46,0.6)] text-sm">
+          Account Recovery • {userType.charAt(0).toUpperCase() + userType.slice(1)}
+        </span>
       </div>
 
       <div className="flex flex-col items-stretch mt-[32px] max-md:ml-1 max-md:mt-6">

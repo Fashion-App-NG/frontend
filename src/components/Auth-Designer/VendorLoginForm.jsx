@@ -293,7 +293,7 @@ export const VendorLoginForm = () => {
 
         {/* Links */}
         <div className="mt-6 text-center text-sm">
-          <Link to="/forgot-password" className="text-blue-600 hover:text-blue-700">
+          <Link to="/forgot-password" state={{ from: 'vendor' }} className="text-blue-600 hover:text-blue-700">
             Forgot Password?
           </Link>
         </div>
