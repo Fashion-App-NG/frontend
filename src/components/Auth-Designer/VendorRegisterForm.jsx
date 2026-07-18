@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import { PasswordInput } from './PasswordInput';
 import SocialLogin from './SocialLogin';
+import { isValidNigerianPhone, normalizeNigerianPhone } from '../../utils/phoneUtils';
 
 export const VendorRegisterForm = () => {
   const navigate = useNavigate();
@@ -18,16 +19,29 @@ export const VendorRegisterForm = () => {
 
     const formData = new FormData(e.target);
     const data = {
-      email: formData.get('email'),
+      phone: formData.get('phone'),
+      email: formData.get('email'), // optional
       storeName: formData.get('storeName'),
       password: formData.get('password'),
       repeatPassword: formData.get('repeatPassword'),
       terms: formData.get('terms')
     };
 
-    // Client-side validation
-    if (!data.email || !data.storeName || !data.password || !data.repeatPassword) {
+    // ✅ Phone is now required (matches backend contract); email is optional.
+    if (!data.phone || !data.storeName || !data.password || !data.repeatPassword) {
       setError('Please fill in all required fields');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isValidNigerianPhone(data.phone)) {
+      setError('Please enter a valid Nigerian phone number (e.g. 08012345678)');
+      setIsLoading(false);
+      return;
+    }
+
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      setError('Please enter a valid email address, or leave it blank');
       setIsLoading(false);
       return;
     }
@@ -44,11 +58,13 @@ export const VendorRegisterForm = () => {
       return;
     }
 
+    const normalizedPhone = normalizeNigerianPhone(data.phone);
+
     try {
       const response = await authService.registerVendor({
-        email: data.email,
+        phone: normalizedPhone,
+        email: data.email || undefined,
         password: data.password,
-        role: "vendor",
         storeName: data.storeName,
       });
 
@@ -58,10 +74,19 @@ export const VendorRegisterForm = () => {
       const userId = response.userId;
       
       if (userId) {
-        setSuccess('Vendor registration successful! Please check your email for verification code.');
+        setSuccess(
+          data.email
+            ? 'Vendor registration successful! Please check your phone and email for a verification code.'
+            : 'Vendor registration successful! Please check your phone for a verification code.'
+        );
         
-        // Store email and userId for OTP verification
-        sessionStorage.setItem('pendingVerificationEmail', data.email);
+        // ✅ Store phone (always present) alongside email (may be blank) so
+        // the OTP verification step can display the right thing regardless
+        // of which channel(s) the person actually provided.
+        sessionStorage.setItem('pendingVerificationPhone', normalizedPhone);
+        if (data.email) {
+          sessionStorage.setItem('pendingVerificationEmail', data.email);
+        }
         sessionStorage.setItem('pendingVerificationUserId', userId);
         sessionStorage.setItem('pendingUserType', 'vendor');
         
@@ -80,10 +105,10 @@ export const VendorRegisterForm = () => {
         if (error.message.includes('storeName')) {
           setError('Store name is required for vendor registration.');
         } else {
-          setError('Please fill in all required fields correctly.');
+          setError(error.message || 'Please fill in all required fields correctly.');
         }
       } else if (error.status === 409) {
-        setError('This email is already registered. Please use a different email or try logging in.');
+        setError('This phone number or email is already registered. Please use different details or try logging in.');
       } else {
         setError(error.message || 'Registration failed. Please try again.');
       }
@@ -138,15 +163,27 @@ export const VendorRegisterForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
-      {/* Email Address Field */}
+      {/* Phone Number Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Email Address
+        Phone Number
+      </label>
+      <input
+        type="tel"
+        name="phone"
+        placeholder="e.g. 08012345678"
+        required
+        disabled={isLoading}
+        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+      />
+
+      {/* Email Address Field - now optional */}
+      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
+        Email Address <span className="text-[rgba(128,128,128,1)] font-normal">(optional)</span>
       </label>
       <input
         type="email"
         name="email"
-        placeholder="Enter your email"
-        required
+        placeholder="Enter your email (optional)"
         disabled={isLoading}
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />

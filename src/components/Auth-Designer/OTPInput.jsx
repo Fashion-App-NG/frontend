@@ -8,6 +8,7 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [userId, setUserId] = useState('');
   const [userType, setUserType] = useState('shopper');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,11 +26,17 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
   useEffect(() => {
     // Get user data from sessionStorage
     const pendingEmail = sessionStorage.getItem('pendingVerificationEmail');
+    const pendingPhone = sessionStorage.getItem('pendingVerificationPhone');
     const pendingUserId = sessionStorage.getItem('pendingVerificationUserId');
     const pendingUserType = sessionStorage.getItem('pendingUserType') || 'shopper';
-    
-    if (pendingEmail && pendingUserId) {
-      setEmail(pendingEmail);
+
+    // ✅ FIXED: registration is now phone-first with email optional, so
+    // requiring pendingEmail here would incorrectly bounce every phone-only
+    // registration back to the signup page, even though it succeeded and
+    // the OTP was already sent via SMS. Accept either channel being present.
+    if ((pendingEmail || pendingPhone) && pendingUserId) {
+      setEmail(pendingEmail || '');
+      setPhone(pendingPhone || '');
       setUserId(pendingUserId);
       setUserType(pendingUserType);
     } else {
@@ -38,12 +45,17 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
     }
   }, [navigate]);
 
+  // ✅ The identifier to use for resend - prefer phone since it's the
+  // primary/required channel now, fall back to email if phone is somehow
+  // unavailable (shouldn't happen post phone-first migration, but defensive).
+  const resendIdentifier = phone || email;
+
   // User type configurations
   const userConfig = {
     shopper: {
       badge: { bg: '#3b82f6', text: 'Shopping Experience' },
-      context: 'Email Verification',
-      title: 'Verify Email',
+      context: 'Account Verification',
+      title: 'Verify Account',
       iconColor: 'text-blue-500',
       inputBorder: 'border-blue-200',
       focusRing: 'focus:ring-blue-500',
@@ -55,13 +67,13 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
         alt: 'Fashion model for shoppers'
       },
       redirectPath: '/login',
-      message: 'Email verified successfully! Please sign in to continue.',
-      description: 'To verify your email, simply enter the 6 digit code.'
+      message: 'Account verified successfully! Please sign in to continue.',
+      description: 'To verify your account, simply enter the 6 digit code.'
     },
     vendor: {
       badge: { bg: '#22c55e', text: 'Vendor Portal' },
       context: 'Business Verification',
-      title: 'Verify Email',
+      title: 'Verify Account',
       iconColor: 'text-green-500',
       inputBorder: 'border-green-200',
       focusRing: 'focus:ring-green-500',
@@ -73,12 +85,25 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
         alt: 'Colorful fabric rolls and textiles for fashion vendors'
       },
       redirectPath: '/login/vendor',
-      message: 'Email verified successfully! Please sign in to your vendor portal.',
-      description: 'To verify your business email, simply enter the 6 digit code.'
+      message: 'Account verified successfully! Please sign in to your vendor portal.',
+      description: 'To verify your business account, simply enter the 6 digit code.'
     }
   };
 
   const config = userConfig[userType];
+
+  // ✅ Builds the "we've sent a code to..." line to reflect whichever
+  // channel(s) were actually provided at registration, instead of always
+  // assuming email.
+  const getDestinationText = () => {
+    if (phone && email) {
+      return `${phone} and ${email}`;
+    }
+    if (phone) {
+      return phone;
+    }
+    return email;
+  };
 
   // ✅ Enhanced handleChange with better validation
   const handleChange = (value, index) => {
@@ -232,13 +257,14 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
       
       // Clear stored verification data
       sessionStorage.removeItem('pendingVerificationEmail');
+      sessionStorage.removeItem('pendingVerificationPhone');
       sessionStorage.removeItem('pendingVerificationUserId');
       sessionStorage.removeItem('pendingUserType');
 
       // Redirect to login page
       setTimeout(() => {
         navigate(userType === 'vendor' ? '/login/vendor' : '/login', {
-          state: { message: 'Account verified successfully! Please sign in.' }
+          state: { message: config.message }
         });
       }, 2000);
 
@@ -260,7 +286,10 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
 
   // ✅ Enhanced request again with rate limiting
   const handleRequestAgain = async () => {
-    if (!email) {
+    // ✅ FIXED: was hard-requiring `email` to exist at all, which blocked
+    // resend entirely for phone-only registrations. Now uses whichever
+    // identifier is actually available (phone preferred).
+    if (!resendIdentifier) {
       setError('Unable to resend code. Please try registering again.');
       return;
     }
@@ -277,7 +306,7 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
     setLastResendTime(Date.now()); // ✅ Update last resend time
     
     try {
-      const response = await authService.resendOTP(email); // ✅ Now uses default import
+      const response = await authService.resendOTP(resendIdentifier); // ✅ Now uses default import
       
       // Clear current OTP inputs
       setOtp(['', '', '', '', '', '']);
@@ -298,8 +327,8 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
       // ✅ Enhanced error handling
       const errorMessage = error.message.toLowerCase();
       
-      if (errorMessage.includes('missing email') || errorMessage.includes('400')) {
-        setError('Email address is required to resend the verification code.');
+      if (errorMessage.includes('missing') || errorMessage.includes('400')) {
+        setError('Unable to resend the verification code. Please try again.');
       } else if (errorMessage.includes('user not found') || errorMessage.includes('404')) {
         setError('Account not found. Please try registering again or contact support.');
       } else if (errorMessage.includes('failed to resend') || errorMessage.includes('500')) {
@@ -366,7 +395,7 @@ export const OTPInput = ({ onSubmit, isLoading: propIsLoading }) => {
                     We've sent a verification code to:
                   </p>
                   <p className="font-['Urbanist',Helvetica] font-semibold text-black text-base break-all">
-                    {email}
+                    {getDestinationText()}
                   </p>
                   <p className="font-['Urbanist',Helvetica] font-normal text-gray-500 text-sm mt-2">
                     Code expires in 10 minutes. You can type or paste the code.

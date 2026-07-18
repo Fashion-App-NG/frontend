@@ -37,22 +37,40 @@ class AuthService {
     }
   }
 
+  /**
+   * Register a new user.
+   *
+   * ✅ FIXED: the backend requires `identifier` to be a valid Nigerian phone
+   * number for new registrations (email is a separate, optional field) —
+   * this was previously sending the email as `identifier`, which the
+   * backend has rejected since the phone-first migration deployed. Now
+   * sends `userData.phone` as `identifier`, and includes `email` only if
+   * provided.
+   */
   async register(userData) {
     try {
+      if (!userData.phone) {
+        const error = new Error('A phone number is required for registration.');
+        error.status = 400;
+        throw error;
+      }
+
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Registering user:', userData.email, 'as', userData.role);
+        console.log('🔄 Registering user:', userData.phone, 'as', userData.role);
       }
       
+      const body = {
+        identifier: userData.phone, // Backend requires phone as the identifier for new registrations
+        password: userData.password,
+        role: userData.role || 'shopper',
+        ...(userData.email && { email: userData.email }), // Optional
+        ...(userData.storeName && { storeName: userData.storeName })
+      };
+
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // Change 'email' to 'identifier' to match API expectations
-          identifier: userData.email, // This will accept either email or phone
-          password: userData.password,
-          role: userData.role || 'shopper',
-          ...(userData.storeName && { storeName: userData.storeName })
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -322,13 +340,25 @@ class AuthService {
     this.removeUser();
   }
 
+  /**
+   * Register a new vendor.
+   *
+   * ✅ FIXED: no longer requires email (backend never required it) - now
+   * requires phone, matching the shared register() contract. Email stays
+   * fully optional here too.
+   */
   async registerVendor(userData) {
     if (!userData.storeName) {
       throw new Error('Store name is required for vendor registration');
     }
 
+    if (!userData.phone) {
+      throw new Error('A phone number is required for vendor registration');
+    }
+
     return this.register({
-      email: userData.email,
+      phone: userData.phone,
+      email: userData.email, // optional
       password: userData.password,
       role: 'vendor',
       storeName: userData.storeName
