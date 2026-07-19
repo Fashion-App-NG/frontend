@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }) => {
         console.log('🔐 AuthContext processed user with storeName:', user.storeName);
       }
       
-      if (!user.id || !user.email) {
+      if (!user.id || (!user.email && !user.phone)) {
         console.error('❌ AuthContext login: Invalid user data after processing', user);
         return false;
       }
