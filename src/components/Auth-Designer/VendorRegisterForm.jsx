@@ -10,6 +10,10 @@ export const VendorRegisterForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // ✅ Email is now hidden by default behind a toggle — phone is the
+  // primary/required field, email stays fully optional and out of the way
+  // unless someone explicitly wants to add it.
+  const [showEmail, setShowEmail] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -176,17 +180,29 @@ export const VendorRegisterForm = () => {
         className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
       />
 
-      {/* Email Address Field - now optional */}
-      <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
-        Email Address <span className="text-[rgba(128,128,128,1)] font-normal">(optional)</span>
-      </label>
-      <input
-        type="email"
-        name="email"
-        placeholder="Enter your email (optional)"
-        disabled={isLoading}
-        className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
-      />
+      {showEmail ? (
+        <>
+          <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">
+            Email Address <span className="text-[rgba(128,128,128,1)] font-normal">(optional)</span>
+          </label>
+          <input
+            type="email"
+            name="email"
+            placeholder="Enter your email (optional)"
+            disabled={isLoading}
+            className="self-stretch bg-[rgba(242,242,242,1)] border min-h-[61px] gap-[5px] text-base text-[rgba(180,180,180,1)] font-normal leading-[1.2] mt-4 px-4 py-[21px] rounded-[5px] border-[rgba(203,203,203,1)] border-solid disabled:opacity-50"
+          />
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          disabled={isLoading}
+          className="self-start text-sm text-blue-600 hover:underline mt-4 disabled:opacity-50"
+        >
+          + Add email address (optional)
+        </button>
+      )}
 
       {/* Password Field */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal leading-[1.2] mt-[9px]">

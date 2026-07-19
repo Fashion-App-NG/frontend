@@ -26,21 +26,24 @@ export const VendorLoginForm = () => {
     setSuccessMessage('');
 
     const formData = new FormData(e.target);
+    // ✅ FIXED: field renamed from `email` to `identifier` — backend has
+    // always accepted phone OR email for login, but this form only ever
+    // collected/sent email, so phone-registered vendor accounts couldn't log in.
     const data = {
-      email: formData.get('email'),
+      identifier: formData.get('identifier'),
       password: formData.get('password')
     };
 
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 VendorLoginForm validation:', {
-        email: data.email ? 'Present' : 'Missing',
+        identifier: data.identifier ? 'Present' : 'Missing',
         password: data.password ? 'Present' : 'Missing'
       });
     }
 
-    if (!data.email || !data.password) {
+    if (!data.identifier || !data.password) {
       const missingFields = [];
-      if (!data.email) missingFields.push('email');
+      if (!data.identifier) missingFields.push('phone number or email');
       if (!data.password) missingFields.push('password');
       
       setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
@@ -57,7 +60,7 @@ export const VendorLoginForm = () => {
       const authService = (await import('../../services/authService')).default;
 
       const response = await authService.login({
-        identifier: data.email,
+        identifier: data.identifier,
         password: data.password,
         role: 'vendor'
       });
@@ -83,6 +86,7 @@ export const VendorLoginForm = () => {
       const userData = {
         id: response.user?.id || response.user?._id || response.id,
         email: response.user?.email || response.email,
+        phone: response.user?.phone || response.phone,
         role: response.user?.role || response.role || 'vendor',
         firstName: response.user?.firstName || response.firstName,
         lastName: response.user?.lastName || response.lastName,
@@ -112,7 +116,10 @@ export const VendorLoginForm = () => {
         return;
       }
 
-      if (!userData.id || !userData.email) {
+      // ✅ FIXED: was requiring userData.email, which would incorrectly
+      // reject phone-only vendor accounts even on a successful login.
+      // Either identifier being present is sufficient.
+      if (!userData.id || (!userData.email && !userData.phone)) {
         console.error('❌ User missing required fields:', userData);
         setError('Invalid user data received. Please contact support.');
         return;
@@ -131,7 +138,6 @@ export const VendorLoginForm = () => {
           expectedRole: 'vendor',
           expectedLength: 'vendor'.length,
           allUserDataKeys: Object.keys(userData),
-          // ✅ ADD: Context about where role came from
           originalRequestRole: 'vendor',
           rolePresentInResponse: 'role' in (response.user || response)
         });
@@ -150,7 +156,6 @@ export const VendorLoginForm = () => {
             rawResponseRole: response.role,
             rawResponseEmail: response.email,
             rawResponseId: response.id,
-            // ✅ ENHANCED: Show what we sent vs what we got
             sentRole: 'vendor',
             receivedRole: userData.role,
             rolePreservedFromRequest: !response.role && !response.user?.role
@@ -195,9 +200,9 @@ export const VendorLoginForm = () => {
       let errorMessage = 'Login failed. Please try again.';
       
       if (error.status === 401) {
-        errorMessage = 'Invalid email or password. Please check your credentials.';
+        errorMessage = 'Invalid phone/email or password. Please check your credentials.';
       } else if (error.status === 403) {
-        errorMessage = 'Please verify your email address before logging in.';
+        errorMessage = 'Please verify your account before logging in.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -253,17 +258,18 @@ export const VendorLoginForm = () => {
 
         {/* Form Fields */}
         <div className="mt-8 space-y-6">
-          {/* Email Field */}
+          {/* Identifier Field - now accepts phone or email, matching backend */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
+              Phone Number or Email
             </label>
             <input
-              type="email"
-              name="email"
+              type="text"
+              name="identifier"
               required
+              autoComplete="username"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="vendor@example.com"
+              placeholder="08012345678 or vendor@example.com"
             />
           </div>
 

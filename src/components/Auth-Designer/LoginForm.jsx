@@ -29,24 +29,27 @@ export const LoginForm = () => {
     setSuccessMessage('');
 
     const formData = new FormData(e.target);
+    // ✅ FIXED: field renamed from `email` to `identifier` — backend has
+    // always accepted phone OR email for login, but this form only ever
+    // collected/sent email, so phone-registered accounts couldn't log in.
     const data = {
-      email: formData.get('email'),
+      identifier: formData.get('identifier'),
       password: formData.get('password')
     };
 
-    if (!data.email || !data.password) {
+    if (!data.identifier || !data.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('🔐 Shopper login attempt:', { email: data.email, password: '***' });
+      console.log('🔐 Shopper login attempt:', { identifier: data.identifier, password: '***' });
 
       const authService = (await import('../../services/authService')).default;
 
       const response = await authService.login({
-        identifier: data.email,
+        identifier: data.identifier,
         password: data.password,
         role: "shopper"
       });
@@ -223,11 +226,11 @@ export const LoginForm = () => {
       console.error('❌ Shopper login failed:', error);
 
       if (error.status === 401) {
-        setError('Invalid email or password. Please try again.');
+        setError('Invalid phone/email or password. Please try again.');
       } else if (error.status === 403) {
-        setError('Please verify your email address before logging in.');
+        setError('Please verify your account before logging in.');
       } else if (error.status === 404) {
-        setError('Account not found. Please check your email or sign up.');
+        setError('Account not found. Please check your details or sign up.');
       } else {
         setError(error.message || 'Login failed. Please try again.');
       }
@@ -273,16 +276,17 @@ export const LoginForm = () => {
         </div>
       )}
 
-      {/* Email Address Field */}
+      {/* Identifier Field - now accepts phone or email, matching backend */}
       <label className="text-[rgba(46,46,46,1)] text-sm font-normal mb-2 sm:mb-4">
-        Email Address
+        Phone Number or Email
       </label>
       <input
-        type="email"
-        name="email"
-        placeholder="Enter your email"
+        type="text"
+        name="identifier"
+        placeholder="Enter your phone number or email"
         required
         disabled={isLoading}
+        autoComplete="username"
         className="w-full bg-[rgba(242,242,242,1)] border border-[rgba(203,203,203,1)] min-h-[52px] sm:min-h-[61px] text-sm sm:text-base text-[rgba(180,180,180,1)] font-normal px-3 sm:px-4 py-3 sm:py-4 rounded-[5px] disabled:opacity-50 focus:outline-none focus:border-blue-500 transition-colors"
       />
 
