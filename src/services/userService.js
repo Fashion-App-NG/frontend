@@ -154,6 +154,7 @@ class UserService {
           ...response,
           profile: {
             storeName: storeName,
+            phone: response.data.phone || '',
             pickupAddress: vendorProfile?.pickupAddress || {
               street: '',
               city: '',
@@ -205,6 +206,7 @@ class UserService {
       // Transform the form data to match what the API expects
       const apiProfileData = {
         storeName: profileData.storeName,
+        ...(profileData.phone && { phone: profileData.phone }),
         vendorProfile: {
           pickupAddress: profileData.pickupAddress,
           businessInfo: profileData.businessInfo,

@@ -16,6 +16,7 @@ const VendorProfilePage = () => {
   
   const [formData, setFormData] = useState({
     storeName: '',
+    phone: '',
     pickupAddress: {
       street: '',
       city: '',
@@ -67,6 +68,7 @@ const VendorProfilePage = () => {
           
           setFormData({
             storeName: profileData.storeName || user?.storeName || '',
+            phone: profileData.phone || user?.phone || '',
             pickupAddress: {
               street: profileData.pickupAddress?.street || '',
               city: profileData.pickupAddress?.city || '',
@@ -102,6 +104,7 @@ const VendorProfilePage = () => {
           setFormData(prev => ({
             ...prev,
             storeName: user?.storeName || '',
+            phone: user?.phone || '',
             businessInfo: {
               ...prev.businessInfo,
               contactPerson: {
@@ -222,6 +225,26 @@ const VendorProfilePage = () => {
                 placeholder="Enter your store name"
                 required
               />
+            </div>
+
+            {/* Account Phone Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Account Phone Number
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="08012345678"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                This is the phone number you use to sign in to your vendor account.
+                It's different from the Contact Person phone number on the Contact tab,
+                which is shown to customers.
+              </p>
             </div>
 
             {/* Store Description */}
