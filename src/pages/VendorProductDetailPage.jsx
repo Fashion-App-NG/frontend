@@ -27,46 +27,40 @@ const VendorProductDetailPage = () => {
 
   useEffect(() => {
     const findProduct = async () => {
-      // Strategy 1: Try to find in loaded products first
-      let foundProduct = products.find(p => {
-        const productId = p.id || p._id;
-        return productId === id || 
-               productId?.toString() === id || 
-               productId?.toString().includes(id) ||
-               id?.toString().includes(productId?.toString());
-      });
-      
-      // Strategy 2: If not found in loaded products, try direct API call
-      if (!foundProduct && user?.id) {
-        try {
-          setProductLoading(true);
-          const response = await productService.getVendorProducts(user.id);
-          
-          if (response.products) {
-            foundProduct = response.products.find(p => {
-              const productId = p.id || p._id;
-              return productId === id || 
-                     productId?.toString() === id ||
-                     productId?.toString().includes(id) ||
-                     id?.toString().includes(productId?.toString());
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching product:', error);
-        } finally {
-          setProductLoading(false);
+      // ✅ FIX: Fetch the product directly by ID instead of searching within
+      // a page-1-only product list. The old two-strategy approach (check the
+      // useVendorProducts() list, then fall back to getVendorProducts(user.id)
+      // with no page/limit) both silently capped at the vendor's first 20
+      // products, so anything past page 1 always showed "Product Not Found".
+      if (!id) {
+        setProductLoading(false);
+        return;
+      }
+
+      try {
+        setProductLoading(true);
+        const response = await productService.getProductById(id);
+        const foundProduct = response.product;
+
+        if (foundProduct && user?.id && String(foundProduct.vendorId) !== String(user.id)) {
+          // getProductById is a public endpoint with no vendor filter, so
+          // explicitly verify this product belongs to the logged-in vendor.
+          console.error('Product does not belong to the logged-in vendor');
+          setProduct(null);
+          return;
         }
-      } else {
+
+        setProduct(foundProduct || null);
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        setProduct(null);
+      } finally {
         setProductLoading(false);
       }
-      
-      setProduct(foundProduct || null);
     };
 
-    if (id) {
-      findProduct();
-    }
-  }, [id, products, user?.id]);
+    findProduct();
+  }, [id, user?.id]);
 
   const handleProductAction = (product, action) => {
     const productId = product.id || product._id;
