@@ -292,7 +292,7 @@ export const VendorProductUploadContent = ({
       }
 
       if (adminMode) {
-        navigate('/admin/vendor-management', {
+        navigate(`/admin/vendors/${overrideVendorId}/products?vendorName=${encodeURIComponent(overrideVendorName || '')}`, {
           state: {
             message: result.createdCount === 1
               ? `Product uploaded successfully for ${overrideVendorName || 'this vendor'}!`

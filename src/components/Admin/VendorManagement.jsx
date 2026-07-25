@@ -1,7 +1,7 @@
 // VendorManagement.jsx
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaChevronDown, FaChevronUp, FaEdit, FaTimes, FaPlus } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaEdit, FaTimes, FaPlus, FaBoxOpen } from "react-icons/fa";
 import { adminService } from "../../services/adminService";
 import ErrorMessage from "./AdminError";
 import FilterSection from "./AdminFilter";
@@ -346,6 +346,17 @@ const VendorManagement = () => {
                         <td>{formatDate(vendor.updatedAt)}</td>
                         <td>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                const id = vendor._id || vendor.id;
+                                const name = encodeURIComponent(vendor.vendorProfile?.storeName || '');
+                                navigate(`/admin/vendors/${id}/products?vendorName=${name}`);
+                              }}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                              title="View this vendor's products"
+                            >
+                              <FaBoxOpen />
+                            </button>
                             <button
                               onClick={() => {
                                 const id = vendor._id || vendor.id;
