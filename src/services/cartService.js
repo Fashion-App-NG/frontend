@@ -245,7 +245,11 @@ class CartService {
         pattern: productData.pattern || 'Unknown',
         image: productData.image || productData.imageUrl || '',
         vendorId: productData.vendorId || productData.vendor?.id,
-        vendorName: productData.vendorName || productData.vendor?.name || 'Unknown Vendor'
+        vendorName: productData.vendorName || productData.vendor?.name || 'Unknown Vendor',
+        ...(productData.unitType && {
+          unitType: productData.unitType,
+          unitCount: productData.unitCount || 1
+        })
       };
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] cartService.addItem called with:', requestBody);

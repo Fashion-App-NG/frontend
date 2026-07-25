@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { formatPurchaseQuantity } from '../utils/purchaseUnits';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import OrderTrackingProgress from '../components/OrderTrackingProgress';
@@ -348,7 +349,7 @@ const ShopperOrderTracking = () => {
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.name}</h4>
                     <p className="text-sm text-gray-600">
-                      Quantity: {item.quantity} • {formatPrice(displayPrice)} per yard
+                      {formatPurchaseQuantity(item)} • {formatPrice(displayPrice)} per yard
                       <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                     </p>
                     <p className="text-xs text-gray-500">

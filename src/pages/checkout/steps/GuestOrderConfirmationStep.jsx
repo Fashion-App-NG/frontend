@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatPurchaseQuantity } from '../../../utils/purchaseUnits';
 
 const GuestOrderConfirmationStep = ({ clearCart, loadCart, order, customerInfo }) => {
   const navigate = useNavigate();
@@ -118,7 +119,7 @@ const GuestOrderConfirmationStep = ({ clearCart, loadCart, order, customerInfo }
             <div key={index} className="flex justify-between items-center py-3 border-b border-gray-200 last:border-b-0">
               <div>
                 <h4 className="font-medium text-gray-900">{item.name}</h4>
-                <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                <p className="text-sm text-gray-600">{formatPurchaseQuantity(item)}</p>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-gray-900">

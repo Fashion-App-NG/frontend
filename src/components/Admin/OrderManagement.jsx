@@ -3,6 +3,7 @@ import { FaTimes, FaEdit, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { adminService } from '../../services/adminService';
 import ItemsTable from './AdminItems';
 import FilterSection from './AdminFilter';
+import { formatPurchaseQuantity } from '../../utils/purchaseUnits';
 import Pagination from './AdminPagination';
 import ErrorMessage from './AdminError';
 import UpdateModal from './AdminUpdateModal';
@@ -42,7 +43,7 @@ const OrderManagement = () => {
   const columns = [
     { key: "name", label: "Product" },
     { key: "vendorName", label: "Vendor" },
-    { key: "quantity", label: "Quantity", render: (item) => `${item.quantity} yards` },
+    { key: "quantity", label: "Quantity", render: (item) => formatPurchaseQuantity(item) },
     { key: "pricePerYard", label: "Price/Yard", render: (item) => formatCurrency(item.pricePerYard) },
     { key: "total", label: "Total", render: (item) => formatCurrency(item.pricePerYard * item.quantity) },
   ];

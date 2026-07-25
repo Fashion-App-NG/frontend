@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { formatPurchaseQuantity } from '../utils/purchaseUnits';
 import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -179,7 +180,7 @@ const VendorOrderDetailsPage = () => {
                   />
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.product?.name}</h4>
-                    <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                    <p className="text-sm text-gray-600">{formatPurchaseQuantity(item)}</p>
                     <p className="text-sm font-medium text-gray-900">
                       {formatPrice(item.price * item.quantity)}
                     </p>

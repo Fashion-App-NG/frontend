@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
 import { getProductImageUrl } from '../../../utils/productUtils';
+import { formatPurchaseQuantity } from '../../../utils/purchaseUnits';
 
 const CartReviewStep = ({ onNext }) => {
   const { cartItems, updateCartItemQuantity } = useCart();
@@ -67,7 +68,7 @@ const CartReviewStep = ({ onNext }) => {
                   <p className="text-sm sm:text-base font-bold text-blue-600 mb-3">
                     {formatPrice(getAllInclusivePricePerYard(item))}
                     <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per yard</span>
-                    <span className="text-xs text-gray-500 ml-1">× {item.quantity} {item.quantity === 1 ? 'yard' : 'yards'}</span>
+                    <span className="text-xs text-gray-500 ml-1">× {formatPurchaseQuantity(item)}</span>
                   </p>
 
                   {/* Quantity controls and subtotal */}

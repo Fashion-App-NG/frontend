@@ -1,6 +1,7 @@
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { formatPurchaseQuantity } from '../utils/purchaseUnits';
 import OrderBreadcrumbs from '../components/OrderBreadcrumbs';
 import OrderDeliveryInfo from '../components/OrderDeliveryInfo';
 import OrderStatusBadge from '../components/OrderStatusBadge';
@@ -290,7 +291,7 @@ const ShopperOrderDetails = () => {
                     <div key={item.productId} className="py-2">
                       <p className="font-medium">{item.name}</p>
                       <p className="text-sm text-gray-600">
-                        {item.quantity} yard{item.quantity > 1 ? 's' : ''} × {formatPrice(displayPrice)}/yard
+                        {formatPurchaseQuantity(item)} × {formatPrice(displayPrice)}/yard
                         <span className="text-xs text-gray-500 ml-1">(incl. fees & tax)</span>
                       </p>
                       <p className="text-xs text-gray-500">

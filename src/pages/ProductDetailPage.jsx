@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'; // keep for isAuthenticated, 
 import { useCart } from '../contexts/CartContext';
 import { useFavorites } from '../contexts/FavoritesContext';
 import productService from '../services/productService';
+import { PURCHASE_UNIT_YARDS, maxUnitsAvailable, unitsToYards } from '../utils/purchaseUnits';
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -11,6 +12,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [unitType, setUnitType] = useState('yard');
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
@@ -51,11 +53,18 @@ const ProductDetailPage = () => {
       await addToCart({
         ...product,
         vendorId: product.vendorId || product.vendor?.id,
-        quantity: quantity,
+        quantity: unitsToYards(unitType, quantity),
+        unitType,
+        unitCount: quantity,
       });
     } finally {
       setIsAddingToCart(false);
     }
+  };
+
+  const handleUnitTypeChange = (newUnitType) => {
+    setUnitType(newUnitType);
+    setQuantity(1); // Reset count — max valid count differs per unit size
   };
 
   const handleToggleFavorite = async () => {
@@ -283,20 +292,38 @@ const ProductDetailPage = () => {
               </p>
             </div>
 
-            {/* Quantity Selector */}
+            {/* Purchase Unit Selector */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity (yards)
+                Buy by
+              </label>
+              <div className="flex gap-2 mb-4">
+                {['yard', 'pack', 'bundle'].map((type) => {
+                  const available = product.quantity || 0;
+                  const maxUnits = maxUnitsAvailable(available, type);
+                  if (maxUnits < 1) return null; // Not enough stock for even one of this unit
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => handleUnitTypeChange(type)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium capitalize transition-colors ${
+                        unitType === type
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {type}{type !== 'yard' && ` (${PURCHASE_UNIT_YARDS[type]} yds)`}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {unitType === 'yard' ? 'Quantity (yards)' : `Number of ${unitType}s`}
               </label>
               <div className="flex items-center border border-gray-300 rounded-lg w-32">
                 <button
-                  onClick={() => {
-                    const newQty = Math.max(1, quantity - 1);
-                    if (process.env.NODE_ENV === 'development') {
-                      console.log('[DEBUG] Quantity decremented:', newQty);
-                    }
-                    setQuantity(newQty);
-                  }}
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="px-3 py-2 text-gray-600 hover:text-gray-800"
                 >
                   -
@@ -304,30 +331,34 @@ const ProductDetailPage = () => {
                 <input
                   type="number"
                   min="1"
-                  max={product.quantity || 105}
+                  max={maxUnitsAvailable(product.quantity || 0, unitType)}
                   value={quantity}
                   onChange={(e) => {
-                    const val = Math.max(1, parseInt(e.target.value) || 1);
-                    if (process.env.NODE_ENV === 'development') {
-                      console.log('[DEBUG] Quantity input changed:', val);
-                    }
+                    const maxUnits = maxUnitsAvailable(product.quantity || 0, unitType);
+                    const val = Math.min(maxUnits, Math.max(1, parseInt(e.target.value) || 1));
                     setQuantity(val);
                   }}
                   className="flex-1 text-center py-2 border-0 focus:ring-0"
                 />
                 <button
                   onClick={() => {
-                    const newQty = Math.min((product.quantity || 105), quantity + 1);
-                    if (process.env.NODE_ENV === 'development') {
-                      console.log('[DEBUG] Quantity incremented:', newQty);
-                    }
-                    setQuantity(newQty);
+                    const maxUnits = maxUnitsAvailable(product.quantity || 0, unitType);
+                    setQuantity(Math.min(maxUnits, quantity + 1));
                   }}
                   className="px-3 py-2 text-gray-600 hover:text-gray-800"
                 >
                   +
                 </button>
               </div>
+
+              {unitType !== 'yard' && (
+                <p className="mt-2 text-sm text-gray-600">
+                  = {unitsToYards(unitType, quantity)} yards total
+                </p>
+              )}
+              <p className="mt-1 text-base font-semibold text-gray-900">
+                Total: ₦{(unitsToYards(unitType, quantity) * (product.pricePerYard || 0)).toLocaleString()}
+              </p>
             </div>
 
             {/* Action Buttons */}

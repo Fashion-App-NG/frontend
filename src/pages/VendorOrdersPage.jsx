@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { formatPurchaseQuantity } from '../utils/purchaseUnits';
 import VendorStatusExplainer from '../components/Vendor/VendorStatusExplainer';
 import VendorProfileCheck from '../components/VendorProfileCheck';
 import { useAuth } from "../contexts/AuthContext";
@@ -864,7 +865,7 @@ export default function VendorOrdersPage() {
                               <div className="font-medium">{item.name}</div>
                               <div className="text-xs text-gray-500 flex flex-wrap gap-x-4">
                                 <span>{item.materialType} | {item.pattern}</span>
-                                <span>Quantity: {item.quantity} {item.quantity > 1 ? 'yards' : 'yard'}</span>
+                                <span>{formatPurchaseQuantity(item)}</span>
                                 <span>Price: {formatPrice(getDisplayPricePerYard(item))}</span>
                                 <span>Status: <StatusBadge status={item.status} /></span>
                               </div>
