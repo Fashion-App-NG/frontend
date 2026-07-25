@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Sidebar from '../components/Admin/Sidebar';
 import Topbar from '../components/Admin/Topbar';
 import productService from '../services/productService';
@@ -48,6 +49,20 @@ export const AdminVendorProductsPage = () => {
   useEffect(() => {
     loadProducts(1);
   }, [loadProducts]);
+
+  const handleHideProduct = useCallback(async (product) => {
+    if (!window.confirm(`Hide "${product.name}"? It will no longer be visible to shoppers or in this list.`)) {
+      return;
+    }
+    try {
+      await productService.updateProduct(product._id, { display: false, status: 'INACTIVE' });
+      toast.success('Product hidden');
+      loadProducts(pagination.currentPage);
+    } catch (error) {
+      console.error('Failed to hide product:', error);
+      toast.error('Failed to hide product');
+    }
+  }, [loadProducts, pagination.currentPage]);
 
   // If we weren't handed a vendor name via query param (e.g. direct link or
   // page refresh), fetch it once so the header isn't just a raw ID.
@@ -113,6 +128,7 @@ export const AdminVendorProductsPage = () => {
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Quantity</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Added</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -158,6 +174,22 @@ export const AdminVendorProductsPage = () => {
                           ) : (
                             <span className="text-xs text-gray-400">By vendor</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => navigate(`/admin/products/${product._id}/edit`)}
+                              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleHideProduct(product)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded"
+                            >
+                              Hide
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

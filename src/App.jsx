@@ -46,6 +46,7 @@ import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import AdminVendorManagementPage from './pages/AdminVendorManagementPage';
 import AdminProductUploadPage from './pages/AdminProductUploadPage';
 import AdminVendorProductsPage from './pages/AdminVendorProductsPage';
+import AdminProductEditPage from './pages/AdminProductEditPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
@@ -272,6 +273,7 @@ function App() {
                   <Route path="/admin/vendor-management" element={<AdminVendorManagementPage />} />
                   <Route path="/admin/products/upload" element={<AdminProductUploadPage />} />
                   <Route path="/admin/vendors/:vendorId/products" element={<AdminVendorProductsPage />} />
+                  <Route path="/admin/products/:id/edit" element={<AdminProductEditPage />} />
 
                     {/* Legal routes */}
                     <Route path="/terms" element={<TermsOfServicePage />} />
