@@ -8,7 +8,11 @@ import VendorProfileCheck from '../VendorProfileCheck';
 // ✅ ADD THIS IMPORT at the top
 import { toast } from 'react-toastify';
 
-export const VendorProductUploadContent = () => {
+export const VendorProductUploadContent = ({
+  adminMode = false,
+  overrideVendorId,
+  overrideVendorName,
+} = {}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -253,7 +257,7 @@ export const VendorProductUploadContent = () => {
         pricePerYard: parseFloat(formData.pricePerYard),
         quantity: parseInt(formData.quantity) || 1,
         materialType: formData.materialType,
-        vendorId: user?.id,
+        vendorId: overrideVendorId || user?.id,
         idNumber: formData.idNumber?.trim() || `PRD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         description: formData.description?.trim() || 'Product description',
         pattern: formData.pattern || 'Solid',
@@ -262,6 +266,13 @@ export const VendorProductUploadContent = () => {
       }];
 
       const result = await vendorService.createBulkProducts(productData);
+
+      if (result?.profileWarning?.incomplete) {
+        toast.warning(
+          `Product created, but this vendor's profile is still incomplete (missing: ${result.profileWarning.missingFields.join(', ')}). Consider completing it before the vendor goes live.`,
+          { autoClose: 8000 }
+        );
+      }
 
       // Reset form on success
       setFormData({
@@ -280,14 +291,25 @@ export const VendorProductUploadContent = () => {
         fileInputRef.current.value = '';
       }
 
-      navigate('/vendor/products', {
-        state: {
-          message: result.createdCount === 1 
-            ? 'Product uploaded successfully!' 
-            : `${result.createdCount} products uploaded successfully!`,
-          type: 'success'
-        }
-      });
+      if (adminMode) {
+        navigate('/admin/vendor-management', {
+          state: {
+            message: result.createdCount === 1
+              ? `Product uploaded successfully for ${overrideVendorName || 'this vendor'}!`
+              : `${result.createdCount} products uploaded successfully for ${overrideVendorName || 'this vendor'}!`,
+            type: 'success'
+          }
+        });
+      } else {
+        navigate('/vendor/products', {
+          state: {
+            message: result.createdCount === 1 
+              ? 'Product uploaded successfully!' 
+              : `${result.createdCount} products uploaded successfully!`,
+            type: 'success'
+          }
+        });
+      }
 
     } catch (error) {
       console.error('❌ Upload failed:', error);
@@ -319,7 +341,7 @@ export const VendorProductUploadContent = () => {
     } finally {
       setIsUploading(false);
     }
-  }, [formData, user, navigate]);
+  }, [formData, user, navigate, adminMode, overrideVendorId, overrideVendorName]);
 
   // ✅ Add handleCancel function
   const handleCancel = () => {
@@ -335,7 +357,7 @@ export const VendorProductUploadContent = () => {
       if (!confirmLeave) return;
     }
 
-    navigate('/vendor/products');
+    navigate(adminMode ? '/admin/vendor-management' : '/vendor/products');
   };
 
   // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
@@ -351,10 +373,14 @@ export const VendorProductUploadContent = () => {
           {/* Welcome Section */}
           <div>
             <h1 className="text-[32px] font-bold text-[#3e3e3e] leading-[150%]">
-              Welcome {user?.firstName || user?.storeName || 'Vendor'}
+              {adminMode
+                ? `Add Product for ${overrideVendorName || 'Vendor'}`
+                : `Welcome ${user?.firstName || user?.storeName || 'Vendor'}`}
             </h1>
             <p className="text-[16px] text-[#2e2e2e] leading-[120%] w-[312px]">
-              Add new products to your store inventory
+              {adminMode
+                ? "You're uploading this product on the vendor's behalf."
+                : 'Add new products to your store inventory'}
             </p>
           </div>
 
@@ -374,7 +400,10 @@ export const VendorProductUploadContent = () => {
           <div className="flex items-center gap-4">
             <div className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden">
               <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                {(user?.firstName?.[0] || user?.storeName?.[0] || 'V').toUpperCase()}
+                {(adminMode
+                  ? (overrideVendorName?.[0] || 'V')
+                  : (user?.firstName?.[0] || user?.storeName?.[0] || 'V')
+                ).toUpperCase()}
               </div>
             </div>
           </div>
@@ -383,7 +412,7 @@ export const VendorProductUploadContent = () => {
 
       {/* Main Content */}
       <div className="p-6">
-        <VendorProfileCheck />  {/* ✅ ADD THIS */}
+        {!adminMode && <VendorProfileCheck />}
         {/* Page Title and Actions */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[24px] font-bold text-black leading-[150%]">

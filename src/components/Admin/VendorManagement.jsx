@@ -1,6 +1,7 @@
 // VendorManagement.jsx
 import React, { useCallback, useEffect, useState } from "react";
-import { FaChevronDown, FaChevronUp, FaEdit, FaTimes } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { FaChevronDown, FaChevronUp, FaEdit, FaTimes, FaPlus } from "react-icons/fa";
 import { adminService } from "../../services/adminService";
 import ErrorMessage from "./AdminError";
 import FilterSection from "./AdminFilter";
@@ -8,6 +9,7 @@ import Pagination from "./AdminPagination";
 import UpdateModal from "./AdminUpdateModal";
 
 const VendorManagement = () => {
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedVendor, setSelectedVendor] = useState(null);
     const [vendors, setVendors] = useState([]);
@@ -344,6 +346,17 @@ const VendorManagement = () => {
                         <td>{formatDate(vendor.updatedAt)}</td>
                         <td>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                const id = vendor._id || vendor.id;
+                                const name = encodeURIComponent(vendor.vendorProfile?.storeName || '');
+                                navigate(`/admin/products/upload?vendorId=${id}&vendorName=${name}`);
+                              }}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded"
+                              title="Add product for this vendor"
+                            >
+                              <FaPlus />
+                            </button>
                             <button
                               onClick={() => handleUpdateClick(vendor)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded"

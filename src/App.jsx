@@ -44,6 +44,7 @@ import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminTaxPage from './pages/AdminTaxPage.jsx';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import AdminVendorManagementPage from './pages/AdminVendorManagementPage';
+import AdminProductUploadPage from './pages/AdminProductUploadPage';
 import CreateAdminPageWrapper from './pages/CreateAdminPage';
 
 // Import legal pages
@@ -268,6 +269,7 @@ function App() {
                   <Route path="/admin/tax" element={<AdminTaxPage />} />
                   <Route path="/admin/user-management" element={<AdminUserManagementPage />} />
                   <Route path="/admin/vendor-management" element={<AdminVendorManagementPage />} />
+                  <Route path="/admin/products/upload" element={<AdminProductUploadPage />} />
 
                     {/* Legal routes */}
                     <Route path="/terms" element={<TermsOfServicePage />} />
