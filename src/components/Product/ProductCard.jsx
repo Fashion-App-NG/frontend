@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
+import { maxUnitsAvailable, unitsToYards } from '../../utils/purchaseUnits';
 
 const ProductCard = ({
   product,
@@ -15,6 +16,7 @@ const ProductCard = ({
   const [imageError, setImageError] = useState(false);
   // ✅ Add local loading state for this specific product
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [unitType, setUnitType] = useState('yard');
   
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToCart, isInCart, error } = useCart(); // ✅ Remove global isLoading
@@ -68,7 +70,9 @@ const ProductCard = ({
       await addToCart({
         ...product,
         vendorId: product.vendorId || product.vendor?.id,
-        quantity: 1,
+        quantity: unitsToYards(unitType, 1),
+        unitType,
+        unitCount: 1,
       });
     } finally {
       // ✅ Clear local loading state after operation
@@ -210,19 +214,36 @@ const ProductCard = ({
                 {error}
               </div>
             )}
+            {maxUnitsAvailable(product.quantity || 0, 'pack') >= 1 && (
+              <select
+                value={unitType}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setUnitType(e.target.value);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full mb-2 py-1.5 px-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-700"
+              >
+                <option value="yard">1 Yard</option>
+                <option value="pack">1 Pack (5 yds)</option>
+                {maxUnitsAvailable(product.quantity || 0, 'bundle') >= 1 && (
+                  <option value="bundle">1 Bundle (10 yds)</option>
+                )}
+              </select>
+            )}
             <button
               onClick={handleAddToCart}
-              disabled={isAddingToCart || isInCart(product._id || product.id)}
+              disabled={isAddingToCart}
               className={`w-full py-2 sm:py-2.5 px-4 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 isInCart?.(product._id || product.id)
                   ? 'bg-green-600 hover:bg-green-700'
                   : ''
               }`}
             >
-              {isInCart(product._id || product.id) 
-                ? 'In Cart' 
-                : isAddingToCart 
-                  ? 'Adding...' 
+              {isAddingToCart
+                ? 'Adding...'
+                : isInCart(product._id || product.id)
+                  ? 'Add More'
                   : 'Add to Cart'}
             </button>
           </>

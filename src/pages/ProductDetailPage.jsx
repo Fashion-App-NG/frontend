@@ -365,13 +365,13 @@ const ProductDetailPage = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleAddToCart}
-                disabled={isAddingToCart || isInCart(product._id || product.id)}
+                disabled={isAddingToCart}
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isInCart(product._id || product.id) 
-                  ? 'In Cart' 
-                  : isAddingToCart 
-                    ? 'Adding...' 
+                {isAddingToCart
+                  ? 'Adding...'
+                  : isInCart(product._id || product.id)
+                    ? 'Add More'
                     : 'Add to Cart'}
               </button>
               <button
