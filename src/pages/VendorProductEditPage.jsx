@@ -76,38 +76,45 @@ const VendorProductEditPage = () => {
         setLoading(true);
         console.log('📥 Loading product for edit:', id);
         
-        const response = await productService.getVendorProducts(user.id);
-        
-        if (response.products) {
-          const foundProduct = response.products.find(p => {
-            const productId = p.id || p._id;
-            return productId === id || 
-                   productId?.toString() === id ||
-                   productId?.toString().includes(id) ||
-                   id?.toString().includes(productId?.toString());
+        // ✅ FIX: Fetch the product directly by ID instead of paging through
+        // the vendor's full product list and searching client-side. The old
+        // approach called getVendorProducts(user.id) with no page/limit,
+        // which defaults to page=1/limit=20 — any product past the first 20
+        // (page 2+) was never in that result set, so it always looked like
+        // "Product not found" for later products. getProductById fetches
+        // the exact product regardless of how many products the vendor has.
+        const response = await productService.getProductById(id);
+        const foundProduct = response.product;
+
+        if (foundProduct) {
+          // getProductById is a public endpoint with no vendor filter, so
+          // explicitly verify this product actually belongs to the logged-in
+          // vendor before allowing the edit form to load.
+          if (String(foundProduct.vendorId) !== String(user.id)) {
+            toast.error('You do not have permission to edit this product');
+            navigate('/vendor/products');
+            return;
+          }
+
+          console.log('✅ Product found:', foundProduct);
+          setProduct(foundProduct);
+          setFormData({
+            name: foundProduct.name || '',
+            pricePerYard: foundProduct.pricePerYard || foundProduct.price || '',
+            quantity: foundProduct.quantity || '',
+            description: foundProduct.description || '',
+            materialType: foundProduct.materialType || '',
+            pattern: foundProduct.pattern || 'Solid',
+            status: foundProduct.status || 'Available'
           });
 
-          if (foundProduct) {
-            console.log('✅ Product found:', foundProduct);
-            setProduct(foundProduct);
-            setFormData({
-              name: foundProduct.name || '',
-              pricePerYard: foundProduct.pricePerYard || foundProduct.price || '',
-              quantity: foundProduct.quantity || '',
-              description: foundProduct.description || '',
-              materialType: foundProduct.materialType || '',
-              pattern: foundProduct.pattern || 'Solid',
-              status: foundProduct.status || 'Available'
-            });
-            
-            // ✅ Load existing images
-            const images = extractImages(foundProduct);
-            console.log('🖼️ Existing images:', images);
-            setExistingImages(images);
-          } else {
-            toast.error('Product not found');
-            navigate('/vendor/products');
-          }
+          // ✅ Load existing images
+          const images = extractImages(foundProduct);
+          console.log('🖼️ Existing images:', images);
+          setExistingImages(images);
+        } else {
+          toast.error('Product not found');
+          navigate('/vendor/products');
         }
       } catch (error) {
         console.error('❌ Error loading product:', error);
