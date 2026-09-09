@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getProductImageUrl } from '../utils/productUtils';
-import { formatPurchaseQuantity, hasActivePurchaseUnit } from '../utils/purchaseUnits';
+import { formatPurchaseQuantity, hasActivePurchaseUnit, getPricePerUnitDisplay } from '../utils/purchaseUnits';
 
 const GuestCartPage = () => {
   const navigate = useNavigate();
@@ -291,8 +291,8 @@ const GuestCartPage = () => {
                           </div>
 
                           <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">
-                            {formatPrice(getAllInclusivePricePerYard(item))}
-                            <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per yard</span>
+                            {formatPrice(getPricePerUnitDisplay(item).amount)}
+                            <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per {getPricePerUnitDisplay(item).unitLabel}</span>
                           </p>
                           <p className="text-xs sm:text-sm text-gray-500 mb-2">
                             {formatPurchaseQuantity(item)}
