@@ -33,6 +33,42 @@ export const unitsToYards = (unitType, unitCount) => {
   return (unitCount || 1) * size;
 };
 
+// Whether an item currently has a real, displayable purchase unit — i.e. a
+// non-"yard" type AND a matching count. Both conditions must hold; a
+// mismatched pair (e.g. a unit type left over with no count, from an old
+// merge that cleared one but not the other) is treated as a plain yard item
+// everywhere, matching formatPurchaseQuantity's own existing fallback rule.
+// Shared by stepPurchaseUnit below and by the cart pages' display logic, so
+// the definition of "has a unit" only lives in one place.
+export const hasActivePurchaseUnit = (item) =>
+  Boolean(item?.purchaseUnitType && item.purchaseUnitType !== 'yard' && item?.purchaseUnitCount);
+
+// Decides what a single tap of the cart's +/- stepper should actually
+// change, given the item's current state. Returns a plain description of
+// the intended change — callers translate this into the actual server
+// request and local display update; this function makes no network calls
+// and touches no component state, so it's fully unit-testable on its own.
+//
+// A "unit" item steps its unit count. Anything else — no unit type, an
+// explicit "yard" type, or a unit type with no matching count — steps the
+// raw yard quantity, unchanged from today's behavior.
+export const stepPurchaseUnit = (item, direction) => {
+  if (hasActivePurchaseUnit(item)) {
+    const nextCount = Math.max(1, (item.purchaseUnitCount || 1) + direction);
+    return {
+      mode: 'unit',
+      unitType: item.purchaseUnitType,
+      unitCount: nextCount,
+    };
+  }
+
+  const nextQuantity = Math.max(1, (item?.quantity || 1) + direction);
+  return {
+    mode: 'yard',
+    quantity: nextQuantity,
+  };
+};
+
 // Formats a cart/order item for display. Falls back to a plain yard count
 // whenever purchaseUnitType/purchaseUnitCount aren't set (legacy items,
 // items whose quantity was manually adjusted via the cart's +/- stepper, or

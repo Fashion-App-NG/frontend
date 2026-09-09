@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImageUrl } from '../utils/productUtils';
-import { formatPurchaseQuantity } from '../utils/purchaseUnits';
+import { formatPurchaseQuantity, hasActivePurchaseUnit } from '../utils/purchaseUnits';
 
 const ShopperCart = () => {
   const navigate = useNavigate();
@@ -10,7 +10,7 @@ const ShopperCart = () => {
     cartItems, 
     cartCount, 
     removeFromCart, 
-    updateCartItemQuantity, 
+    stepCartItemUnit, 
     clearCart, 
     error
   } = useCart();
@@ -19,30 +19,27 @@ const ShopperCart = () => {
     console.log('[DEBUG] ShopperCart render: cartItems:', cartItems, 'cartCount:', cartCount);
   }
 
-  // ✅ FIX: Use correct item ID and handle missing IDs
-  const handleQuantityUpdate = (itemId, newQuantity) => {
-    console.log('🔍 HANDLE QUANTITY UPDATE:', {
-      itemId,
-      newQuantity,
-      currentItem: cartItems.find(item => (item.id === itemId) || (item.productId === itemId)),
-      allCartItems: cartItems.map(item => ({ 
-        id: item.id, 
-        productId: item.productId, 
-        quantity: item.quantity 
-      }))
+  // ✅ CHANGED: steps the item's purchase unit (if it has one) or its raw
+  // yard quantity (if not) — see stepCartItemUnit in CartContext, which
+  // delegates the actual decision to stepPurchaseUnit(). This replaces the
+  // old handler, which always incremented/decremented item.quantity
+  // directly regardless of what unit was actually being displayed.
+  const handleStep = (item, direction) => {
+    console.log('🔍 HANDLE STEP:', {
+      item,
+      direction,
+      hasUnit: hasActivePurchaseUnit(item),
     });
-    
-    updateCartItemQuantity(itemId, newQuantity);
+
+    stepCartItemUnit(item, direction);
   };
 
-  // Handle item removal
   const handleRemoveItem = (itemId, itemName) => {
     if (window.confirm(`Remove "${itemName}" from your cart?`)) {
       removeFromCart(itemId);
     }
   };
 
-  // Handle clear cart
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your entire cart?')) {
       await clearCart();
@@ -52,10 +49,9 @@ const ShopperCart = () => {
     }
   };
 
-  // ✅ CORRECTED: Divide taxAmount by quantity to get per-yard amount
   const getAllInclusivePricePerYard = (item) => {
     const basePrice = item.pricePerYard || 0;
-    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);  // ✅ Divide by quantity!
+    const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);
     const platformFeePerYard = (item.platformFeeAmount || 0) / (item.quantity || 1);
     return basePrice + taxPerYard + platformFeePerYard;
   };
@@ -72,7 +68,6 @@ const ShopperCart = () => {
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
         <div className="bg-white shadow-sm border-b">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
@@ -89,7 +84,6 @@ const ShopperCart = () => {
           </div>
         </div>
 
-        {/* Empty cart content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -113,7 +107,6 @@ const ShopperCart = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Error Message */}
       {error && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
@@ -128,7 +121,6 @@ const ShopperCart = () => {
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Shopping Cart</h1>
@@ -154,7 +146,6 @@ const ShopperCart = () => {
         </div>
 
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-          {/* Cart items */}
           <div className="lg:col-span-8">
             <div className="bg-white rounded-lg shadow-sm">
               <div className="p-4 sm:p-6">
@@ -165,10 +156,12 @@ const ShopperCart = () => {
                     const itemKey = item.id || item.productId || `item-${item.name?.replace(/\s+/g, '-')}`;
                     const itemId = item.productId || item.id;
                     const itemQuantity = item.quantity || 1;
+                    const displayCount = hasActivePurchaseUnit(item)
+                      ? item.purchaseUnitCount
+                      : itemQuantity;
                     
                     return (
                       <div key={itemKey} className="flex gap-3 sm:gap-4 py-4 sm:py-6 border-b border-gray-200 last:border-b-0">
-                        {/* Product Image */}
                         <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden">
                           {item.image ? (
                             <img
@@ -186,7 +179,6 @@ const ShopperCart = () => {
                           )}
                         </div>
 
-                        {/* Product Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-2 mb-2">
                             <div className="min-w-0 flex-1">
@@ -196,7 +188,6 @@ const ShopperCart = () => {
                               )}
                             </div>
                             
-                            {/* Remove button - Desktop */}
                             <button
                               onClick={() => handleRemoveItem(itemId, item.name)}
                               className="hidden sm:block p-2 text-red-600 hover:text-red-800 flex-shrink-0"
@@ -208,7 +199,6 @@ const ShopperCart = () => {
                             </button>
                           </div>
 
-                          {/* Price per yard */}
                           <p className="text-base sm:text-lg font-bold text-gray-900 mb-1">
                             {formatPrice(getAllInclusivePricePerYard(item))}
                             <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per yard</span>
@@ -217,13 +207,11 @@ const ShopperCart = () => {
                             {formatPurchaseQuantity(item)}
                           </p>
 
-                          {/* Quantity controls and subtotal */}
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            {/* Quantity controls */}
                             <div className="flex items-center border border-gray-300 rounded-lg w-fit">
                               <button
-                                onClick={() => handleQuantityUpdate(itemId, Math.max(1, itemQuantity - 1))}
-                                disabled={itemQuantity <= 1}
+                                onClick={() => handleStep(item, -1)}
+                                disabled={displayCount <= 1}
                                 className="p-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                               >
                                 <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -232,11 +220,11 @@ const ShopperCart = () => {
                               </button>
                               
                               <span className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base text-gray-900 font-medium min-w-[2.5rem] text-center">
-                                {itemQuantity}
+                                {displayCount}
                               </span>
                               
                               <button
-                                onClick={() => handleQuantityUpdate(itemId, itemQuantity + 1)}
+                                onClick={() => handleStep(item, +1)}
                                 className="p-2 text-gray-600 hover:text-gray-800"
                               >
                                 <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,9 +233,7 @@ const ShopperCart = () => {
                               </button>
                             </div>
 
-                            {/* Mobile: Remove button and subtotal stacked */}
                             <div className="sm:hidden flex flex-col gap-2">
-                              {/* Remove button */}
                               <button
                                 onClick={() => handleRemoveItem(itemId, item.name)}
                                 className="flex items-center justify-center gap-2 p-2 text-red-600 hover:text-red-800 border border-red-200 rounded-lg w-full"
@@ -259,7 +245,6 @@ const ShopperCart = () => {
                                 <span className="text-sm font-medium">Remove</span>
                               </button>
 
-                              {/* Subtotal */}
                               <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
                                 <span className="text-xs font-medium text-gray-600">Subtotal:</span>
                                 <span className="text-base font-bold text-gray-900">
@@ -268,7 +253,6 @@ const ShopperCart = () => {
                               </div>
                             </div>
 
-                            {/* Desktop: Subtotal only */}
                             <div className="hidden sm:block">
                               <p className="text-base sm:text-lg font-bold text-gray-900 text-right">
                                 {formatPrice(getAllInclusiveLineItemTotal(item))}
@@ -284,26 +268,22 @@ const ShopperCart = () => {
             </div>
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-4 mt-6 lg:mt-0">
             <div className="bg-white rounded-lg shadow-sm lg:sticky lg:top-24">
               <div className="p-4 sm:p-6">
                 <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
                 
                 <div className="space-y-3">
-                  {/* Subtotal */}
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-gray-600">Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
                     <span className="text-gray-900 font-medium">{formatPrice(getAllInclusiveSubtotal())}</span>
                   </div>
                   
-                  {/* Shipping */}
                   <div className="flex justify-between text-sm sm:text-base pb-3 border-b border-gray-200">
                     <span className="text-gray-600">Shipping</span>
                     <span className="text-gray-600">Calculated at checkout</span>
                   </div>
                   
-                  {/* Total */}
                   <div className="flex justify-between text-lg sm:text-xl font-bold pt-2">
                     <span>Total</span>
                     <span>{formatPrice(getAllInclusiveSubtotal())}</span>

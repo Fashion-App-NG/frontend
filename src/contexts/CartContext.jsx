@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import cartService from "../services/cartService";
 import { getPriceWithPlatformFee } from '../utils/formatPrice';
+import { stepPurchaseUnit } from '../utils/purchaseUnits';
 
 const CartContext = createContext();
 
-// Move this to module scope, outside CartProvider
 let activeCartProviders = 0;
 
 export const CartProvider = ({ children }) => {
@@ -13,7 +13,7 @@ export const CartProvider = ({ children }) => {
     ? window.crypto.randomUUID()
     : Math.random().toString(36).slice(2, 11)
 );
-  
+
   useEffect(() => {
     activeCartProviders++;
     console.log(`[MULTI-PROVIDER-TEST] Active providers:`, activeCartProviders);
@@ -21,36 +21,34 @@ export const CartProvider = ({ children }) => {
       activeCartProviders--;
       console.log(`[MULTI-PROVIDER-TEST] Remaining providers:`, activeCartProviders);
     };
-  }, []); // No warning, safe to use empty array
+  }, []);
 
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Debounce ref
   const debounceTimeout = useRef();
 
-  // Debounced loadCart
   const loadCartCallCount = useRef(0);
   const loadCart = useCallback(() => {
     const callId = ++loadCartCallCount.current;
-    const id = providerId.current; // ✅ Copy ref value
+    const id = providerId.current;
     console.log(`[LOAD-CART-DEBOUNCE-TEST] loadCart called #${callId} - Provider: ${id}`);
-    
+
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
-    
+
     debounceTimeout.current = setTimeout(async () => {
       console.log(`[LOAD-CART-DEBOUNCE-TEST] Executing debounced call #${callId}`);
       setIsLoading(true);
       setError(null);
-    
+
       try {
         const response = await cartService.getCart();
         console.log(`[LOAD-CART-DEBOUNCE-TEST] API response for call #${callId}:`, response);
-        
+
         if (response && response.cart) {
           setCartItems(response.cart.items || []);
           setCartCount(response.cart.itemCount || 0);
@@ -62,10 +60,10 @@ export const CartProvider = ({ children }) => {
           setCartCount(0);
           setError(null);
         }
-        
+
       } catch (err) {
         console.error(`[LOAD-CART-DEBOUNCE-TEST] Error in call #${callId}:`, err);
-        
+
         if (err.message.includes('401') || err.message.includes('Authentication')) {
           console.log('🔄 Auth error - using empty cart silently');
           setCartItems([]);
@@ -78,7 +76,7 @@ export const CartProvider = ({ children }) => {
         setIsLoading(false);
       }
     }, 400);
-  }, []); // ✅ Remove providerId dependency to fix stale closure
+  }, []);
 
   useEffect(() => {
     loadCart();
@@ -87,7 +85,6 @@ export const CartProvider = ({ children }) => {
     };
   }, [loadCart]);
 
-  // --- Add Item to Cart ---
   const addToCart = useCallback(async (product) => {
     console.log('🔍 DEBUG - addToCart payload:', {
       productData: product,
@@ -96,7 +93,7 @@ export const CartProvider = ({ children }) => {
       totalPrice: (product.pricePerYard || product.price || 0) + (product.platformFee?.amount || 0),
       calculatedByUtility: getPriceWithPlatformFee(product)
     });
-    
+
     setIsLoading(true);
     setError(null);
     try {
@@ -109,7 +106,6 @@ export const CartProvider = ({ children }) => {
         }
       }
     } catch (err) {
-      // ✅ Show session expired errors to user
       if (err.message.includes('Session expired')) {
         setError('Your session has expired. Redirecting to login...');
         setTimeout(() => {
@@ -118,7 +114,7 @@ export const CartProvider = ({ children }) => {
       } else {
         setError(err.message);
       }
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to add item to cart:', err);
       }
@@ -127,7 +123,8 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Update Cart Item Quantity ---
+  // Unchanged: still available for any caller that just wants to set a raw
+  // yard quantity directly (e.g. a future manual "type a number" input).
   const updateCartItemQuantity = useCallback(async (productId, quantity) => {
     setIsLoading(true);
     setError(null);
@@ -150,7 +147,43 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Remove Item from Cart ---
+  // ✅ NEW: this is what the cart's +/- stepper should call instead of
+  // updateCartItemQuantity. Takes the full item (not just its id) because it
+  // needs to know the item's current unit to decide whether to step the
+  // unit count or the raw yard quantity — see stepPurchaseUnit in
+  // purchaseUnits.js for that decision logic, kept fully unit-tested there.
+  const stepCartItemUnit = useCallback(async (item, direction) => {
+    const productId = item.productId || item.id;
+    const step = stepPurchaseUnit(item, direction);
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response =
+        step.mode === 'unit'
+          ? await cartService.updateQuantity(productId, {
+              unitType: step.unitType,
+              unitCount: step.unitCount,
+            })
+          : await cartService.updateQuantity(productId, { quantity: step.quantity });
+
+      if (response.success && response.cart) {
+        setCartItems(response.cart.items || []);
+        setCartCount(response.cart.itemCount || 0);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Cart item stepped:', productId, step, response.cart);
+        }
+      }
+    } catch (err) {
+      setError(err.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Failed to step cart item:', err);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const removeFromCart = useCallback(async (productId) => {
     setIsLoading(true);
     setError(null);
@@ -173,7 +206,6 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Clear Cart ---
   const clearCart = useCallback(async () => {
     try {
       setIsLoading(false);
@@ -199,7 +231,6 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Merge Guest Cart (after login) ---
   const mergeGuestCart = useCallback(async (userJwt, guestSessionId) => {
     setIsLoading(true);
     setError(null);
@@ -222,22 +253,19 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Helpers ---
   const isInCart = useCallback(
     (productId) => cartItems.some(item => item.productId === productId),
     [cartItems]
   );
 
-  // --- Add this: Get cart total ---
   const getCartTotal = useCallback(() => {
     return cartItems.reduce((total, item) => {
       const price = item.pricePerYard || item.price || 0;
       const quantity = item.quantity || 1;
       return total + price * quantity;
     }, 0);
-  }, [cartItems]); // ✅ Dependencies are correct - only cartItems needed
+  }, [cartItems]);
 
-  // --- Context Value ---
   const value = {
     cartItems,
     cartCount,
@@ -245,16 +273,16 @@ export const CartProvider = ({ children }) => {
     error,
     addToCart,
     updateCartItemQuantity,
+    stepCartItemUnit,
     removeFromCart,
     clearCart,
     isInCart,
     loadCart,
     mergeGuestCart,
     getCartTotal,
-    setCartItems // Add this line
+    setCartItems
   };
 
-  // --- Debug: Log cart state changes ---
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 CART STATE:', { cartItems, cartCount, isLoading, error });

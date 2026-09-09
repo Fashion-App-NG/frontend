@@ -23,7 +23,6 @@ class CartService {
   }
 
   async createGuestSession() {
-    // Use guestSessionService to create and store token
     const guestSessionService = (await import('./guestSessionService')).default;
     return await guestSessionService.getOrCreateGuestSession();
   }
@@ -46,42 +45,35 @@ class CartService {
     return headers;
   }
 
-  // Update the processCartResponse method to preserve basePrice and platformFee
-
   processCartResponse(response) {
     if (!response || !response.items) {
       return response;
     }
-    
-    // Ensure each item has basePrice and platformFee fields
+
     response.items.forEach(item => {
-      // If we have platformFeeAmount from the API, use it
       if (response.platformFeeAmount && !item.platformFee) {
         const itemRatio = item.pricePerYard / response.totalAmount;
         item.platformFee = Math.round(response.platformFeeAmount * itemRatio);
         item.basePrice = item.pricePerYard - item.platformFee;
       } else if (!item.platformFee) {
-        // Otherwise use a default calculation
-        item.platformFee = Math.round(item.pricePerYard * 0.08); // Assuming 8% fee
+        item.platformFee = Math.round(item.pricePerYard * 0.08);
         item.basePrice = item.pricePerYard - item.platformFee;
       }
     });
-    
-    // Validate against API total
+
     const calculatedTotal = response.items.reduce((sum, item) => {
       return sum + (item.pricePerYard * item.quantity);
     }, 0);
-    
+
     if (Math.abs(calculatedTotal - response.totalAmount) > CART_TOTAL_TOLERANCE) {
       console.warn('API cart total mismatch!', {
         calculated: calculatedTotal,
         received: response.totalAmount,
         difference: calculatedTotal - response.totalAmount
       });
-      // Force correct total
       response.totalAmount = calculatedTotal;
     }
-    
+
     return response;
   }
 
@@ -89,16 +81,13 @@ class CartService {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔒 Unauthorized request detected - token may be expired');
     }
-    
-    // Clear invalid tokens
+
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('guestSessionToken');
-    
-    // Redirect to login
+
     window.location.href = '/user-type-selection';
-    
-    // Prevent further code execution after redirect
+
     throw new Error('Unauthorized: Redirecting to login');
   }
 
@@ -107,9 +96,9 @@ class CartService {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Fetching cart contents...');
       }
-      
+
       await this.ensureValidAuth();
-      
+
       const headers = this.getAuthHeaders();
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Cart request headers:', {
@@ -118,33 +107,31 @@ class CartService {
         });
       }
 
-      const response = await fetch(`${this.baseURL}/cart`, { 
-        method: 'GET', 
-        headers 
+      const response = await fetch(`${this.baseURL}/cart`, {
+        method: 'GET',
+        headers
       });
-      
+
       if (response.status === 401) {
-        // ✅ User token expired - force re-login
         const userToken = this.getAuthToken();
         if (userToken) {
           await this.handleUnauthorized();
           throw new Error('Session expired. Please log in again.');
         }
-        
-        // Guest session recovery
+
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Recovering guest session...');
         }
         try {
           localStorage.removeItem('guestSessionToken');
           await this.createGuestSession();
-          
+
           const newHeaders = this.getAuthHeaders();
-          const retryResponse = await fetch(`${this.baseURL}/cart`, { 
-            method: 'GET', 
-            headers: newHeaders 
+          const retryResponse = await fetch(`${this.baseURL}/cart`, {
+            method: 'GET',
+            headers: newHeaders
           });
-          
+
           if (retryResponse.ok) {
             const retryData = await retryResponse.json();
             if (process.env.NODE_ENV === 'development') {
@@ -154,9 +141,9 @@ class CartService {
           } else if (retryResponse.status === 404) {
             return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
           }
-          
+
           throw new Error(`Recovery failed: ${retryResponse.status}`);
-          
+
         } catch (recoveryError) {
           if (process.env.NODE_ENV === 'development') {
             console.error('❌ Guest session recovery failed:', recoveryError);
@@ -164,39 +151,37 @@ class CartService {
           return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
         }
       }
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
         }
         throw new Error(`Failed to fetch cart: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Cart fetched successfully:', data.cart);
       }
       return this.processCartResponse(data);
-      
+
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to fetch cart:', error);
       }
-      
-      // Don't swallow session expired errors
+
       if (error.message.includes('Session expired')) {
         throw error;
       }
-      
+
       return { success: true, cart: { items: [], totalAmount: 0, itemCount: 0, id: null } };
     }
   }
 
-  // ✅ NEW: Ensure valid authentication before requests
   async ensureValidAuth() {
     const userToken = this.getAuthToken();
     const guestToken = this.getGuestSessionToken();
-    
+
     if (!userToken && !guestToken) {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 No tokens found, creating guest session...');
@@ -204,12 +189,11 @@ class CartService {
       await this.createGuestSession();
       return;
     }
-    
-    // Validate guest token if no user token
+
     if (!userToken && guestToken) {
       const guestSessionService = (await import('./guestSessionService')).default;
       const isValid = await guestSessionService.validateToken(guestToken);
-      
+
       if (!isValid) {
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Guest token expired, creating new session...');
@@ -259,13 +243,12 @@ class CartService {
         headers,
         body: JSON.stringify(requestBody)
       });
-      
-      // ✅ Handle 401 for add to cart
+
       if (response.status === 401) {
         await this.handleUnauthorized();
         throw new Error('Session expired. Please log in again.');
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         throw new Error(errorData.message || `Failed to add item to cart: ${response.status}`);
@@ -285,10 +268,28 @@ class CartService {
     }
   }
 
-  async updateQuantity(productId, quantity) {
+  // ✅ CHANGED: now accepts either a plain number (legacy raw-yards edit,
+  // unchanged behavior) or an object describing the intended change —
+  // { quantity } for a raw yard edit, or { unitType, unitCount } for a
+  // unit-aware step. This is what makes the cart's +/- stepper able to
+  // increment "2 Packs" instead of silently incrementing raw yards. The
+  // shape sent here must match what stepPurchaseUnit() in purchaseUnits.js
+  // produces (minus its `mode` field) — see CartContext's stepCartItemUnit.
+  async updateQuantity(productId, payload) {
     try {
       const headers = this.getAuthHeaders();
-      const requestBody = { quantity: parseInt(quantity) };
+
+      const requestBody =
+        typeof payload === 'number'
+          ? { quantity: parseInt(payload) }
+          : payload.unitType
+            ? { unitType: payload.unitType, unitCount: parseInt(payload.unitCount) }
+            : { quantity: parseInt(payload.quantity) };
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG] cartService.updateQuantity called with:', { productId, requestBody });
+      }
+
       const response = await fetch(`${this.baseURL}/cart/update/${productId}`, {
         method: 'PUT',
         headers,
@@ -363,7 +364,7 @@ class CartService {
     try {
       const token = this.getAuthToken();
       if (!token) throw new Error('User must be authenticated to merge guest cart');
-      
+
       const response = await fetch(`${this.baseURL}/cart/merge-guest`, {
         method: 'POST',
         headers: {
@@ -372,25 +373,23 @@ class CartService {
         },
         body: JSON.stringify({ guestSessionId })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         throw new Error(errorData.message || `Failed to merge guest cart: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
-      // ✅ Clear guest tokens
+
       localStorage.removeItem('guestSessionId');
       localStorage.removeItem('guestSessionToken');
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Guest cart merged successfully:', data.cart);
       }
-      
-      // ✅ RETURN the merged cart data
+
       return data;
-      
+
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Failed to merge guest cart:', error);
