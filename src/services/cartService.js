@@ -285,12 +285,18 @@ class CartService {
     try {
       const headers = this.getAuthHeaders();
 
+      // offeringId (current vendor-configurable offerings) is checked
+      // before unitType (legacy, vestigial — see stepPurchaseUnit's own
+      // comment in purchaseUnits.js) — the backend only ever understands
+      // offeringId or a plain quantity now, never unitType.
       const requestBody =
         typeof payload === 'number'
           ? { quantity: parseInt(payload) }
-          : payload.unitType
-            ? { unitType: payload.unitType, unitCount: parseInt(payload.unitCount) }
-            : { quantity: parseInt(payload.quantity) };
+          : payload.offeringId
+            ? { offeringId: payload.offeringId, unitCount: parseInt(payload.unitCount) }
+            : payload.unitType
+              ? { unitType: payload.unitType, unitCount: parseInt(payload.unitCount) }
+              : { quantity: parseInt(payload.quantity) };
 
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] cartService.updateQuantity called with:', { productId, requestBody });

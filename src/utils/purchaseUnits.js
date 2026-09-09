@@ -33,15 +33,21 @@ export const unitsToYards = (unitType, unitCount) => {
   return (unitCount || 1) * size;
 };
 
-// Whether an item currently has a real, displayable purchase unit — i.e. a
-// non-"yard" type AND a matching count. Both conditions must hold; a
-// mismatched pair (e.g. a unit type left over with no count, from an old
-// merge that cleared one but not the other) is treated as a plain yard item
-// everywhere, matching formatPurchaseQuantity's own existing fallback rule.
-// Shared by stepPurchaseUnit below and by the cart pages' display logic, so
-// the definition of "has a unit" only lives in one place.
-export const hasActivePurchaseUnit = (item) =>
-  Boolean(item?.purchaseUnitType && item.purchaseUnitType !== 'yard' && item?.purchaseUnitCount);
+// Whether an item currently has a real, displayable purchase unit — either
+// a CURRENT vendor-configurable offering (offeringId + a matching label and
+// count — see Product.sellingUnitOfferings), or a LEGACY fixed-enum unit
+// (purchaseUnitType set to something other than "yard", AND a matching
+// count). Both conditions must hold in whichever form is present; a
+// mismatched pair (e.g. a label left over with no count) is treated as a
+// plain yard item everywhere, matching formatPurchaseQuantity's own
+// fallback rule. Shared by stepPurchaseUnit below and by the cart pages'
+// display logic, so the definition of "has a unit" only lives in one place.
+export const hasActivePurchaseUnit = (item) => {
+  if (item?.offeringId && item?.purchaseUnitLabel && item?.purchaseUnitCount) {
+    return true;
+  }
+  return Boolean(item?.purchaseUnitType && item.purchaseUnitType !== 'yard' && item?.purchaseUnitCount);
+};
 
 // Decides what a single tap of the cart's +/- stepper should actually
 // change, given the item's current state. Returns a plain description of
@@ -49,12 +55,24 @@ export const hasActivePurchaseUnit = (item) =>
 // request and local display update; this function makes no network calls
 // and touches no component state, so it's fully unit-testable on its own.
 //
-// A "unit" item steps its unit count. Anything else — no unit type, an
-// explicit "yard" type, or a unit type with no matching count — steps the
-// raw yard quantity, unchanged from today's behavior.
+// A "unit" item steps its unit count — returning offeringId for a current
+// vendor-configurable offering, or unitType for a legacy fixed-enum item
+// (the backend no longer understands unitType at all, so this branch is
+// effectively vestigial for any item created after vendor-configurable
+// units shipped, but harmless to keep for display/step-shape consistency
+// on any pre-existing legacy item). Anything else — no unit info, an
+// explicit "yard" type, or a unit with no matching count — steps the raw
+// yard quantity, unchanged from today's behavior.
 export const stepPurchaseUnit = (item, direction) => {
   if (hasActivePurchaseUnit(item)) {
     const nextCount = Math.max(1, (item.purchaseUnitCount || 1) + direction);
+    if (item.offeringId) {
+      return {
+        mode: 'unit',
+        offeringId: item.offeringId,
+        unitCount: nextCount,
+      };
+    }
     return {
       mode: 'unit',
       unitType: item.purchaseUnitType,
@@ -130,6 +148,15 @@ export const resolveAddToCartPayload = (data) => {
 // cleared).
 export const formatPurchaseQuantity = (item) => {
   const quantity = item?.quantity || 0;
+
+  // Current vendor-configurable offering — checked first, since this is
+  // the live system; falls through to the legacy fixed-enum path below for
+  // any item that predates it.
+  if (item?.offeringId && item?.purchaseUnitLabel && item?.purchaseUnitCount) {
+    const count = item.purchaseUnitCount;
+    const unitWord = count === 1 ? item.purchaseUnitLabel : `${item.purchaseUnitLabel}s`;
+    return `${count} ${unitWord} (${quantity} yards)`;
+  }
 
   if (!item?.purchaseUnitType || !item?.purchaseUnitCount) {
     return `${quantity} yard${quantity === 1 ? '' : 's'}`;

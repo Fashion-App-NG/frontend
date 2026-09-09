@@ -159,12 +159,18 @@ export const CartProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      // step.mode === 'unit' now carries EITHER offeringId (current
+      // vendor-configurable offerings) or unitType (legacy, vestigial —
+      // see stepPurchaseUnit's own comment). offeringId is checked first
+      // since it's the live path.
       const response =
         step.mode === 'unit'
-          ? await cartService.updateQuantity(productId, {
-              unitType: step.unitType,
-              unitCount: step.unitCount,
-            })
+          ? await cartService.updateQuantity(
+              productId,
+              step.offeringId
+                ? { offeringId: step.offeringId, unitCount: step.unitCount }
+                : { unitType: step.unitType, unitCount: step.unitCount }
+            )
           : await cartService.updateQuantity(productId, { quantity: step.quantity });
 
       if (response.success && response.cart) {

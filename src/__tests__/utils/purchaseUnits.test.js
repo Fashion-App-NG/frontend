@@ -4,6 +4,7 @@ import {
   getAvailableSellingUnits,
   maxUnitsForYardsPerUnit,
   resolveAddToCartPayload,
+  formatPurchaseQuantity,
 } from '../../utils/purchaseUnits';
 
 // resolveAddToCartPayload(data) decides what actually gets sent to the
@@ -20,6 +21,60 @@ import {
 // the leaked stock number as the cart quantity. This function is the fix:
 // centralize the payload-building rule in one place, so a leaked stock
 // \`quantity\` alongside a real \`offeringId\` is always ignored.
+describe('hasActivePurchaseUnit — offering-based items (vendor-configurable units)', () => {
+  it('is true for an offering-based item (offeringId + label + count, no legacy purchaseUnitType)', () => {
+    const item = {
+      offeringId: 'off1',
+      purchaseUnitLabel: 'Pack',
+      purchaseUnitYardsPerUnit: 3,
+      purchaseUnitCount: 1,
+      purchaseUnitType: undefined,
+    };
+    expect(hasActivePurchaseUnit(item)).toBe(true);
+  });
+});
+
+describe('formatPurchaseQuantity — offering-based items', () => {
+  it('formats an offering-based item as "N Label (X yards)", not a plain yard count', () => {
+    const item = {
+      quantity: 3,
+      offeringId: 'off1',
+      purchaseUnitLabel: 'Pack',
+      purchaseUnitYardsPerUnit: 3,
+      purchaseUnitCount: 1,
+    };
+    expect(formatPurchaseQuantity(item)).toBe('1 Pack (3 yards)');
+  });
+
+  it('pluralizes the label when count > 1', () => {
+    const item = {
+      quantity: 6,
+      offeringId: 'off1',
+      purchaseUnitLabel: 'Pack',
+      purchaseUnitYardsPerUnit: 3,
+      purchaseUnitCount: 2,
+    };
+    expect(formatPurchaseQuantity(item)).toBe('2 Packs (6 yards)');
+  });
+});
+
+describe('stepPurchaseUnit — offering-based items', () => {
+  it('steps the unit count and returns offeringId (not unitType) for an offering-based item', () => {
+    const item = {
+      quantity: 3,
+      offeringId: 'off1',
+      purchaseUnitLabel: 'Pack',
+      purchaseUnitYardsPerUnit: 3,
+      purchaseUnitCount: 1,
+    };
+    expect(stepPurchaseUnit(item, +1)).toEqual({
+      mode: 'unit',
+      offeringId: 'off1',
+      unitCount: 2,
+    });
+  });
+});
+
 describe('resolveAddToCartPayload', () => {
   it('sends offeringId + unitCount when an offering is selected, and IGNORES any leaked quantity field', () => {
     const data = { offeringId: 'off1', unitCount: 2, quantity: 10 }; // quantity=10 simulates the leaked product.quantity (stock)
