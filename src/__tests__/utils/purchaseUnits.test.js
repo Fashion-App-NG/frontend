@@ -3,7 +3,56 @@ import {
   hasActivePurchaseUnit,
   getAvailableSellingUnits,
   maxUnitsForYardsPerUnit,
+  resolveAddToCartPayload,
 } from '../../utils/purchaseUnits';
+
+// resolveAddToCartPayload(data) decides what actually gets sent to the
+// addToCart API. This is the fix for the "2 Packs of 3 yards added 10
+// yards instead of 6" bug: ProductDetailPage/ProductCard build the
+// addToCart() argument as { ...product, offeringId, unitCount }, and that
+// spread of ...product carries the PRODUCT'S OWN stock \`quantity\` field
+// (e.g. 10 yards in stock) — completely unrelated to what the shopper
+// selected. cartService.js's addItem() currently sends that leaked stock
+// quantity to the backend, and — separately — never sends offeringId at
+// all (it still only checks the old \`unitType\` field, which no longer
+// exists anywhere in the rewritten components). Together, those two gaps
+// mean the backend falls back to its legacy plain-quantity path and uses
+// the leaked stock number as the cart quantity. This function is the fix:
+// centralize the payload-building rule in one place, so a leaked stock
+// \`quantity\` alongside a real \`offeringId\` is always ignored.
+describe('resolveAddToCartPayload', () => {
+  it('sends offeringId + unitCount when an offering is selected, and IGNORES any leaked quantity field', () => {
+    const data = { offeringId: 'off1', unitCount: 2, quantity: 10 }; // quantity=10 simulates the leaked product.quantity (stock)
+    expect(resolveAddToCartPayload(data)).toEqual({
+      offeringId: 'off1',
+      unitCount: 2,
+    });
+  });
+
+  it('defaults unitCount to 1 when an offering is selected but unitCount is missing', () => {
+    const data = { offeringId: 'off1', quantity: 10 };
+    expect(resolveAddToCartPayload(data)).toEqual({
+      offeringId: 'off1',
+      unitCount: 1,
+    });
+  });
+
+  it('sends a plain quantity when there is no offeringId (a Yard purchase)', () => {
+    const data = { quantity: 3 };
+    expect(resolveAddToCartPayload(data)).toEqual({ quantity: 3 });
+  });
+
+  it('defaults quantity to 1 when neither offeringId nor quantity is present', () => {
+    expect(resolveAddToCartPayload({})).toEqual({ quantity: 1 });
+  });
+
+  it('never includes both offeringId and quantity together, even if both are present in the input', () => {
+    const data = { offeringId: 'off1', unitCount: 5, quantity: 999 };
+    const result = resolveAddToCartPayload(data);
+    expect(result).not.toHaveProperty('quantity');
+    expect(result.offeringId).toBe('off1');
+  });
+});
 
 describe('getAvailableSellingUnits', () => {
   it("always includes Yard first, using the product's pricePerYard", () => {

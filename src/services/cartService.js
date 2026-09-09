@@ -1,4 +1,5 @@
 import { CART_TOTAL_TOLERANCE } from '../constants/cart';
+import { resolveAddToCartPayload } from '../utils/purchaseUnits';
 import { getPriceWithPlatformFee } from '../utils/formatPrice';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
@@ -224,16 +225,21 @@ class CartService {
         pricePerYard: parseFloat(getPriceWithPlatformFee(productData)),
         basePrice: parseFloat(productData.pricePerYard || productData.price || 0),
         platformFee: productData.platformFee?.amount || 0,
-        quantity: parseInt(productData.quantity || 1),
         materialType: productData.materialType || 'Unknown',
         pattern: productData.pattern || 'Unknown',
         image: productData.image || productData.imageUrl || '',
         vendorId: productData.vendorId || productData.vendor?.id,
         vendorName: productData.vendorName || productData.vendor?.name || 'Unknown Vendor',
-        ...(productData.unitType && {
-          unitType: productData.unitType,
-          unitCount: productData.unitCount || 1
-        })
+        // Sends { offeringId, unitCount } for a vendor-configurable selling
+        // unit, or a plain { quantity } for a Yard purchase — and, crucially,
+        // never both. This replaces both the old unitType-based spread
+        // (checked a field that no longer exists anywhere) and the
+        // unconditional `quantity: parseInt(productData.quantity || 1)`
+        // above, which was silently sending the product's own STOCK
+        // quantity (leaked in via ...product spreads in the callers) as the
+        // cart quantity whenever offeringId was present. See
+        // resolveAddToCartPayload's own comment for the full explanation.
+        ...resolveAddToCartPayload(productData),
       };
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] cartService.addItem called with:', requestBody);

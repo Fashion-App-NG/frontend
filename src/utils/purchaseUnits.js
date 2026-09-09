@@ -107,6 +107,22 @@ export const maxUnitsForYardsPerUnit = (availableYards, yardsPerUnit) => {
   return Math.floor((availableYards || 0) / size);
 };
 
+// Decides what fields should actually be sent to the addToCart API for a
+// given add-to-cart request. This exists specifically because the object
+// ProductCard/ProductDetailPage build for addToCart() spreads ...product
+// first (to carry name/vendorId/image/etc.) — which means it also carries
+// the PRODUCT'S OWN stock `quantity` field, completely unrelated to what
+// the shopper actually selected. If offeringId is present, that leaked
+// stock quantity must be ignored entirely — the backend recomputes the
+// real yard quantity from the offering itself, and must never receive a
+// stray `quantity` claiming to be the shopper's intended purchase amount.
+export const resolveAddToCartPayload = (data) => {
+  if (data?.offeringId) {
+    return { offeringId: data.offeringId, unitCount: data.unitCount || 1 };
+  }
+  return { quantity: data?.quantity || 1 };
+};
+
 // Formats a cart/order item for display. Falls back to a plain yard count
 // whenever purchaseUnitType/purchaseUnitCount aren't set (legacy items,
 // items whose quantity was manually adjusted via the cart's +/- stepper, or
