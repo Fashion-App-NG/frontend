@@ -5,6 +5,7 @@ import {
   maxUnitsForYardsPerUnit,
   resolveAddToCartPayload,
   formatPurchaseQuantity,
+  getPricePerUnitDisplay,
 } from '../../utils/purchaseUnits';
 
 // resolveAddToCartPayload(data) decides what actually gets sent to the
@@ -72,6 +73,30 @@ describe('stepPurchaseUnit — offering-based items', () => {
       offeringId: 'off1',
       unitCount: 2,
     });
+  });
+});
+
+describe('getPricePerUnitDisplay', () => {
+  it('returns the offering price and label for an offering-based item, not the per-yard breakdown', () => {
+    const item = {
+      pricePerYard: 6666.667, // derived internal number — should never surface
+      offeringId: 'off1',
+      purchaseUnitLabel: 'Pack',
+      purchaseUnitYardsPerUnit: 3,
+      purchaseUnitPricePerUnit: 20000,
+      purchaseUnitCount: 2,
+    };
+    expect(getPricePerUnitDisplay(item)).toEqual({ amount: 20000, unitLabel: 'Pack' });
+  });
+
+  it('returns pricePerYard and "yard" for a plain Yard item', () => {
+    const item = { pricePerYard: 8000, quantity: 3 };
+    expect(getPricePerUnitDisplay(item)).toEqual({ amount: 8000, unitLabel: 'yard' });
+  });
+
+  it('derives the correct amount for a legacy fixed-enum item', () => {
+    const item = { pricePerYard: 8000, purchaseUnitType: 'pack', purchaseUnitCount: 1 };
+    expect(getPricePerUnitDisplay(item)).toEqual({ amount: 40000, unitLabel: 'Pack' });
   });
 });
 

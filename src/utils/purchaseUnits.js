@@ -141,6 +141,25 @@ export const resolveAddToCartPayload = (data) => {
   return { quantity: data?.quantity || 1 };
 };
 
+// Decides what price-per-unit to actually show for a cart/checkout line —
+// "₦20,000 per Pack" for an offering-based item, "₦8,000 per yard" for a
+// plain Yard item, instead of always dividing back down to a per-yard
+// number that means nothing to a shopper who thinks in packs. Legacy
+// fixed-enum items (old v1 Pack/Bundle) are handled too, for symmetry with
+// hasActivePurchaseUnit/stepPurchaseUnit, even though no current add-to-cart
+// path can produce one anymore.
+export const getPricePerUnitDisplay = (item) => {
+  if (item?.offeringId && item?.purchaseUnitLabel && item?.purchaseUnitCount) {
+    return { amount: item.purchaseUnitPricePerUnit || 0, unitLabel: item.purchaseUnitLabel };
+  }
+  if (item?.purchaseUnitType && item.purchaseUnitType !== 'yard' && item?.purchaseUnitCount) {
+    const size = PURCHASE_UNIT_YARDS[item.purchaseUnitType] || 1;
+    const label = PURCHASE_UNIT_LABELS[item.purchaseUnitType]?.singular || 'unit';
+    return { amount: (item.pricePerYard || 0) * size, unitLabel: label };
+  }
+  return { amount: item?.pricePerYard || 0, unitLabel: 'yard' };
+};
+
 // Formats a cart/order item for display. Falls back to a plain yard count
 // whenever purchaseUnitType/purchaseUnitCount aren't set (legacy items,
 // items whose quantity was manually adjusted via the cart's +/- stepper, or

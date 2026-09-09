@@ -1,14 +1,13 @@
-import { useState } from 'react';
 import { useCart } from '../../../contexts/CartContext';
 import { formatPrice } from '../../../utils/formatPrice';
 import { getProductImageUrl } from '../../../utils/productUtils';
-import { formatPurchaseQuantity } from '../../../utils/purchaseUnits';
+import { formatPurchaseQuantity, hasActivePurchaseUnit, getPricePerUnitDisplay } from '../../../utils/purchaseUnits';
 
 const CartReviewStep = ({ onNext }) => {
-  const { cartItems, updateCartItemQuantity } = useCart();
-  const [shippingCost] = useState(0);
+  const { cartItems, stepCartItemUnit } = useCart();
 
-  // ✅ Use API values only - NO recalculation
+  // Uses the same API values as ShopperCart.jsx / GuestCartPage.jsx —
+  // NO recalculation, just reading what the server already computed.
   const getAllInclusivePricePerYard = (item) => {
     const basePrice = item.pricePerYard || 0;
     const taxPerYard = (item.taxAmount || 0) / (item.quantity || 1);
@@ -34,6 +33,18 @@ const CartReviewStep = ({ onNext }) => {
           {cartItems.map((item, index) => {
             const itemKey = item.id || item.productId || `item-${index}`;
             const itemId = item.productId || item.id;
+            const itemQuantity = item.quantity || 1;
+            // Same fix as ShopperCart.jsx / GuestCartPage.jsx: the stepper
+            // counts the purchased unit (e.g. Packs) when the item has one,
+            // and raw yards otherwise — this step had its own independent
+            // copy of the old raw-yards stepper that was never updated
+            // alongside those two when that bug was originally fixed.
+            const displayCount = hasActivePurchaseUnit(item) ? item.purchaseUnitCount : itemQuantity;
+            // Shows the price per the unit actually being purchased — e.g.
+            // "₦20,000 per Pack" — rather than always dividing back down to
+            // a per-yard number that's meaningless to a shopper buying in
+            // packs.
+            const { amount: unitPriceAmount, unitLabel } = getPricePerUnitDisplay(item);
 
             return (
               <div key={itemKey} className="flex gap-3 sm:gap-4 py-4 border-b border-gray-200 last:border-b-0">
@@ -64,11 +75,11 @@ const CartReviewStep = ({ onNext }) => {
                     )}
                   </div>
 
-                  {/* Price per yard */}
+                  {/* Price per unit */}
                   <p className="text-sm sm:text-base font-bold text-blue-600 mb-3">
-                    {formatPrice(getAllInclusivePricePerYard(item))}
-                    <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per yard</span>
-                    <span className="text-xs text-gray-500 ml-1">× {formatPurchaseQuantity(item)}</span>
+                    {formatPrice(unitPriceAmount)}
+                    <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1">per {unitLabel}</span>
+                    <span className="text-xs text-gray-500 ml-1">&#183; {formatPurchaseQuantity(item)}</span>
                   </p>
 
                   {/* Quantity controls and subtotal */}
@@ -76,8 +87,8 @@ const CartReviewStep = ({ onNext }) => {
                     {/* Quantity controls */}
                     <div className="flex items-center border border-gray-300 rounded-lg w-fit">
                       <button
-                        onClick={() => updateCartItemQuantity(itemId, Math.max(1, (item.quantity || 1) - 1))}
-                        disabled={(item.quantity || 1) <= 1}
+                        onClick={() => stepCartItemUnit(item, -1)}
+                        disabled={displayCount <= 1}
                         className="p-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                       >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,11 +97,11 @@ const CartReviewStep = ({ onNext }) => {
                       </button>
                       
                       <span className="px-3 sm:px-4 py-1.5 text-sm sm:text-base text-gray-900 font-medium min-w-[2rem] text-center">
-                        {item.quantity || 1}
+                        {displayCount}
                       </span>
                       
                       <button
-                        onClick={() => updateCartItemQuantity(itemId, (item.quantity || 1) + 1)}
+                        onClick={() => stepCartItemUnit(item, +1)}
                         className="p-2 text-gray-600 hover:text-gray-800"
                       >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,18 +127,18 @@ const CartReviewStep = ({ onNext }) => {
         {/* Summary totals */}
         <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
           <div className="flex justify-between text-sm sm:text-base">
-            <span className="text-gray-600">Subtotal (incl. fees & tax):</span>
+            <span className="text-gray-600">Subtotal (incl. fees &amp; tax):</span>
             <span className="font-semibold">{formatPrice(getAllInclusiveSubtotal())}</span>
           </div>
           
           <div className="flex justify-between text-sm sm:text-base pb-3 border-b border-gray-200">
             <span className="text-gray-600">Shipping:</span>
-            <span className="font-semibold">{shippingCost ? formatPrice(shippingCost) : 'Calculated at checkout'}</span>
+            <span className="font-semibold">Calculated at checkout</span>
           </div>
           
           <div className="flex justify-between text-lg sm:text-xl font-bold pt-2">
             <span>Total:</span>
-            <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal() + (shippingCost || 0))}</span>
+            <span className="text-blue-600">{formatPrice(getAllInclusiveSubtotal())}</span>
           </div>
         </div>
 
