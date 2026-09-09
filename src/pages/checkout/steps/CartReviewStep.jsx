@@ -32,7 +32,6 @@ const CartReviewStep = ({ onNext }) => {
         <div className="space-y-4 sm:space-y-6">
           {cartItems.map((item, index) => {
             const itemKey = item.id || item.productId || `item-${index}`;
-            const itemId = item.productId || item.id;
             const itemQuantity = item.quantity || 1;
             // Same fix as ShopperCart.jsx / GuestCartPage.jsx: the stepper
             // counts the purchased unit (e.g. Packs) when the item has one,
