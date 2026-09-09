@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext'; // keep for isAuthenticated, toggleFavorite
+import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useFavorites } from '../contexts/FavoritesContext';
 import productService from '../services/productService';
-import { PURCHASE_UNIT_YARDS, maxUnitsAvailable, unitsToYards } from '../utils/purchaseUnits';
+import { getAvailableSellingUnits, maxUnitsForYardsPerUnit } from '../utils/purchaseUnits';
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -12,7 +12,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [unitType, setUnitType] = useState('yard');
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
@@ -47,23 +47,30 @@ const ProductDetailPage = () => {
     loadProduct();
   }, [productId]);
 
+  const availableUnits = product ? getAvailableSellingUnits(product) : [];
+  const selectedUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
+
   const handleAddToCart = async () => {
     setIsAddingToCart(true);
     try {
       await addToCart({
         ...product,
         vendorId: product.vendorId || product.vendor?.id,
-        quantity: unitsToYards(unitType, quantity),
-        unitType,
-        unitCount: quantity,
+        // A custom offering sends offeringId + the chosen unitCount; plain
+        // Yard sends a plain quantity of `quantity` yards. The server
+        // resolves the real yardage/price from offeringId itself for a
+        // custom unit — never trusts a client-sent yardage there.
+        ...(selectedUnit.offeringId
+          ? { offeringId: selectedUnit.offeringId, unitCount: quantity }
+          : { quantity }),
       });
     } finally {
       setIsAddingToCart(false);
     }
   };
 
-  const handleUnitTypeChange = (newUnitType) => {
-    setUnitType(newUnitType);
+  const handleUnitChange = (index) => {
+    setSelectedUnitIndex(index);
     setQuantity(1); // Reset count — max valid count differs per unit size
   };
 
@@ -79,7 +86,6 @@ const ProductDetailPage = () => {
     }
   };
 
-  // Debug: Log every time quantity changes
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('[DEBUG] Quantity state changed:', quantity);
@@ -113,7 +119,6 @@ const ProductDetailPage = () => {
 
   const isProductFavorited = isFavorite(product._id || product.id);
   
-  // ✅ FIXED: Extract all images with deduplication
   const images = (() => {
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const urls = product.images
@@ -125,12 +130,10 @@ const ProductDetailPage = () => {
         })
         .filter(Boolean);
       
-      // Deduplicate
       const uniqueUrls = [...new Set(urls)];
       if (uniqueUrls.length > 0) return uniqueUrls;
     }
     
-    // Fallback to single image
     if (product.image) {
       const url = typeof product.image === 'object' 
         ? (product.image.url || product.image.data) 
@@ -141,7 +144,6 @@ const ProductDetailPage = () => {
     return ['/images/default-product.jpg'];
   })();
 
-  // ✅ Determine back navigation based on auth state
   const getBackLink = () => {
     if (isAuthenticated) {
       return '/shopper/browse';
@@ -153,9 +155,15 @@ const ProductDetailPage = () => {
     return '← Products';
   };
 
+  const maxAvailableForSelectedUnit = maxUnitsForYardsPerUnit(
+    product.quantity || 0,
+    selectedUnit?.yardsPerUnit
+  );
+  const totalYardsForSelection = (selectedUnit?.yardsPerUnit || 1) * quantity;
+  const totalPrice = (selectedUnit?.pricePerUnit || 0) * quantity;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ✅ FIXED: Context-aware header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -193,7 +201,6 @@ const ProductDetailPage = () => {
         </div>
       </header>
 
-      {/* ✅ FIXED: Remove dev breadcrumb in production, fix links */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-yellow-50 py-2">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -207,12 +214,9 @@ const ProductDetailPage = () => {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Images */}
           <div className="space-y-4">
-            {/* Main Image */}
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
                 src={images[selectedImage]}
@@ -224,7 +228,6 @@ const ProductDetailPage = () => {
               />
             </div>
             
-            {/* ✅ Thumbnail Gallery - Show all images */}
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
@@ -250,7 +253,6 @@ const ProductDetailPage = () => {
               </div>
             )}
             
-            {/* Image counter */}
             {images.length > 1 && (
               <p className="text-center text-sm text-gray-500">
                 Image {selectedImage + 1} of {images.length}
@@ -258,7 +260,6 @@ const ProductDetailPage = () => {
             )}
           </div>
 
-          {/* Product Info */}
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
             <p className="text-2xl font-semibold text-blue-600 mb-4">
@@ -292,34 +293,32 @@ const ProductDetailPage = () => {
               </p>
             </div>
 
-            {/* Purchase Unit Selector */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Buy by
               </label>
-              <div className="flex gap-2 mb-4">
-                {['yard', 'pack', 'bundle'].map((type) => {
-                  const available = product.quantity || 0;
-                  const maxUnits = maxUnitsAvailable(available, type);
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {availableUnits.map((unit, index) => {
+                  const maxUnits = maxUnitsForYardsPerUnit(product.quantity || 0, unit.yardsPerUnit);
                   if (maxUnits < 1) return null; // Not enough stock for even one of this unit
                   return (
                     <button
-                      key={type}
-                      onClick={() => handleUnitTypeChange(type)}
-                      className={`px-4 py-2 rounded-lg border text-sm font-medium capitalize transition-colors ${
-                        unitType === type
+                      key={unit.offeringId || 'yard'}
+                      onClick={() => handleUnitChange(index)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        selectedUnitIndex === index
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      {type}{type !== 'yard' && ` (${PURCHASE_UNIT_YARDS[type]} yds)`}
+                      {unit.offeringId ? `${unit.label} (${unit.yardsPerUnit} yds)` : 'Yard'}
                     </button>
                   );
                 })}
               </div>
 
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {unitType === 'yard' ? 'Quantity (yards)' : `Number of ${unitType}s`}
+                {selectedUnit?.offeringId ? `Number of ${selectedUnit.label}s` : 'Quantity (yards)'}
               </label>
               <div className="flex items-center border border-gray-300 rounded-lg w-32">
                 <button
@@ -331,37 +330,32 @@ const ProductDetailPage = () => {
                 <input
                   type="number"
                   min="1"
-                  max={maxUnitsAvailable(product.quantity || 0, unitType)}
+                  max={maxAvailableForSelectedUnit}
                   value={quantity}
                   onChange={(e) => {
-                    const maxUnits = maxUnitsAvailable(product.quantity || 0, unitType);
-                    const val = Math.min(maxUnits, Math.max(1, parseInt(e.target.value) || 1));
+                    const val = Math.min(maxAvailableForSelectedUnit, Math.max(1, parseInt(e.target.value) || 1));
                     setQuantity(val);
                   }}
                   className="flex-1 text-center py-2 border-0 focus:ring-0"
                 />
                 <button
-                  onClick={() => {
-                    const maxUnits = maxUnitsAvailable(product.quantity || 0, unitType);
-                    setQuantity(Math.min(maxUnits, quantity + 1));
-                  }}
+                  onClick={() => setQuantity(Math.min(maxAvailableForSelectedUnit, quantity + 1))}
                   className="px-3 py-2 text-gray-600 hover:text-gray-800"
                 >
                   +
                 </button>
               </div>
 
-              {unitType !== 'yard' && (
+              {selectedUnit?.offeringId && (
                 <p className="mt-2 text-sm text-gray-600">
-                  = {unitsToYards(unitType, quantity)} yards total
+                  = {totalYardsForSelection} yards total
                 </p>
               )}
               <p className="mt-1 text-base font-semibold text-gray-900">
-                Total: ₦{(unitsToYards(unitType, quantity) * (product.pricePerYard || 0)).toLocaleString()}
+                Total: ₦{totalPrice.toLocaleString()}
               </p>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex space-x-4">
               <button
                 onClick={handleAddToCart}

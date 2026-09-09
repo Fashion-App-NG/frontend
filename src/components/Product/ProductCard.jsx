@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { formatPrice } from '../../utils/formatPrice';
-import { maxUnitsAvailable, unitsToYards } from '../../utils/purchaseUnits';
+import { getAvailableSellingUnits, maxUnitsForYardsPerUnit } from '../../utils/purchaseUnits';
 
 const ProductCard = ({
   product,
@@ -14,18 +14,19 @@ const ProductCard = ({
   showAddToCartButton = true
 }) => {
   const [imageError, setImageError] = useState(false);
-  // ✅ Add local loading state for this specific product
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [unitType, setUnitType] = useState('yard');
-  
+
+  const availableUnits = getAvailableSellingUnits(product);
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
+  const selectedUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
+
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToCart, isInCart, error } = useCart(); // ✅ Remove global isLoading
+  const { addToCart, isInCart, error } = useCart();
   const { isAuthenticated } = useAuth();
 
   const productId = product._id || product.id;
   const isProductFavorited = isFavorite?.(productId) || false;
 
-  // Calculate display price from API data with proper precision
   const calculateDisplayPrice = () => {
     const basePrice = parseFloat(product.pricePerYard) || 0;
     const tax = parseFloat(product.taxAmount) || 0;
@@ -59,23 +60,25 @@ const ProductCard = ({
   const handleAddToCart = async (e) => {
     e.stopPropagation();
     
-    // ✅ Set local loading state
     setIsAddingToCart(true);
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] ProductCard handleAddToCart called with:', product);
+      console.log('[DEBUG] ProductCard handleAddToCart called with:', product, selectedUnit);
     }
     
     try {
       await addToCart({
         ...product,
         vendorId: product.vendorId || product.vendor?.id,
-        quantity: unitsToYards(unitType, 1),
-        unitType,
-        unitCount: 1,
+        // A custom offering (Pack, Bundle, etc.) sends offeringId + a fixed
+        // unitCount of 1; the always-available Yard sends a plain quantity
+        // of 1 yard. The server resolves the real yardage/price from
+        // offeringId itself — never trusts a client-sent yardage here.
+        ...(selectedUnit.offeringId
+          ? { offeringId: selectedUnit.offeringId, unitCount: 1 }
+          : { quantity: 1 }),
       });
     } finally {
-      // ✅ Clear local loading state after operation
       setIsAddingToCart(false);
     }
   };
@@ -127,7 +130,6 @@ const ProductCard = ({
       className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${className}`}
       onClick={handleCardClick}
     >
-      {/* ✅ Product Image - Responsive Aspect Ratio */}
       <div className="relative aspect-[4/3] sm:aspect-square bg-gray-200">
         <img
           src={getImageSrc()}
@@ -137,7 +139,6 @@ const ProductCard = ({
           loading="lazy"
         />
 
-        {/* Favorite Button */}
         {showFavoriteButton && isAuthenticated && (
           <button
             onClick={handleFavoriteClick}
@@ -164,7 +165,6 @@ const ProductCard = ({
           </button>
         )}
 
-        {/* Stock Status Badge */}
         <div className="absolute top-2 left-2">
           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
           product.quantity > 10
@@ -178,7 +178,6 @@ const ProductCard = ({
         </div>
       </div>
 
-      {/* ✅ Product Info - Responsive Padding & Text */}
       <div className="p-3 sm:p-4">
         <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 line-clamp-2">
           {product.name}
@@ -196,7 +195,6 @@ const ProductCard = ({
           )}
         </div>
 
-        {/* Vendor Info */}
         {showVendorInfo && (
           <div className="flex items-center text-xs text-gray-600 mb-3">
             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +204,6 @@ const ProductCard = ({
           </div>
         )}
 
-        {/* Add to Cart button */}
         {showAddToCartButton && (
           <>
             {error && (
@@ -214,21 +211,28 @@ const ProductCard = ({
                 {error}
               </div>
             )}
-            {maxUnitsAvailable(product.quantity || 0, 'pack') >= 1 && (
+            {availableUnits.length > 1 && (
               <select
-                value={unitType}
+                value={selectedUnitIndex}
                 onChange={(e) => {
                   e.stopPropagation();
-                  setUnitType(e.target.value);
+                  setSelectedUnitIndex(Number(e.target.value));
                 }}
                 onClick={(e) => e.stopPropagation()}
                 className="w-full mb-2 py-1.5 px-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-700"
               >
-                <option value="yard">1 Yard</option>
-                <option value="pack">1 Pack (5 yds)</option>
-                {maxUnitsAvailable(product.quantity || 0, 'bundle') >= 1 && (
-                  <option value="bundle">1 Bundle (10 yds)</option>
-                )}
+                {availableUnits.map((unit, index) => {
+                  // Hide a unit this shopper couldn't buy even one of, given
+                  // current stock — same principle as the old fixed-unit
+                  // dropdown, generalized to any yardsPerUnit.
+                  const maxAvailable = maxUnitsForYardsPerUnit(product.quantity || 0, unit.yardsPerUnit);
+                  if (maxAvailable < 1) return null;
+                  return (
+                    <option key={unit.offeringId || 'yard'} value={index}>
+                      {unit.offeringId ? `1 ${unit.label} (${unit.yardsPerUnit} yds)` : '1 Yard'}
+                    </option>
+                  );
+                })}
               </select>
             )}
             <button

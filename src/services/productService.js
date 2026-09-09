@@ -420,6 +420,50 @@ class ProductService {
     }
   }
 
+  // Vendor-configurable selling units (Pack/Bundle/Roll/etc.). No update
+  // method exists here, deliberately — an offering's yards/price are
+  // immutable once created; correcting a mistake is deactivate + add new.
+  async addSellingUnit(productId, { label, yardsPerUnit, pricePerUnit }) {
+    try {
+      const response = await fetch(`${this.baseURL}/product/${productId}/selling-units`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ label, yardsPerUnit, pricePerUnit })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to add selling unit');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('\u274c Error adding selling unit:', error);
+      throw error;
+    }
+  }
+
+  async deactivateSellingUnit(productId, offeringId) {
+    try {
+      const response = await fetch(`${this.baseURL}/product/${productId}/selling-units/${offeringId}/deactivate`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders()
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to deactivate selling unit');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('\u274c Error deactivating selling unit:', error);
+      throw error;
+    }
+  }
+
   async deleteProduct(productId) {
     try {
       console.log('🔄 Deleting product:', productId);

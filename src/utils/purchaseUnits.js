@@ -69,6 +69,44 @@ export const stepPurchaseUnit = (item, direction) => {
   };
 };
 
+// Returns the list of units a shopper can currently buy this product in:
+// Yard (always first, always available, using the product's own
+// pricePerYard) followed by any of the vendor's ACTIVE custom offerings
+// (Pack, Bundle, Roll, etc. — see Product.sellingUnitOfferings). Inactive
+// offerings are never included — a deactivated unit simply disappears from
+// what a shopper can select, by design.
+export const getAvailableSellingUnits = (product) => {
+  const activeOfferings = (product?.sellingUnitOfferings || []).filter(
+    (o) => o.status === 'active'
+  );
+
+  return [
+    {
+      offeringId: null,
+      label: 'Yard',
+      yardsPerUnit: 1,
+      pricePerUnit: product?.pricePerYard || 0,
+    },
+    ...activeOfferings.map((o) => ({
+      offeringId: o._id,
+      label: o.label,
+      yardsPerUnit: o.yardsPerUnit,
+      pricePerUnit: o.pricePerUnit,
+    })),
+  ];
+};
+
+// How many of a given unit (identified by its yardsPerUnit, not a fixed
+// enum) are available for a product with `availableYards` in stock. This
+// is the offering-based generalization of maxUnitsAvailable above — that
+// one stays as-is for any code still working with the legacy fixed
+// yard/pack/bundle enum; this one works for any yardsPerUnit, vendor-
+// defined or not.
+export const maxUnitsForYardsPerUnit = (availableYards, yardsPerUnit) => {
+  const size = yardsPerUnit || 1;
+  return Math.floor((availableYards || 0) / size);
+};
+
 // Formats a cart/order item for display. Falls back to a plain yard count
 // whenever purchaseUnitType/purchaseUnitCount aren't set (legacy items,
 // items whose quantity was manually adjusted via the cart's +/- stepper, or

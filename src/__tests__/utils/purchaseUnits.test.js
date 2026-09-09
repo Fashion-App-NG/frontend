@@ -1,4 +1,68 @@
-import { stepPurchaseUnit, hasActivePurchaseUnit } from '../../utils/purchaseUnits';
+import {
+  stepPurchaseUnit,
+  hasActivePurchaseUnit,
+  getAvailableSellingUnits,
+  maxUnitsForYardsPerUnit,
+} from '../../utils/purchaseUnits';
+
+describe('getAvailableSellingUnits', () => {
+  it("always includes Yard first, using the product's pricePerYard", () => {
+    const product = { pricePerYard: 8000, sellingUnitOfferings: [] };
+    expect(getAvailableSellingUnits(product)).toEqual([
+      { offeringId: null, label: 'Yard', yardsPerUnit: 1, pricePerUnit: 8000 },
+    ]);
+  });
+
+  it('includes active offerings after Yard', () => {
+    const product = {
+      pricePerYard: 8000,
+      sellingUnitOfferings: [
+        { _id: 'off1', label: 'Pack', yardsPerUnit: 5, pricePerUnit: 36000, status: 'active' },
+      ],
+    };
+    expect(getAvailableSellingUnits(product)).toEqual([
+      { offeringId: null, label: 'Yard', yardsPerUnit: 1, pricePerUnit: 8000 },
+      { offeringId: 'off1', label: 'Pack', yardsPerUnit: 5, pricePerUnit: 36000 },
+    ]);
+  });
+
+  it('excludes inactive offerings entirely', () => {
+    const product = {
+      pricePerYard: 8000,
+      sellingUnitOfferings: [
+        { _id: 'off1', label: 'Pack', yardsPerUnit: 5, pricePerUnit: 36000, status: 'inactive' },
+      ],
+    };
+    expect(getAvailableSellingUnits(product)).toEqual([
+      { offeringId: null, label: 'Yard', yardsPerUnit: 1, pricePerUnit: 8000 },
+    ]);
+  });
+
+  it('handles a product with no sellingUnitOfferings field at all', () => {
+    const product = { pricePerYard: 300 };
+    expect(getAvailableSellingUnits(product)).toEqual([
+      { offeringId: null, label: 'Yard', yardsPerUnit: 1, pricePerUnit: 300 },
+    ]);
+  });
+});
+
+describe('maxUnitsForYardsPerUnit', () => {
+  it('divides available yards by the unit size, rounding down', () => {
+    expect(maxUnitsForYardsPerUnit(22, 5)).toBe(4);
+  });
+
+  it('handles a fractional yardsPerUnit (e.g. a 2.5-yard Pack)', () => {
+    expect(maxUnitsForYardsPerUnit(22, 2.5)).toBe(8);
+  });
+
+  it('treats a missing yardsPerUnit as 1 (plain yards)', () => {
+    expect(maxUnitsForYardsPerUnit(22, undefined)).toBe(22);
+  });
+
+  it('treats missing available yards as 0', () => {
+    expect(maxUnitsForYardsPerUnit(undefined, 5)).toBe(0);
+  });
+});
 
 describe('hasActivePurchaseUnit', () => {
   it('is true for a complete non-yard unit', () => {

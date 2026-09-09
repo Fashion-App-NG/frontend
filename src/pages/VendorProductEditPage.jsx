@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import productService from '../services/productService';
 import { useMaterials } from '../hooks/useMaterials';
 import { PATTERNS } from '../constants/productOptions';
+import SellingUnitsSection from '../components/Vendor/SellingUnitsSection';
 
 const VendorProductEditPage = () => {
   const { id } = useParams();
@@ -16,10 +17,9 @@ const VendorProductEditPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // ✅ ADD: Image state
-  const [existingImages, setExistingImages] = useState([]); // Images from server
-  const [newImages, setNewImages] = useState([]); // New images to upload
-  const [imagesToRemove, setImagesToRemove] = useState([]); // IDs of images to delete
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [imagesToRemove, setImagesToRemove] = useState([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -31,17 +31,10 @@ const VendorProductEditPage = () => {
     status: 'Available'
   });
 
-  // ✅ Materials now come from the centralized useMaterials hook (backend
-  // admin-managed, sorted) — matches the same source used everywhere else,
-  // so Edit and Add always stay in sync.
   const { materials: materialTypes, loading: materialsLoading, error: materialsError } = useMaterials();
 
-  // ✅ Patterns now come from the shared, pre-sorted PATTERNS constant —
-  // see src/constants/productOptions.js. Kept identical across Add Product,
-  // Edit Product, Filters, and Bulk Upload.
   const patterns = PATTERNS;
 
-  // ✅ Extract images from product
   const extractImages = useCallback((product) => {
     if (!product) return [];
     
@@ -64,7 +57,6 @@ const VendorProductEditPage = () => {
     return [];
   }, []);
 
-  // Load product
   useEffect(() => {
     const loadProduct = async () => {
       if (!id || !user?.id) {
@@ -76,20 +68,10 @@ const VendorProductEditPage = () => {
         setLoading(true);
         console.log('📥 Loading product for edit:', id);
         
-        // ✅ FIX: Fetch the product directly by ID instead of paging through
-        // the vendor's full product list and searching client-side. The old
-        // approach called getVendorProducts(user.id) with no page/limit,
-        // which defaults to page=1/limit=20 — any product past the first 20
-        // (page 2+) was never in that result set, so it always looked like
-        // "Product not found" for later products. getProductById fetches
-        // the exact product regardless of how many products the vendor has.
         const response = await productService.getProductById(id);
         const foundProduct = response.product;
 
         if (foundProduct) {
-          // getProductById is a public endpoint with no vendor filter, so
-          // explicitly verify this product actually belongs to the logged-in
-          // vendor before allowing the edit form to load.
           if (String(foundProduct.vendorId) !== String(user.id)) {
             toast.error('You do not have permission to edit this product');
             navigate('/vendor/products');
@@ -108,7 +90,6 @@ const VendorProductEditPage = () => {
             status: foundProduct.status || 'Available'
           });
 
-          // ✅ Load existing images
           const images = extractImages(foundProduct);
           console.log('🖼️ Existing images:', images);
           setExistingImages(images);
@@ -128,7 +109,13 @@ const VendorProductEditPage = () => {
     loadProduct();
   }, [id, user?.id, navigate, extractImages]);
 
-  // ✅ ADD: Handle new image selection
+  // Called by SellingUnitsSection whenever it adds or deactivates a unit,
+  // so the list re-renders immediately from the server's authoritative
+  // response without needing a full page reload.
+  const handleSellingUnitsChange = (updatedOfferings) => {
+    setProduct((prev) => ({ ...prev, sellingUnitOfferings: updatedOfferings }));
+  };
+
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     const totalImages = existingImages.length - imagesToRemove.length + newImages.length;
@@ -158,17 +145,14 @@ const VendorProductEditPage = () => {
     setNewImages(prev => [...prev, ...processedImages]);
   };
 
-  // ✅ ADD: Remove existing image
   const handleRemoveExistingImage = (imageId) => {
     setImagesToRemove(prev => [...prev, imageId]);
   };
 
-  // ✅ ADD: Restore removed image
   const handleRestoreImage = (imageId) => {
     setImagesToRemove(prev => prev.filter(id => id !== imageId));
   };
 
-  // ✅ ADD: Remove new image
   const handleRemoveNewImage = (imageId) => {
     setNewImages(prev => prev.filter(img => img.id !== imageId));
   };
@@ -184,7 +168,6 @@ const VendorProductEditPage = () => {
     try {
       setSaving(true);
       
-      // Build FormData if we have new images
       const hasImageChanges = newImages.length > 0 || imagesToRemove.length > 0;
       
       let response;
@@ -199,12 +182,10 @@ const VendorProductEditPage = () => {
         formDataToSend.append('pattern', formData.pattern);
         formDataToSend.append('status', formData.status);
         
-        // Add images to remove
         if (imagesToRemove.length > 0) {
           formDataToSend.append('imagesToRemove', JSON.stringify(imagesToRemove));
         }
         
-        // Add new images
         newImages.forEach((img) => {
           if (img.file) {
             formDataToSend.append('images', img.file);
@@ -213,7 +194,6 @@ const VendorProductEditPage = () => {
         
         response = await productService.updateProductWithImages(id, formDataToSend);
       } else {
-        // No image changes, just update data
         const updateData = {
           name: formData.name.trim(),
           pricePerYard: parseFloat(formData.pricePerYard),
@@ -241,7 +221,6 @@ const VendorProductEditPage = () => {
     }
   };
 
-  // Calculate remaining slots
   const activeExistingImages = existingImages.filter(img => !imagesToRemove.includes(img.id));
   const totalActiveImages = activeExistingImages.length + newImages.length;
   const canAddMore = totalActiveImages < 4;
@@ -289,7 +268,6 @@ const VendorProductEditPage = () => {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Form Fields */}
           <div className="bg-white p-6 rounded-lg shadow space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -407,14 +385,12 @@ const VendorProductEditPage = () => {
             </div>
           </div>
 
-          {/* Right Column - Images */}
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Product Images</h3>
               <span className="text-sm text-gray-500">{totalActiveImages}/4 images</span>
             </div>
 
-            {/* Existing Images */}
             {existingImages.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">Current Images:</p>
@@ -455,7 +431,6 @@ const VendorProductEditPage = () => {
               </div>
             )}
 
-            {/* New Images */}
             {newImages.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">New Images to Add:</p>
@@ -483,7 +458,6 @@ const VendorProductEditPage = () => {
               </div>
             )}
 
-            {/* Add More Images */}
             {canAddMore && (
               <div>
                 <input
@@ -513,7 +487,12 @@ const VendorProductEditPage = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        <SellingUnitsSection
+          productId={id}
+          offerings={product.sellingUnitOfferings || []}
+          onOfferingsChange={handleSellingUnitsChange}
+        />
+
         <div className="flex space-x-4">
           <button
             type="button"
